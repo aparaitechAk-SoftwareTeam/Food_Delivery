@@ -23,7 +23,7 @@ import {
 import { useDispatch, useSelector } from "react-redux";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { fetchFoods } from "../../redux/slices/foodsSlice";
-import { toggleFavoriteRestaurant, fetchFavorites } from "../../redux/slices/wishlistSlice";
+import { toggleFavoriteRestaurant, fetchFavorites, addFoodToWishlist, removeFoodFromWishlist } from "../../redux/slices/wishlistSlice";
 import FilterDrawer from "../../components/FilterDrawer";
 
 const FoodListingScreen = ({ navigation, route }) => {
@@ -31,7 +31,7 @@ const FoodListingScreen = ({ navigation, route }) => {
 
   // Redux Selectors
   const { categories, loading } = useSelector((state) => state.foods);
-  const { favorites } = useSelector((state) => state.wishlist);
+  const { favorites, items: wishlistItems } = useSelector((state) => state.wishlist);
   const { token } = useSelector((state) => state.auth);
 
   // Pagination & Filtering Local States
@@ -149,23 +149,28 @@ const FoodListingScreen = ({ navigation, route }) => {
   };
 
   const toggleFavorite = (item) => {
-    const rest = item.restaurant || {};
-    const mapped = {
-      id: rest.id || rest._id || item.restaurantId || item.id,
-      _id: rest._id || rest.id || item.restaurantId || item._id,
-      name: rest.name || item.restaurant,
-      image: item.image,
-      rating: rest.rating || item.rating || 4.2,
-      deliveryTime: rest.deliveryTime || "25 mins",
-      cuisine: rest.cuisine?.join(", ") || item.category || "Food",
-    };
-    dispatch(toggleFavoriteRestaurant(mapped));
+    if (!token) {
+      Alert.alert(
+        "Login Required",
+        "Please log in to add items to your wishlist.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Login", onPress: () => navigation.navigate("Login", { redirectTo: "FoodListing", redirectParams: route.params }) }
+        ]
+      );
+      return;
+    }
+    const fid = item.id || item._id;
+    if (isFavorited(item)) {
+      dispatch(removeFoodFromWishlist(fid));
+    } else {
+      dispatch(addFoodToWishlist(item));
+    }
   };
 
   const isFavorited = (item) => {
-    const rest = item.restaurant || {};
-    const rid = rest._id || rest.id || item.restaurantId || item.id;
-    return favorites.some((fav) => (fav._id || fav.id)?.toString() === rid?.toString());
+    const fid = item.id || item._id;
+    return wishlistItems.some((w) => (w.id || w._id)?.toString() === fid?.toString());
   };
 
   const getActiveFiltersCount = () => {

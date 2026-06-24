@@ -13,6 +13,10 @@ const authService = {
     const { data } = await api.post("/auth/forgot-password", { email });
     return data;
   },
+  logout: async () => {
+    const { data } = await api.post("/auth/logout");
+    return data;
+  },
 };
 
 export default authService;

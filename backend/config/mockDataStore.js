@@ -334,7 +334,146 @@ const initializeMockData = () => {
   console.log(`Mock DB successfully generated ${users.length} Users, ${foods.length} Products, ${orders.length} Orders, and Wishlists!`);
 };
 
-// In-Memory search/filtering is already defined above...
+const queryMockFoods = (query = {}) => {
+  const {
+    q,
+    category,
+    price,
+    rating,
+    deliveryTime,
+    discount,
+    restaurantType,
+    isOpen,
+    vegType,
+    sort,
+    page = 1,
+    limit = 20,
+  } = query;
+
+  let filtered = [...foods];
+
+  // 1. Search Query (q)
+  if (q) {
+    const searchRegex = new RegExp(q, "i");
+    filtered = filtered.filter(f => {
+      const nameMatch = f.name && searchRegex.test(f.name);
+      const descMatch = f.description && searchRegex.test(f.description);
+      const tagMatch = f.tags && f.tags.some(tag => searchRegex.test(tag));
+      const catMatch = f.category && f.category.name && searchRegex.test(f.category.name);
+      const restMatch = f.restaurant && f.restaurant.name && searchRegex.test(f.restaurant.name);
+      return nameMatch || descMatch || tagMatch || catMatch || restMatch;
+    });
+  }
+
+  // 2. Category Filter
+  if (category) {
+    filtered = filtered.filter(f => {
+      if (!f.category) return false;
+      const catId = f.category.id || f.category._id;
+      return (
+        (f.category.name && f.category.name.toLowerCase() === category.toLowerCase()) ||
+        (catId && catId.toString() === category.toString())
+      );
+    });
+  }
+
+  // 3. Price Filter
+  if (price) {
+    filtered = filtered.filter(f => {
+      if (price === "under_100") return f.price < 100;
+      if (price === "100_250") return f.price >= 100 && f.price <= 250;
+      if (price === "250_500") return f.price >= 250 && f.price <= 500;
+      if (price === "500_1000") return f.price >= 500 && f.price <= 1000;
+      if (price === "above_1000") return f.price > 1000;
+      return true;
+    });
+  }
+
+  // 4. Rating Filter
+  if (rating) {
+    const minRating = parseFloat(rating);
+    filtered = filtered.filter(f => f.rating >= minRating);
+  }
+
+  // 5. Delivery Time (preparationTime)
+  if (deliveryTime) {
+    filtered = filtered.filter(f => {
+      const prepTime = f.preparationTime || 0;
+      if (deliveryTime === "under_10") return prepTime <= 10;
+      if (deliveryTime === "under_20") return prepTime <= 20;
+      if (deliveryTime === "under_30") return prepTime <= 30;
+      if (deliveryTime === "under_45") return prepTime <= 45;
+      return true;
+    });
+  }
+
+  // 6. Discount Filter
+  if (discount) {
+    filtered = filtered.filter(f => {
+      const disc = f.discountPercentage || 0;
+      if (discount === "10_plus") return disc >= 10;
+      if (discount === "20_plus") return disc >= 20;
+      if (discount === "30_plus") return disc >= 30;
+      if (discount === "50_plus") return disc >= 50;
+      return true;
+    });
+  }
+
+  // 7. Restaurant Type
+  if (restaurantType) {
+    filtered = filtered.filter(f => f.restaurant && f.restaurant.restaurantType === restaurantType);
+  }
+
+  // 8. Open Now
+  if (isOpen === "true") {
+    filtered = filtered.filter(f => f.restaurant && f.restaurant.isOpen === true);
+  }
+
+  // 9. Veg/Non-Veg
+  if (vegType) {
+    if (vegType === "veg") {
+      filtered = filtered.filter(f => f.isVeg === true);
+    } else if (vegType === "non-veg") {
+      filtered = filtered.filter(f => f.isVeg === false);
+    }
+  }
+
+  // 10. Sorting
+  if (sort) {
+    if (sort === "popularity" || sort === "recommended") {
+      filtered.sort((a, b) => (b.popularityScore || 0) - (a.popularityScore || 0));
+    } else if (sort === "rating_desc") {
+      filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    } else if (sort === "price_asc") {
+      filtered.sort((a, b) => a.price - b.price);
+    } else if (sort === "price_desc") {
+      filtered.sort((a, b) => b.price - a.price);
+    } else if (sort === "discount_desc") {
+      filtered.sort((a, b) => (b.discountPercentage || 0) - (a.discountPercentage || 0));
+    } else if (sort === "newest") {
+      const parseId = idStr => parseInt(idStr.replace("food-", "")) || 0;
+      filtered.sort((a, b) => parseId(b.id) - parseId(a.id));
+    } else if (sort === "delivery_time") {
+      filtered.sort((a, b) => (a.preparationTime || 0) - (b.preparationTime || 0));
+    }
+  } else {
+    filtered.sort((a, b) => (b.popularityScore || 0) - (a.popularityScore || 0));
+  }
+
+  // 11. Pagination
+  const pageNum = parseInt(page);
+  const limitNum = parseInt(limit);
+  const totalCount = filtered.length;
+  const skipNum = (pageNum - 1) * limitNum;
+  const paginatedFoods = filtered.slice(skipNum, skipNum + limitNum);
+
+  return {
+    foods: paginatedFoods,
+    total: totalCount,
+    page: pageNum,
+    pages: Math.ceil(totalCount / limitNum),
+  };
+};
 
 module.exports = {
   categories,

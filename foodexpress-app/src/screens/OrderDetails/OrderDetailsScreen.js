@@ -48,7 +48,8 @@ const OrderDetailsScreen = ({ route, navigation }) => {
         setSnackbarVisible(true);
       })
       .catch((err) => {
-        Alert.alert("Error", err || "Could not cancel order.");
+        const errorMsg = typeof err === "string" ? err : (err?.message || "Could not cancel order.");
+        Alert.alert("Error", errorMsg);
       })
       .finally(() => {
         setCancelLoading(false);

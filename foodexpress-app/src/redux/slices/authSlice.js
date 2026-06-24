@@ -90,6 +90,11 @@ export const loadUserFromStorage = createAsyncThunk(
 );
 
 export const logout = createAsyncThunk("auth/logout", async () => {
+  try {
+    await authService.logout();
+  } catch (error) {
+    // ignore
+  }
   await AsyncStorage.removeItem("foodexpress_token");
   await AsyncStorage.removeItem("foodexpress_user");
   await AsyncStorage.removeItem("foodexpress_active_address");

@@ -105,3 +105,18 @@ exports.forgotPassword = async (req, res) => {
   }
   res.json({ message: "Password reset link sent to your email (mock)" });
 };
+
+exports.me = async (req, res) => {
+  res.json({
+    user: {
+      id: req.user.id || req.user._id,
+      name: req.user.name,
+      email: req.user.email,
+      phone: req.user.phone
+    }
+  });
+};
+
+exports.logout = async (req, res) => {
+  res.json({ message: "Logged out successfully" });
+};

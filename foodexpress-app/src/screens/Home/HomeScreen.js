@@ -8,6 +8,7 @@ import {
   Dimensions,
   Animated,
   Switch,
+  Alert,
 } from "react-native";
 import {
   Text,
@@ -22,7 +23,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import ScreenContainer from "../../components/ScreenContainer";
 import { fetchFoods } from "../../redux/slices/foodsSlice";
-import { toggleFavoriteRestaurant, fetchFavorites } from "../../redux/slices/wishlistSlice";
+import { toggleFavoriteRestaurant, fetchFavorites, fetchWishlist } from "../../redux/slices/wishlistSlice";
 import { fetchAddresses } from "../../redux/slices/authSlice";
 import LocationBottomSheet from "../../components/LocationBottomSheet";
 import * as Location from "expo-location";
@@ -71,6 +72,7 @@ const HomeScreen = ({ navigation }) => {
     if (token) {
       dispatch(fetchFavorites());
       dispatch(fetchAddresses());
+      dispatch(fetchWishlist());
     }
     checkLocationPermission();
   }, [dispatch, token]);
@@ -110,6 +112,17 @@ const HomeScreen = ({ navigation }) => {
   };
 
   const handleFavoriteToggle = (restaurant) => {
+    if (!token) {
+      Alert.alert(
+        "Login Required",
+        "Please log in to manage your favorite restaurants.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Login", onPress: () => navigation.navigate("Login", { redirectTo: "Main", redirectTab: "Home" }) }
+        ]
+      );
+      return;
+    }
     dispatch(toggleFavoriteRestaurant(restaurant));
   };
 
@@ -276,7 +289,13 @@ const HomeScreen = ({ navigation }) => {
                   <Text style={styles.buyOneText}>BUY ONE</Text>
                   <MaterialCommunityIcons name="fire" size={14} color="#ff6b00" />
                 </View>
-                <TouchableOpacity onPress={() => navigation.navigate("Profile")}>
+                <TouchableOpacity onPress={() => {
+                  if (!token) {
+                    navigation.navigate("Login", { redirectTo: "Main", redirectTab: "Profile" });
+                  } else {
+                    navigation.navigate("Profile");
+                  }
+                }}>
                   <Avatar.Image
                     size={36}
                     source={{
