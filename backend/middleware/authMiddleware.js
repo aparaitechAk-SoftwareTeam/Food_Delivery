@@ -10,7 +10,22 @@ const protect = async (req, res, next) => {
   const token = authHeader.split(" ")[1];
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (process.env.MOCK_DB === "true") {
+      const { users } = require("../config/mockDataStore");
+      const mockUser = users.find(u => u.id === decoded.id || u._id === decoded.id);
+      if (!mockUser) {
+        res.status(401);
+        throw new Error("User not found");
+      }
+      req.user = mockUser;
+      return next();
+    }
+    
     req.user = await User.findById(decoded.id).select("-password");
+    if (!req.user) {
+      res.status(401);
+      throw new Error("User not found");
+    }
     next();
   } catch (error) {
     res.status(401);

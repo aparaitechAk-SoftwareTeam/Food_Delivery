@@ -1,12 +1,13 @@
 const mongoose = require("mongoose");
 
 const orderSchema = new mongoose.Schema({
-  user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+  user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+  restaurant: { type: mongoose.Schema.Types.ObjectId, ref: "Restaurant", required: true },
   items: [
     {
-      food: { type: mongoose.Schema.Types.ObjectId, ref: "Food" },
-      quantity: Number,
-      price: Number,
+      food: { type: mongoose.Schema.Types.ObjectId, ref: "Food", required: true },
+      quantity: { type: Number, required: true },
+      price: { type: Number, required: true },
     },
   ],
   address: {
@@ -18,8 +19,12 @@ const orderSchema = new mongoose.Schema({
     postalCode: String,
     country: String,
   },
-  paymentMethod: String,
-  totalAmount: Number,
+  paymentMethod: { type: String, default: "Cash on Delivery" },
+  paymentStatus: { type: String, enum: ["Pending", "Paid", "Failed"], default: "Pending" },
+  discount: { type: Number, default: 0 },
+  deliveryCharge: { type: Number, default: 40 },
+  tax: { type: Number, default: 0 },
+  totalAmount: { type: Number, required: true }, // Grand Total
   status: {
     type: String,
     enum: [
@@ -32,7 +37,8 @@ const orderSchema = new mongoose.Schema({
     ],
     default: "Pending",
   },
-  orderNumber: String,
+  orderNumber: { type: String, required: true },
+  cancellationReason: { type: String },
   createdAt: { type: Date, default: Date.now },
 });
 

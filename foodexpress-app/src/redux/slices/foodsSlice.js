@@ -15,9 +15,9 @@ const initialState = {
 
 export const fetchFoods = createAsyncThunk(
   "foods/fetchFoods",
-  async (_, thunkAPI) => {
+  async (params, thunkAPI) => {
     try {
-      return await foodService.getFoods();
+      return await foodService.getFoods(params);
     } catch (error) {
       return mockData;
     }

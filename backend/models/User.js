@@ -14,9 +14,11 @@ const userSchema = new mongoose.Schema({
       state: String,
       postalCode: String,
       country: String,
+      isDefault: { type: Boolean, default: false },
     },
   ],
   wishlist: [{ type: mongoose.Schema.Types.ObjectId, ref: "Food" }],
+  favorites: [{ type: mongoose.Schema.Types.ObjectId, ref: "Restaurant" }],
   createdAt: { type: Date, default: Date.now },
 });
 

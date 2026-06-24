@@ -1,8 +1,8 @@
 import api from "../utils/api";
 
 const foodService = {
-  getFoods: async () => {
-    const { data } = await api.get("/foods");
+  getFoods: async (params) => {
+    const { data } = await api.get("/foods", { params });
     return data;
   },
   getFoodDetails: async (id) => {

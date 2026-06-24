@@ -12,7 +12,12 @@ const restaurantRoutes = require("./routes/restaurantRoutes");
 const reviewRoutes = require("./routes/reviewRoutes");
 const cartRoutes = require("./routes/cartRoutes");
 const wishlistRoutes = require("./routes/wishlistRoutes");
+const userRoutes = require("./routes/userRoutes");
+const favoriteRoutes = require("./routes/favoriteRoutes");
+const bannerRoutes = require("./routes/bannerRoutes");
+const searchRoutes = require("./routes/searchRoutes");
 const errorHandler = require("./middleware/errorHandler");
+const seedDatabase = require("./config/seed");
 
 const app = express();
 app.use(cors());
@@ -27,6 +32,10 @@ app.use("/api/restaurants", restaurantRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/wishlist", wishlistRoutes);
+app.use("/api/user", userRoutes);
+app.use("/api/favorites", favoriteRoutes);
+app.use("/api/banners", bannerRoutes);
+app.use("/api/search", searchRoutes);
 
 app.use(errorHandler);
 
@@ -40,5 +49,12 @@ if (!MONGO_URI) {
   process.exit(1);
 }
 
-connectDB(MONGO_URI);
+connectDB(MONGO_URI).then(() => {
+  if (process.env.MOCK_DB === "true") {
+    const { initializeMockData } = require("./config/mockDataStore");
+    initializeMockData();
+  } else {
+    seedDatabase();
+  }
+});
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
