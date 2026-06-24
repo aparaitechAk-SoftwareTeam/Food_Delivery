@@ -2,10 +2,9 @@ const mongoose = require("mongoose");
 
 const connectDB = async (uri) => {
   if (!uri || typeof uri !== "string") {
-    console.error(
-      "Invalid MongoDB URI. Ensure MONGO_URI is set to a valid connection string.",
-    );
-    process.exit(1);
+    console.warn("Invalid MongoDB URI. Starting in Mock In-Memory Database Mode...");
+    process.env.MOCK_DB = "true";
+    return;
   }
 
   try {
@@ -14,9 +13,10 @@ const connectDB = async (uri) => {
       useUnifiedTopology: true,
     });
     console.log("MongoDB connected");
+    process.env.MOCK_DB = "false";
   } catch (error) {
-    console.error("MongoDB connection failed", error);
-    process.exit(1);
+    console.error("MongoDB connection failed. Starting in Mock In-Memory Database Mode...", error.message);
+    process.env.MOCK_DB = "true";
   }
 };
 

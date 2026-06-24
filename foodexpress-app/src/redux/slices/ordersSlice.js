@@ -38,6 +38,28 @@ export const placeOrder = createAsyncThunk(
   },
 );
 
+export const cancelOrderThunk = createAsyncThunk(
+  "orders/cancelOrder",
+  async ({ id, reason }, thunkAPI) => {
+    try {
+      return await orderService.cancelOrder(id, reason);
+    } catch (error) {
+      return thunkAPI.rejectWithValue(error.message || "Failed to cancel order");
+    }
+  }
+);
+
+export const reorderThunk = createAsyncThunk(
+  "orders/reorder",
+  async (id, thunkAPI) => {
+    try {
+      return await orderService.reorder(id);
+    } catch (error) {
+      return thunkAPI.rejectWithValue(error.message || "Failed to reorder");
+    }
+  }
+);
+
 const ordersSlice = createSlice({
   name: "orders",
   initialState,
@@ -68,6 +90,25 @@ const ordersSlice = createSlice({
       .addCase(placeOrder.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+      })
+      .addCase(cancelOrderThunk.fulfilled, (state, action) => {
+        const cancelledOrder = action.payload;
+        // Remove from currentOrders
+        state.currentOrders = state.currentOrders.filter(
+          o => (o.id || o._id) !== (cancelledOrder.id || cancelledOrder._id)
+        );
+        // Add/update in history
+        const existingIdx = state.history.findIndex(
+          o => (o.id || o._id) === (cancelledOrder.id || cancelledOrder._id)
+        );
+        if (existingIdx !== -1) {
+          state.history[existingIdx] = cancelledOrder;
+        } else {
+          state.history.unshift(cancelledOrder);
+        }
+      })
+      .addCase(reorderThunk.fulfilled, (state, action) => {
+        state.currentOrders.unshift(action.payload);
       });
   },
 });

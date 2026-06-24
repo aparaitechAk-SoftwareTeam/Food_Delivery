@@ -8,6 +8,8 @@ import {
 } from "@react-navigation/native";
 import { useColorScheme } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useSelector } from "react-redux";
+
 import SplashScreen from "../screens/Auth/SplashScreen";
 import OnboardingScreen from "../screens/Auth/OnboardingScreen";
 import LoginScreen from "../screens/Auth/LoginScreen";
@@ -22,85 +24,95 @@ import NotificationsScreen from "../screens/Notifications/NotificationsScreen";
 import FoodListingScreen from "../screens/Food/FoodListingScreen";
 import FoodDetailsScreen from "../screens/Food/FoodDetailsScreen";
 import CheckoutScreen from "../screens/Checkout/CheckoutScreen";
+import SearchScreen from "../screens/Search/SearchScreen";
+import OrderDetailsScreen from "../screens/OrderDetails/OrderDetailsScreen";
+import OrderTrackingScreen from "../screens/OrderTracking/OrderTrackingScreen";
+
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-const MainTabs = () => (
-  <Tab.Navigator
-    screenOptions={({ route }) => ({
-      headerShown: false,
-      tabBarActiveTintColor: "#ff6b00",
-      tabBarInactiveTintColor: "#666",
-      tabBarStyle: { height: 64, paddingBottom: 8 },
-    })}
-  >
-    <Tab.Screen
-      name="Home"
-      component={HomeScreen}
-      options={{
-        tabBarIcon: ({ color, size }) => (
-          <MaterialCommunityIcons
-            name="home-outline"
-            color={color}
-            size={size}
-          />
-        ),
-      }}
-    />
-    <Tab.Screen
-      name="Cart"
-      component={CartScreen}
-      options={{
-        tabBarIcon: ({ color, size }) => (
-          <MaterialCommunityIcons
-            name="cart-outline"
-            color={color}
-            size={size}
-          />
-        ),
-      }}
-    />
-    <Tab.Screen
-      name="Orders"
-      component={OrdersScreen}
-      options={{
-        tabBarIcon: ({ color, size }) => (
-          <MaterialCommunityIcons
-            name="clipboard-list-outline"
-            color={color}
-            size={size}
-          />
-        ),
-      }}
-    />
-    <Tab.Screen
-      name="Wishlist"
-      component={WishlistScreen}
-      options={{
-        tabBarIcon: ({ color, size }) => (
-          <MaterialCommunityIcons
-            name="heart-outline"
-            color={color}
-            size={size}
-          />
-        ),
-      }}
-    />
-    <Tab.Screen
-      name="Profile"
-      component={ProfileScreen}
-      options={{
-        tabBarIcon: ({ color, size }) => (
-          <MaterialCommunityIcons
-            name="account-outline"
-            color={color}
-            size={size}
-          />
-        ),
-      }}
-    />
-  </Tab.Navigator>
-);
+const MainTabs = () => {
+  const wishlistItems = useSelector((state) => state.wishlist.items || []);
+
+  return (
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarActiveTintColor: "#ff6b00",
+        tabBarInactiveTintColor: "#666",
+        tabBarStyle: { height: 64, paddingBottom: 8 },
+      })}
+    >
+      <Tab.Screen
+        name="Home"
+        component={HomeScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons
+              name="home-outline"
+              color={color}
+              size={size}
+            />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Search"
+        component={SearchScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons
+              name="magnify"
+              color={color}
+              size={size}
+            />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Orders"
+        component={OrdersScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons
+              name="clipboard-list-outline"
+              color={color}
+              size={size}
+            />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Wishlist"
+        component={WishlistScreen}
+        options={{
+          tabBarBadge: wishlistItems.length > 0 ? wishlistItems.length : undefined,
+          tabBarBadgeStyle: { backgroundColor: "#ff6b00", color: "#fff", fontSize: 10 },
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons
+              name="heart-outline"
+              color={color}
+              size={size}
+            />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Profile"
+        component={ProfileScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons
+              name="account-outline"
+              color={color}
+              size={size}
+            />
+          ),
+        }}
+      />
+    </Tab.Navigator>
+  );
+};
 
 const AppNavigator = () => {
   const scheme = useColorScheme();
@@ -118,6 +130,27 @@ const AppNavigator = () => {
         <Stack.Screen name="FoodListing" component={FoodListingScreen} />
         <Stack.Screen name="FoodDetails" component={FoodDetailsScreen} />
         <Stack.Screen name="Checkout" component={CheckoutScreen} />
+        <Stack.Screen name="Cart" component={CartScreen} />
+        <Stack.Screen
+          name="OrderDetails"
+          component={OrderDetailsScreen}
+          options={{
+            headerShown: true,
+            title: "Order Details",
+            headerTintColor: "#ff6b00",
+            headerTitleStyle: { fontWeight: "bold" },
+          }}
+        />
+        <Stack.Screen
+          name="OrderTracking"
+          component={OrderTrackingScreen}
+          options={{
+            headerShown: true,
+            title: "Track Order",
+            headerTintColor: "#ff6b00",
+            headerTitleStyle: { fontWeight: "bold" },
+          }}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );
