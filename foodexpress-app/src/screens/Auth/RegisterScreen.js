@@ -98,7 +98,8 @@ const RegisterScreen = ({ navigation }) => {
         }, 1000);
       })
       .catch((err) => {
-        setSnackbarMsg(err || "Unable to register");
+        const errorMsg = typeof err === "string" ? err : (err?.message || "Unable to register");
+        setSnackbarMsg(errorMsg);
         setSnackbarVisible(true);
       });
   };

@@ -33,6 +33,7 @@ const Tab = createBottomTabNavigator();
 
 const MainTabs = () => {
   const wishlistItems = useSelector((state) => state.wishlist.items || []);
+  const { token } = useSelector((state) => state.auth);
 
   return (
     <Tab.Navigator
@@ -72,6 +73,14 @@ const MainTabs = () => {
       <Tab.Screen
         name="Orders"
         component={OrdersScreen}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            if (!token) {
+              e.preventDefault();
+              navigation.navigate("Login", { redirectTo: "Main", redirectTab: "Orders" });
+            }
+          },
+        })}
         options={{
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons
@@ -85,6 +94,14 @@ const MainTabs = () => {
       <Tab.Screen
         name="Wishlist"
         component={WishlistScreen}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            if (!token) {
+              e.preventDefault();
+              navigation.navigate("Login", { redirectTo: "Main", redirectTab: "Wishlist" });
+            }
+          },
+        })}
         options={{
           tabBarBadge: wishlistItems.length > 0 ? wishlistItems.length : undefined,
           tabBarBadgeStyle: { backgroundColor: "#ff6b00", color: "#fff", fontSize: 10 },
@@ -100,6 +117,14 @@ const MainTabs = () => {
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            if (!token) {
+              e.preventDefault();
+              navigation.navigate("Login", { redirectTo: "Main", redirectTab: "Profile" });
+            }
+          },
+        })}
         options={{
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons

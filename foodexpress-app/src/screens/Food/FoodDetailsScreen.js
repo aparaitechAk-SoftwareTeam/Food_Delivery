@@ -1,16 +1,20 @@
 import React, { useEffect, useState } from "react";
-import { View, StyleSheet, ScrollView } from "react-native";
+import { View, StyleSheet, ScrollView, Alert } from "react-native";
 import { Text, Card, Button, Chip } from "react-native-paper";
 import foodService from "../../services/foodService";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { addToCart } from "../../redux/slices/cartSlice";
-import { addToWishlist } from "../../redux/slices/wishlistSlice";
+import { addFoodToWishlist, removeFoodFromWishlist } from "../../redux/slices/wishlistSlice";
 
-const FoodDetailsScreen = ({ route }) => {
+const FoodDetailsScreen = ({ route, navigation }) => {
   const { foodId } = route.params;
   const [food, setFood] = useState(null);
   const [loading, setLoading] = useState(true);
   const dispatch = useDispatch();
+
+  const { token } = useSelector((state) => state.auth);
+  const { items: wishlistItems } = useSelector((state) => state.wishlist);
+  const isFav = wishlistItems.some((w) => (w.id || w._id)?.toString() === foodId?.toString());
 
   useEffect(() => {
     foodService.getFoodDetails(foodId).then((response) => {
@@ -18,6 +22,25 @@ const FoodDetailsScreen = ({ route }) => {
       setLoading(false);
     });
   }, [foodId]);
+
+  const handleWishlistToggle = () => {
+    if (!token) {
+      Alert.alert(
+        "Login Required",
+        "Please log in to add items to your wishlist.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Login", onPress: () => navigation.navigate("Login", { redirectTo: "FoodDetails", redirectParams: { foodId } }) }
+        ]
+      );
+      return;
+    }
+    if (isFav) {
+      dispatch(removeFoodFromWishlist(foodId));
+    } else {
+      dispatch(addFoodToWishlist(food));
+    }
+  };
 
   if (loading || !food) {
     return <Text style={styles.loading}>Loading...</Text>;
@@ -44,13 +67,15 @@ const FoodDetailsScreen = ({ route }) => {
       <View style={styles.actions}>
         <Button
           mode="contained"
+          buttonColor="#ff6b00"
           onPress={() =>
             dispatch(
               addToCart({
-                id: food._id,
+                id: food.id || food._id,
                 name: food.name,
                 price: food.price,
                 quantity: 1,
+                restaurant: food.restaurant?.name || "Restaurant"
               }),
             )
           }
@@ -58,18 +83,13 @@ const FoodDetailsScreen = ({ route }) => {
           Add to Cart
         </Button>
         <Button
-          mode="outlined"
-          onPress={() =>
-            dispatch(
-              addToWishlist({
-                id: food._id,
-                name: food.name,
-                restaurant: food.restaurant?.name || "Restaurant",
-              }),
-            )
-          }
+          mode={isFav ? "contained" : "outlined"}
+          buttonColor={isFav ? "#d32f2f" : undefined}
+          textColor={isFav ? "#fff" : "#ff6b00"}
+          style={{ borderColor: "#ff6b00" }}
+          onPress={handleWishlistToggle}
         >
-          Wishlist
+          {isFav ? "Remove from Wishlist" : "Add to Wishlist"}
         </Button>
       </View>
     </ScrollView>
@@ -79,6 +99,7 @@ const FoodDetailsScreen = ({ route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "#fff",
   },
   loading: {
     marginTop: 32,
@@ -87,6 +108,7 @@ const styles = StyleSheet.create({
   price: {
     marginTop: 12,
     color: "#ff6b00",
+    fontWeight: "bold",
   },
   row: {
     flexDirection: "row",

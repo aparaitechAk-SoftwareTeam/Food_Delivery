@@ -1,5 +1,5 @@
 import React from "react";
-import { View, StyleSheet, FlatList } from "react-native";
+import { View, StyleSheet, FlatList, Alert } from "react-native";
 import { Text, Card, IconButton, Divider } from "react-native-paper";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -9,8 +9,9 @@ import {
 } from "../../redux/slices/cartSlice";
 import AppButton from "../../components/AppButton";
 
-const CartScreen = () => {
+const CartScreen = ({ navigation }) => {
   const { items, totalAmount } = useSelector((state) => state.cart);
+  const { token } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
 
   const handleIncrease = (item) =>
@@ -66,10 +67,24 @@ const CartScreen = () => {
         <Text variant="titleMedium">Total</Text>
         <Text variant="titleMedium">₹{totalAmount.toFixed(2)}</Text>
       </View>
-      <AppButton mode="contained" onPress={() => {}}>
+      <AppButton
+        mode="contained"
+        buttonColor="#ff6b00"
+        onPress={() => {
+          if (items.length === 0) {
+            Alert.alert("Cart Empty", "Please add some dishes to your cart first.");
+            return;
+          }
+          if (!token) {
+            navigation.navigate("Login", { redirectTo: "Checkout" });
+          } else {
+            navigation.navigate("Checkout");
+          }
+        }}
+      >
         Proceed to Checkout
       </AppButton>
-      <AppButton mode="outlined" onPress={() => dispatch(clearCart())}>
+      <AppButton mode="outlined" style={{ borderColor: "#ff6b00", marginTop: 8 }} textColor="#ff6b00" onPress={() => dispatch(clearCart())}>
         Clear Cart
       </AppButton>
     </View>
@@ -80,12 +95,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
+    backgroundColor: "#fff",
   },
   title: {
     marginBottom: 16,
+    fontWeight: "bold",
   },
   card: {
     marginBottom: 12,
+    backgroundColor: "#fcfcfc",
   },
   quantityRow: {
     flexDirection: "row",
@@ -104,6 +122,7 @@ const styles = StyleSheet.create({
   empty: {
     textAlign: "center",
     marginTop: 32,
+    color: "#666",
   },
 });
 

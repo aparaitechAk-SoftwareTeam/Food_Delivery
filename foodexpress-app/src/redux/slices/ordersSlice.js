@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import orderService from "../../services/orderService";
 import mockData from "../../mockData/data";
+import { logout } from "./authSlice";
 
 const initialState = {
   currentOrders: [],
@@ -109,6 +110,10 @@ const ordersSlice = createSlice({
       })
       .addCase(reorderThunk.fulfilled, (state, action) => {
         state.currentOrders.unshift(action.payload);
+      })
+      .addCase(logout.fulfilled, (state) => {
+        state.currentOrders = [];
+        state.history = [];
       });
   },
 });

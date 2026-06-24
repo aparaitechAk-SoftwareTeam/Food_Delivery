@@ -51,6 +51,13 @@ const ProfileScreen = ({ navigation }) => {
     dispatch(selectDefaultAddress(addressId));
   };
 
+  const handleLogout = () => {
+    dispatch(logout()).then(() => {
+      Alert.alert("Success", "Logged out successfully!");
+      navigation.navigate("Home");
+    });
+  };
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       {/* User Header Profile */}
@@ -174,7 +181,7 @@ const ProfileScreen = ({ navigation }) => {
       {/* Logout Action Button */}
       <Button
         mode="outlined"
-        onPress={() => dispatch(logout())}
+        onPress={handleLogout}
         textColor="#d32f2f"
         style={styles.logoutButton}
         icon="logout"

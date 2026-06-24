@@ -18,7 +18,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
       setMessage(response.message || "Please check your email.");
       setVisible(true);
     } catch (error) {
-      setMessage(error.message);
+      setMessage(error?.message || String(error) || "An error occurred");
       setVisible(true);
     } finally {
       setLoading(false);
