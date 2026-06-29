@@ -2,6 +2,10 @@ const Banner = require("../models/Banner");
 
 // Get all active promotional banners
 exports.getBanners = async (req, res) => {
+  if (process.env.MOCK_DB === "true") {
+    const { banners } = require("../config/mockDataStore");
+    return res.json(banners);
+  }
   const banners = await Banner.find({ isActive: true });
   res.json(banners);
 };

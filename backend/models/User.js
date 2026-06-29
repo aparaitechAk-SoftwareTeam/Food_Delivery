@@ -19,6 +19,9 @@ const userSchema = new mongoose.Schema({
   ],
   wishlist: [{ type: mongoose.Schema.Types.ObjectId, ref: "Food" }],
   favorites: [{ type: mongoose.Schema.Types.ObjectId, ref: "Restaurant" }],
+  role: { type: String, enum: ["customer", "admin", "delivery"], default: "customer" },
+  resetPasswordOTP: { type: String },
+  resetPasswordOTPExpires: { type: Date },
   createdAt: { type: Date, default: Date.now },
 });
 

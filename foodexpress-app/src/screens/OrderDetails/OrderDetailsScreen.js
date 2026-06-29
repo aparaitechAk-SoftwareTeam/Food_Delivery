@@ -117,7 +117,13 @@ const OrderDetailsScreen = ({ route, navigation }) => {
             />
             <View style={styles.restaurantDetails}>
               <Text style={styles.restaurantName}>{order.restaurant?.name || "Restaurant"}</Text>
-              <Text style={styles.restaurantAddress}>{order.restaurant?.cuisine?.join(", ") || "Multi Cuisine"}</Text>
+              <Text style={styles.restaurantAddress}>
+                {Array.isArray(order.restaurant?.cuisine)
+                  ? order.restaurant.cuisine.join(", ")
+                  : typeof order.restaurant?.cuisine === "string"
+                  ? order.restaurant.cuisine
+                  : "Multi Cuisine"}
+              </Text>
             </View>
           </View>
         </View>

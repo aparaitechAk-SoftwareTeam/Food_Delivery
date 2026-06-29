@@ -4,10 +4,9 @@ import { Platform } from "react-native";
 
 const getBaseURL = () => {
   if (__DEV__) {
-    // In development mode, point to the local backend port 5000
-    // Android emulator requires 10.0.2.2, iOS and Web can use localhost (or 127.0.0.1)
-    const host = Platform.OS === "android" ? "10.0.2.2" : "localhost";
-    return `http://${host}:5000/api`;
+    // Local development server on computer network
+    // Using computer's network IP (192.168.137.149) so both emulator and physical phone can connect
+    return "http://192.168.137.149:5000/api";
   }
   return "https://api.foodexpress.example.com/api";
 };
