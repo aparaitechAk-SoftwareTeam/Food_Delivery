@@ -206,6 +206,51 @@ export const selectDefaultAddress = createAsyncThunk(
   }
 );
 
+export const updateAddress = createAsyncThunk(
+  "auth/updateAddress",
+  async ({ addressId, address }, thunkAPI) => {
+    try {
+      const res = await userService.updateAddress(addressId, address);
+      await AsyncStorage.setItem("foodexpress_addresses", JSON.stringify(res));
+      return res;
+    } catch (error) {
+      const localAddrs = await AsyncStorage.getItem("foodexpress_addresses");
+      if (localAddrs) {
+        const current = JSON.parse(localAddrs);
+        const idx = current.findIndex(a => (a._id || a.id) === addressId);
+        if (idx !== -1) {
+          if (address.isDefault) {
+            current.forEach(addr => addr.isDefault = false);
+          }
+          current[idx] = { ...current[idx], ...address };
+          await AsyncStorage.setItem("foodexpress_addresses", JSON.stringify(current));
+        }
+        return current;
+      }
+      return [];
+    }
+  }
+);
+
+export const deleteAddress = createAsyncThunk(
+  "auth/deleteAddress",
+  async (addressId, thunkAPI) => {
+    try {
+      const res = await userService.deleteAddress(addressId);
+      await AsyncStorage.setItem("foodexpress_addresses", JSON.stringify(res));
+      return res;
+    } catch (error) {
+      const localAddrs = await AsyncStorage.getItem("foodexpress_addresses");
+      if (localAddrs) {
+        const current = JSON.parse(localAddrs).filter(a => (a._id || a.id) !== addressId);
+        await AsyncStorage.setItem("foodexpress_addresses", JSON.stringify(current));
+        return current;
+      }
+      return [];
+    }
+  }
+);
+
 const authSlice = createSlice({
   name: "auth",
   initialState,
@@ -288,6 +333,18 @@ const authSlice = createSlice({
         if (def) {
           state.activeAddress = def;
         }
+      })
+      .addCase(updateAddress.fulfilled, (state, action) => {
+        state.addresses = action.payload;
+        const def = action.payload.find(a => a.isDefault);
+        if (def) {
+          state.activeAddress = def;
+        }
+      })
+      .addCase(deleteAddress.fulfilled, (state, action) => {
+        state.addresses = action.payload;
+        const def = action.payload.find(a => a.isDefault);
+        state.activeAddress = def || (action.payload.length > 0 ? action.payload[0] : null);
       });
   },
 });

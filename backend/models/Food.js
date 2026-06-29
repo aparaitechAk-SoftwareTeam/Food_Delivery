@@ -13,6 +13,9 @@ const foodSchema = new mongoose.Schema({
   reviews: [{ type: mongoose.Schema.Types.ObjectId, ref: "Review" }],
   isFeatured: { type: Boolean, default: false },
   isPopular: { type: Boolean, default: false },
+  isBestSeller: { type: Boolean, default: false },
+  isHealthy: { type: Boolean, default: false },
+  isCombo: { type: Boolean, default: false },
   preparationTime: { type: Number, default: 20 }, // in minutes
   isVeg: { type: Boolean, default: true },
   isAvailable: { type: Boolean, default: true },

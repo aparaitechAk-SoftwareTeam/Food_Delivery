@@ -86,7 +86,7 @@ const SearchScreen = ({ navigation }) => {
       <View style={styles.restaurantInfo}>
         <Text style={styles.restaurantName}>{item.name}</Text>
         <Text style={styles.restaurantMeta}>
-          ⭐ {item.rating} • {item.deliveryTime} • {item.cuisine || "Cuisine"}
+          ⭐ {item.rating} • {item.deliveryTime} • {Array.isArray(item.cuisine) ? item.cuisine.join(", ") : item.cuisine || "Cuisine"}
         </Text>
       </View>
     </TouchableOpacity>

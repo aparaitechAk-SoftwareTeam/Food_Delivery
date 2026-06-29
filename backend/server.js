@@ -16,6 +16,7 @@ const userRoutes = require("./routes/userRoutes");
 const favoriteRoutes = require("./routes/favoriteRoutes");
 const bannerRoutes = require("./routes/bannerRoutes");
 const searchRoutes = require("./routes/searchRoutes");
+const adminRoutes = require("./routes/adminRoutes");
 const errorHandler = require("./middleware/errorHandler");
 const seedDatabase = require("./config/seed");
 
@@ -26,6 +27,7 @@ app.use(morgan("dev"));
 
 app.use("/api/auth", authRoutes);
 app.use("/api/foods", foodRoutes);
+app.use("/api/products", foodRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/restaurants", restaurantRoutes);
@@ -36,6 +38,7 @@ app.use("/api/user", userRoutes);
 app.use("/api/favorites", favoriteRoutes);
 app.use("/api/banners", bannerRoutes);
 app.use("/api/search", searchRoutes);
+app.use("/api/admin", adminRoutes);
 
 app.use(errorHandler);
 

@@ -25,6 +25,8 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { fetchFoods } from "../../redux/slices/foodsSlice";
 import { toggleFavoriteRestaurant, fetchFavorites, addFoodToWishlist, removeFoodFromWishlist } from "../../redux/slices/wishlistSlice";
 import FilterDrawer from "../../components/FilterDrawer";
+import FoodCard from "../../components/FoodCard";
+import api from "../../utils/api";
 
 const FoodListingScreen = ({ navigation, route }) => {
   const dispatch = useDispatch();
@@ -58,6 +60,7 @@ const FoodListingScreen = ({ navigation, route }) => {
   // Modal Visibilities
   const [filterDrawerVisible, setFilterDrawerVisible] = useState(false);
   const [sortModalVisible, setSortModalVisible] = useState(false);
+  const [isGridView, setIsGridView] = useState(false);
 
   // Load initial route parameters
   useEffect(() => {
@@ -87,6 +90,15 @@ const FoodListingScreen = ({ navigation, route }) => {
       setPaginationLoading(true);
     }
 
+    const filterType = route.params?.filterType;
+    let endpoint = "/foods";
+    if (filterType === "bestsellers") endpoint = "/products/bestsellers";
+    else if (filterType === "new-arrivals") endpoint = "/products/new-arrivals";
+    else if (filterType === "healthy") endpoint = "/products/healthy";
+    else if (filterType === "combos") endpoint = "/products/combos";
+    else if (filterType === "category") endpoint = `/products/category/${route.params?.category}`;
+    else if (filterType === "cuisine") endpoint = `/products/cuisine/${route.params?.cuisine}`;
+
     const params = {
       q: searchQuery || undefined,
       category: activeFilters.category || undefined,
@@ -103,7 +115,13 @@ const FoodListingScreen = ({ navigation, route }) => {
     };
 
     try {
-      const response = await dispatch(fetchFoods(params)).unwrap();
+      let response;
+      if (filterType) {
+        const { data } = await api.get(endpoint, { params });
+        response = data;
+      } else {
+        response = await dispatch(fetchFoods(params)).unwrap();
+      }
       const newFoods = response.foods || [];
       
       if (shouldReset || page === 1) {
@@ -503,10 +521,19 @@ const FoodListingScreen = ({ navigation, route }) => {
 
         {/* Results title and dynamic count */}
         <View style={styles.titleContainer}>
-          <Text style={styles.titleText}>Top Products & Restaurants</Text>
-          <Text style={styles.countText}>
-            {loading && currentPage === 1 ? "Searching..." : `${totalCount} results match filters`}
-          </Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.titleText}>Top Products & Restaurants</Text>
+            <Text style={styles.countText}>
+              {loading && currentPage === 1 ? "Searching..." : `${totalCount} results match filters`}
+            </Text>
+          </View>
+          <IconButton
+            icon={isGridView ? "view-list" : "view-grid"}
+            iconColor="#ff6b00"
+            size={22}
+            onPress={() => setIsGridView(!isGridView)}
+            style={{ margin: 0 }}
+          />
         </View>
       </View>
     );
@@ -536,9 +563,11 @@ const FoodListingScreen = ({ navigation, route }) => {
 
       {/* Main lists */}
       <FlatList
+        key={isGridView ? "grid" : "list"}
+        numColumns={isGridView ? 2 : 1}
         data={foodsList}
         keyExtractor={(item) => (item.id || item._id).toString()}
-        renderItem={renderFoodCard}
+        renderItem={isGridView ? ({ item }) => <FoodCard food={item} navigation={navigation} /> : renderFoodCard}
         ListHeaderComponent={renderHeaderComponent}
         refreshing={loading && currentPage === 1}
         onRefresh={() => loadFoods(1, true)}
@@ -730,6 +759,9 @@ const styles = StyleSheet.create({
     height: 32,
   },
   titleContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 16,
     marginTop: 14,
     marginBottom: 8,
