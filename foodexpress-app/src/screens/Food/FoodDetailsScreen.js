@@ -67,7 +67,7 @@ const FoodDetailsScreen = ({ route, navigation }) => {
       <View style={styles.actions}>
         <Button
           mode="contained"
-          buttonColor="#ff6b00"
+          buttonColor="#22C55E"
           onPress={() =>
             dispatch(
               addToCart({
@@ -84,9 +84,9 @@ const FoodDetailsScreen = ({ route, navigation }) => {
         </Button>
         <Button
           mode={isFav ? "contained" : "outlined"}
-          buttonColor={isFav ? "#d32f2f" : undefined}
-          textColor={isFav ? "#fff" : "#ff6b00"}
-          style={{ borderColor: "#ff6b00" }}
+          buttonColor={isFav ? "#16A34A" : undefined}
+          textColor={isFav ? "#fff" : "#22C55E"}
+          style={{ borderColor: "#22C55E" }}
           onPress={handleWishlistToggle}
         >
           {isFav ? "Remove from Wishlist" : "Add to Wishlist"}
@@ -107,7 +107,7 @@ const styles = StyleSheet.create({
   },
   price: {
     marginTop: 12,
-    color: "#ff6b00",
+    color: "#16A34A",
     fontWeight: "bold",
   },
   row: {

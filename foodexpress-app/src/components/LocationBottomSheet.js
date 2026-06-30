@@ -181,7 +181,7 @@ const LocationBottomSheet = ({ visible, onClose }) => {
       >
         <IconButton
           icon={item.label === "Home" ? "home" : item.label === "Work" ? "briefcase" : "map-marker"}
-          iconColor={isSelected ? "#ff6b00" : "#666"}
+          iconColor={isSelected ? "#22C55E" : "#666"}
           size={24}
         />
         <View style={styles.addressInfo}>
@@ -193,7 +193,7 @@ const LocationBottomSheet = ({ visible, onClose }) => {
           </Text>
         </View>
         {isSelected && (
-          <IconButton icon="check-circle" iconColor="#ff6b00" size={20} />
+          <IconButton icon="check-circle" iconColor="#22C55E" size={20} />
         )}
       </TouchableOpacity>
     );
@@ -227,7 +227,7 @@ const LocationBottomSheet = ({ visible, onClose }) => {
                   icon="crosshairs-gps"
                   onPress={handleUseGPS}
                   loading={gpsLoading}
-                  buttonColor="#ff6b00"
+                  buttonColor="#22C55E"
                   style={styles.gpsButton}
                 >
                   Use Current Location (GPS)
@@ -262,7 +262,7 @@ const LocationBottomSheet = ({ visible, onClose }) => {
                       mode="text"
                       compact
                       onPress={() => setIsAddingNew(true)}
-                      textColor="#ff6b00"
+                      textColor="#22C55E"
                     >
                       + Add New
                     </Button>
@@ -354,7 +354,7 @@ const LocationBottomSheet = ({ visible, onClose }) => {
                 <Button
                   mode="contained"
                   onPress={handleSaveAddress}
-                  buttonColor="#ff6b00"
+                  buttonColor="#22C55E"
                   style={styles.saveButton}
                 >
                   Save Address
@@ -460,8 +460,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#fcfcfc",
   },
   selectedAddressItem: {
-    borderColor: "#ffd1a9",
-    backgroundColor: "#fffdf9",
+    borderColor: "#bbf7d0",
+    backgroundColor: "#f0fdf4",
   },
   addressInfo: {
     flex: 1,
@@ -473,7 +473,7 @@ const styles = StyleSheet.create({
     color: "#333",
   },
   selectedText: {
-    color: "#ff6b00",
+    color: "#16A34A",
   },
   addressSubtext: {
     fontSize: 12,
@@ -500,7 +500,7 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   tagButtonActive: {
-    backgroundColor: "#ff6b00",
+    backgroundColor: "#22C55E",
   },
   tagText: {
     fontSize: 13,

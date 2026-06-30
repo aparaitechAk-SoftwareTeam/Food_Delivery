@@ -39,7 +39,7 @@ const MainTabs = () => {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarActiveTintColor: "#ff6b00",
+        tabBarActiveTintColor: "#22C55E",
         tabBarInactiveTintColor: "#666",
         tabBarStyle: { height: 64, paddingBottom: 8 },
       })}
@@ -104,7 +104,7 @@ const MainTabs = () => {
         })}
         options={{
           tabBarBadge: wishlistItems.length > 0 ? wishlistItems.length : undefined,
-          tabBarBadgeStyle: { backgroundColor: "#ff6b00", color: "#fff", fontSize: 10 },
+          tabBarBadgeStyle: { backgroundColor: "#22C55E", color: "#fff", fontSize: 10 },
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons
               name="heart-outline"
@@ -162,7 +162,7 @@ const AppNavigator = () => {
           options={{
             headerShown: true,
             title: "Order Details",
-            headerTintColor: "#ff6b00",
+            headerTintColor: "#22C55E",
             headerTitleStyle: { fontWeight: "bold" },
           }}
         />
@@ -172,7 +172,7 @@ const AppNavigator = () => {
           options={{
             headerShown: true,
             title: "Track Order",
-            headerTintColor: "#ff6b00",
+            headerTintColor: "#22C55E",
             headerTitleStyle: { fontWeight: "bold" },
           }}
         />

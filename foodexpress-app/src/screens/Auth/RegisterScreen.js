@@ -228,7 +228,7 @@ const RegisterScreen = ({ navigation }) => {
         >
           <Checkbox
             status={termsAccepted ? "checked" : "unchecked"}
-            color="#ff6b00"
+            color="#22C55E"
             onPress={() => {
               setTermsAccepted(!termsAccepted);
               if (!termsAccepted) setErrors((prev) => ({ ...prev, terms: null }));
@@ -245,7 +245,7 @@ const RegisterScreen = ({ navigation }) => {
           onPress={handleRegister}
           style={styles.registerBtn}
           contentStyle={{ paddingVertical: 6 }}
-          buttonColor="#ff6b00"
+          buttonColor="#22C55E"
           textColor="#fff"
         >
           Register
@@ -284,7 +284,7 @@ const styles = StyleSheet.create({
   brandText: {
     fontSize: 34,
     fontWeight: "bold",
-    color: "#ff6b00",
+    color: "#22C55E",
     letterSpacing: 1,
   },
   taglineText: {
@@ -369,7 +369,7 @@ const styles = StyleSheet.create({
   },
   loginLink: {
     fontSize: 14,
-    color: "#ff6b00",
+    color: "#22C55E",
     fontWeight: "bold",
     marginLeft: 6,
   },

@@ -5,7 +5,7 @@ const AppTextInput = ({ error, ...props }) => (
   <TextInput
     mode="outlined"
     outlineColor={error ? "#d32f2f" : "#ccc"}
-    activeOutlineColor="#ff6b00"
+    activeOutlineColor="#22C55E"
     style={{ marginVertical: 8 }}
     {...props}
   />

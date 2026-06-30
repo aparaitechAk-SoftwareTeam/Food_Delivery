@@ -31,7 +31,7 @@ const OrderTrackingScreen = ({ route, navigation }) => {
   if (loading) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator color="#ff6b00" size="large" />
+        <ActivityIndicator color="#22C55E" size="large" />
         <Text style={styles.loadingText}>Connecting to GPS...</Text>
       </View>
     );
@@ -76,9 +76,9 @@ const OrderTrackingScreen = ({ route, navigation }) => {
       textColor = "#333";
     }
     if (isActive) {
-      circleBg = "#fff3e0";
-      iconColor = "#ff6b00";
-      textColor = "#ff6b00";
+      circleBg = "#DCFCE7";
+      iconColor = "#16A34A";
+      textColor = "#16A34A";
       borderStyle = "solid";
     }
 
@@ -148,7 +148,7 @@ const OrderTrackingScreen = ({ route, navigation }) => {
             <Text style={styles.etaLabel}>Estimated Delivery Time</Text>
             <Text style={styles.etaTime}>25 - 35 Mins</Text>
             <View style={styles.progressRow}>
-              <ActivityIndicator color="#ff6b00" size={14} style={{ marginRight: 6 }} />
+              <ActivityIndicator color="#22C55E" size={14} style={{ marginRight: 6 }} />
               <Text style={styles.progressLabel}>
                 {order.status === "Pending" ? "Waiting for acceptance" : order.status === "Confirmed" ? "Preparing food" : "Rider out for delivery"}
               </Text>
@@ -164,7 +164,7 @@ const OrderTrackingScreen = ({ route, navigation }) => {
           <Text style={styles.mapText}>Live GPS Tracking Map</Text>
           <View style={styles.mapPinsRow}>
             <View style={styles.mapPin}>
-              <MaterialCommunityIcons name="store" size={24} color="#ff6b00" />
+              <MaterialCommunityIcons name="store" size={24} color="#22C55E" />
               <Text style={styles.pinLabel}>Shop</Text>
             </View>
             <View style={[styles.mapPin, { marginHorizontal: 32 }]}>
@@ -260,7 +260,7 @@ const styles = StyleSheet.create({
   etaTime: {
     fontSize: 32,
     fontWeight: "900",
-    color: "#ff6b00",
+    color: "#22C55E",
     marginVertical: 6,
     letterSpacing: 0.5,
   },
@@ -321,7 +321,7 @@ const styles = StyleSheet.create({
   pinLabel: {
     fontSize: 10,
     fontWeight: "bold",
-    color: "#e65100",
+    color: "#16A34A",
     marginTop: 2,
   },
   riderCard: {
@@ -427,7 +427,7 @@ const styles = StyleSheet.create({
     color: "#888",
   },
   activeStepTitle: {
-    color: "#ff6b00",
+    color: "#16A34A",
     fontWeight: "bold",
   },
   completedStepTitle: {

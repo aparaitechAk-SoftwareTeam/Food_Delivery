@@ -277,7 +277,7 @@ const FoodListingScreen = ({ navigation, route }) => {
               <MaterialCommunityIcons
                 name={isFav ? "heart" : "heart-outline"}
                 size={20}
-                color={isFav ? "#ff3366" : "#fff"}
+                color={isFav ? "#22C55E" : "#fff"}
               />
             </TouchableOpacity>
           </View>
@@ -349,13 +349,13 @@ const FoodListingScreen = ({ navigation, route }) => {
             onPress={() => handleBookNow(item)}
             style={[styles.actionBtn, styles.bookBtn]}
             labelStyle={styles.bookLabel}
-            buttonColor="#ff6b00"
+            buttonColor="#22C55E"
           >
             Order Now
           </Button>
           <IconButton
             icon="chat-processing-outline"
-            iconColor="#ff6b00"
+            iconColor="#22C55E"
             size={20}
             onPress={() => handleChat(item)}
             style={styles.iconActionBtn}
@@ -526,7 +526,7 @@ const FoodListingScreen = ({ navigation, route }) => {
           right={() => (
             <IconButton
               icon="microphone"
-              iconColor="#ff6b00"
+              iconColor="#22C55E"
               size={22}
               onPress={() => Alert.alert("Voice Search", "Listening...")}
             />
@@ -548,13 +548,13 @@ const FoodListingScreen = ({ navigation, route }) => {
         showsVerticalScrollIndicator={false}
         ListFooterComponent={
           paginationLoading ? (
-            <ActivityIndicator color="#ff6b00" size="small" style={{ marginVertical: 16 }} />
+            <ActivityIndicator color="#22C55E" size="small" style={{ marginVertical: 16 }} />
           ) : null
         }
         ListEmptyComponent={
           <View style={styles.centerContainer}>
             {loading && currentPage === 1 ? (
-              <ActivityIndicator color="#ff6b00" size="large" />
+              <ActivityIndicator color="#22C55E" size="large" />
             ) : (
               <>
                 <Text style={styles.emptyTitle}>No Results Found</Text>
@@ -564,7 +564,7 @@ const FoodListingScreen = ({ navigation, route }) => {
                 <Button
                   mode="contained"
                   onPress={handleResetFilters}
-                  buttonColor="#ff6b00"
+                  buttonColor="#22C55E"
                   style={styles.resetBtn}
                 >
                   Clear Filters
@@ -624,7 +624,7 @@ const FoodListingScreen = ({ navigation, route }) => {
                       {opt.label}
                     </Text>
                     {isSelected && (
-                      <MaterialCommunityIcons name="check" size={20} color="#ff6b00" />
+                      <MaterialCommunityIcons name="check" size={20} color="#22C55E" />
                     )}
                   </TouchableOpacity>
                 );
@@ -693,8 +693,8 @@ const styles = StyleSheet.create({
     shadowRadius: 1,
   },
   circularIconBgActive: {
-    borderColor: "#ff6b00",
-    backgroundColor: "#fffdf9",
+    borderColor: "#22C55E",
+    backgroundColor: "#DCFCE7",
   },
   circularIconText: {
     fontSize: 24,
@@ -707,7 +707,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   circularCategoryLabelActive: {
-    color: "#ff6b00",
+    color: "#16A34A",
     fontWeight: "bold",
   },
   chipsScroll: {
@@ -776,7 +776,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: "#e53935",
+    backgroundColor: "#16A34A",
     paddingVertical: 3,
     alignItems: "center",
   },
@@ -863,7 +863,7 @@ const styles = StyleSheet.create({
   priceTag: {
     fontSize: 13,
     fontWeight: "bold",
-    color: "#ff6b00",
+    color: "#16A34A",
     marginRight: 4,
   },
   actionsRow: {
@@ -961,14 +961,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   sortOptionActive: {
-    backgroundColor: "#fffbf5",
+    backgroundColor: "#DCFCE7",
   },
   sortText: {
     fontSize: 14,
     color: "#555",
   },
   sortTextActive: {
-    color: "#ff6b00",
+    color: "#16A34A",
     fontWeight: "bold",
   },
 });

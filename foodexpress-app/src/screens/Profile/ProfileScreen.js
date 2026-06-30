@@ -78,7 +78,7 @@ const ProfileScreen = ({ navigation }) => {
         </View>
         <IconButton
           icon="pencil-outline"
-          iconColor="#ff6b00"
+          iconColor="#22C55E"
           size={20}
           onPress={handleOpenEdit}
           style={styles.editIconBtn}
@@ -92,7 +92,7 @@ const ProfileScreen = ({ navigation }) => {
           onPress={() => navigation.navigate("Orders")}
         >
           <View style={styles.menuItemLeft}>
-            <MaterialCommunityIcons name="receipt" size={22} color="#ff6b00" />
+            <MaterialCommunityIcons name="receipt" size={22} color="#22C55E" />
             <Text style={styles.menuItemText}>My Orders</Text>
           </View>
           <MaterialCommunityIcons name="chevron-right" size={20} color="#bbb" />
@@ -105,7 +105,7 @@ const ProfileScreen = ({ navigation }) => {
           onPress={() => navigation.navigate("Wishlist")}
         >
           <View style={styles.menuItemLeft}>
-            <MaterialCommunityIcons name="heart-outline" size={22} color="#ff6b00" />
+            <MaterialCommunityIcons name="heart-outline" size={22} color="#22C55E" />
             <Text style={styles.menuItemText}>Saved Dishes ({wishlistFoods?.length || 0})</Text>
           </View>
           <MaterialCommunityIcons name="chevron-right" size={20} color="#bbb" />
@@ -129,7 +129,7 @@ const ProfileScreen = ({ navigation }) => {
               >
                 <MaterialCommunityIcons
                   name={item.label === "Home" ? "home" : item.label === "Work" ? "briefcase" : "map-marker"}
-                  color={item.isDefault ? "#ff6b00" : "#666"}
+                  color={item.isDefault ? "#22C55E" : "#666"}
                   size={22}
                   style={styles.addressIcon}
                 />
@@ -142,7 +142,7 @@ const ProfileScreen = ({ navigation }) => {
                   </Text>
                 </View>
                 {item.isDefault && (
-                  <MaterialCommunityIcons name="check-circle" size={18} color="#ff6b00" />
+                  <MaterialCommunityIcons name="check-circle" size={18} color="#22C55E" />
                 )}
               </TouchableOpacity>
             </View>
@@ -241,7 +241,7 @@ const ProfileScreen = ({ navigation }) => {
               <Button
                 mode="contained"
                 onPress={handleSaveProfile}
-                buttonColor="#ff6b00"
+                buttonColor="#22C55E"
                 style={styles.modalSave}
               >
                 Save
@@ -373,7 +373,7 @@ const styles = StyleSheet.create({
     color: "#333",
   },
   defaultAddressLabel: {
-    color: "#ff6b00",
+    color: "#22C55E",
   },
   addressText: {
     fontSize: 11,

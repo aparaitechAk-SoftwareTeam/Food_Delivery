@@ -69,7 +69,7 @@ const CartScreen = ({ navigation }) => {
       </View>
       <AppButton
         mode="contained"
-        buttonColor="#ff6b00"
+        buttonColor="#22C55E"
         onPress={() => {
           if (items.length === 0) {
             Alert.alert("Cart Empty", "Please add some dishes to your cart first.");
@@ -84,7 +84,7 @@ const CartScreen = ({ navigation }) => {
       >
         Proceed to Checkout
       </AppButton>
-      <AppButton mode="outlined" style={{ borderColor: "#ff6b00", marginTop: 8 }} textColor="#ff6b00" onPress={() => dispatch(clearCart())}>
+      <AppButton mode="outlined" style={{ borderColor: "#22C55E", marginTop: 8 }} textColor="#22C55E" onPress={() => dispatch(clearCart())}>
         Clear Cart
       </AppButton>
     </View>

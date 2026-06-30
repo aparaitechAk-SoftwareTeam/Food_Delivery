@@ -123,7 +123,7 @@ const SearchScreen = ({ navigation }) => {
 
       {loading ? (
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#ff6b00" />
+           <ActivityIndicator size="large" color="#22C55E" />
           <Text style={styles.loadingText}>Searching delicious bites...</Text>
         </View>
       ) : !query ? (
@@ -354,7 +354,7 @@ const styles = StyleSheet.create({
   foodPrice: {
     fontSize: 14,
     fontWeight: "bold",
-    color: "#ff6b00",
+     color: "#16A34A",
   },
   noResultsTitle: {
     fontSize: 18,

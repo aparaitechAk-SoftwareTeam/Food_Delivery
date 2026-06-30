@@ -218,7 +218,7 @@ const HomeScreen = ({ navigation }) => {
             <MaterialCommunityIcons
               name={favorited ? "heart" : "heart-outline"}
               size={22}
-              color={favorited ? "#ff3366" : "#fff"}
+              color={favorited ? "#22C55E" : "#fff"}
             />
           </TouchableOpacity>
         </View>
@@ -246,8 +246,8 @@ const HomeScreen = ({ navigation }) => {
     
     return (
       <View style={styles.headerWrapper}>
-        {/* Pink Curved Header Section */}
-        <View style={styles.pinkContainer}>
+        {/* Green Curved Header Section */}
+        <View style={styles.headerContainer}>
           {/* Background Text Pattern 'HUNGRY' */}
           <View style={styles.backgroundPatternContainer}>
             <Text style={styles.patternText}>HUNGRY HUNGRY HUNGRY</Text>
@@ -287,7 +287,7 @@ const HomeScreen = ({ navigation }) => {
               <View style={styles.rightHeaderIcons}>
                 <View style={styles.buyOneBadge}>
                   <Text style={styles.buyOneText}>BUY ONE</Text>
-                  <MaterialCommunityIcons name="fire" size={14} color="#ff6b00" />
+                  <MaterialCommunityIcons name="fire" size={14} color="#22C55E" />
                 </View>
                 <TouchableOpacity onPress={() => {
                   if (!token) {
@@ -316,7 +316,7 @@ const HomeScreen = ({ navigation }) => {
             >
               <MaterialCommunityIcons name="magnify" size={22} color="#666" style={styles.searchIcon} />
               <Text style={styles.searchPlaceholder}>Search for 'Sweets'</Text>
-              <MaterialCommunityIcons name="microphone" size={22} color="#ff6b00" style={styles.micIcon} />
+              <MaterialCommunityIcons name="microphone" size={22} color="#22C55E" style={styles.micIcon} />
             </TouchableOpacity>
             
             <View style={styles.vegToggleContainer}>
@@ -431,7 +431,7 @@ const HomeScreen = ({ navigation }) => {
           ListEmptyComponent={
             <View style={styles.emptyListContainer}>
               {loading ? (
-                <ActivityIndicator color="#ff6b00" size="large" />
+                <ActivityIndicator color="#22C55E" size="large" />
               ) : (
                 <Text style={styles.emptyText}>No restaurants found matching this filter.</Text>
               )}
@@ -479,8 +479,8 @@ const styles = StyleSheet.create({
   headerWrapper: {
     width: "100%",
   },
-  pinkContainer: {
-    backgroundColor: "#b3103f", // Crimson pink color matching reference
+  headerContainer: {
+    backgroundColor: "#16A34A", // Dark green color matching modern theme
     borderBottomLeftRadius: 36,
     borderBottomRightRadius: 36,
     paddingHorizontal: 16,
@@ -716,8 +716,8 @@ const styles = StyleSheet.create({
     borderColor: "#f0f0f0",
   },
   categoryItemActive: {
-    borderColor: "#ff6b00",
-    backgroundColor: "#fffdfa",
+    borderColor: "#22C55E",
+    backgroundColor: "#DCFCE7",
   },
   categoryIcon: {
     fontSize: 22,
@@ -729,7 +729,7 @@ const styles = StyleSheet.create({
     color: "#555",
   },
   categoryNameActive: {
-    color: "#ff6b00",
+    color: "#16A34A",
   },
   fastDeliveryTitleContainer: {
     marginTop: 24,
@@ -830,7 +830,7 @@ const styles = StyleSheet.create({
     bottom: 12,
     left: 12,
     right: 12,
-    backgroundColor: "#ff6b00",
+    backgroundColor: "#22C55E",
     padding: 14,
     borderRadius: 16,
     flexDirection: "row",

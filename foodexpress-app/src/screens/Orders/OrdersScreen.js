@@ -42,7 +42,7 @@ const OrdersScreen = ({ navigation }) => {
   };
 
   const renderStatus = (status) => {
-    let color = "#ff6b00";
+    let color = "#22C55E";
     let icon = "clock-outline";
     if (status === "Delivered") {
       color = "#2e7d32";
@@ -54,7 +54,7 @@ const OrdersScreen = ({ navigation }) => {
       color = "#00838f";
       icon = "moped";
     } else if (status === "Preparing") {
-      color = "#ef6c00";
+      color = "#16A34A";
       icon = "fire";
     }
     
@@ -117,7 +117,7 @@ const OrdersScreen = ({ navigation }) => {
                 style={[styles.btn, styles.secondaryBtn]}
                 onPress={() => handleOrderAgain(item)}
               >
-                <MaterialCommunityIcons name="sync" size={14} color="#ff6b00" />
+                <MaterialCommunityIcons name="sync" size={14} color="#22C55E" />
                 <Text style={styles.secondaryBtnText}>Order Again</Text>
               </TouchableOpacity>
             )}
@@ -218,7 +218,7 @@ const styles = StyleSheet.create({
     borderColor: "transparent",
   },
   activeTab: {
-    borderColor: "#ff6b00",
+    borderColor: "#22C55E",
   },
   tabText: {
     fontSize: 14,
@@ -226,7 +226,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   activeTabText: {
-    color: "#ff6b00",
+    color: "#22C55E",
     fontWeight: "bold",
   },
   listContainer: {
@@ -339,7 +339,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   primaryBtn: {
-    backgroundColor: "#ff6b00",
+    backgroundColor: "#22C55E",
   },
   primaryBtnText: {
     color: "#fff",
@@ -349,11 +349,11 @@ const styles = StyleSheet.create({
   },
   secondaryBtn: {
     borderWidth: 1,
-    borderColor: "#ff6b00",
+    borderColor: "#22C55E",
     backgroundColor: "#fff",
   },
   secondaryBtnText: {
-    color: "#ff6b00",
+    color: "#22C55E",
     fontSize: 11,
     fontWeight: "bold",
     marginLeft: 4,
@@ -388,7 +388,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   orderNowBtn: {
-    backgroundColor: "#ff6b00",
+    backgroundColor: "#22C55E",
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,

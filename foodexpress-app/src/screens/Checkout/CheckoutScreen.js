@@ -106,12 +106,12 @@ const CheckoutScreen = ({ navigation }) => {
             <RadioButton.Item
               label="Cash on Delivery"
               value="Cash on Delivery"
-              color="#ff6b00"
+              color="#22C55E"
             />
             <RadioButton.Item 
               label="Credit / Debit Card" 
               value="Card" 
-              color="#ff6b00"
+              color="#22C55E"
             />
           </RadioButton.Group>
         </Card.Content>
@@ -156,7 +156,7 @@ const CheckoutScreen = ({ navigation }) => {
 
       <AppButton
         mode="contained"
-        buttonColor="#ff6b00"
+        buttonColor="#22C55E"
         onPress={handlePlaceOrder}
         style={styles.placeOrderBtn}
       >
@@ -233,7 +233,7 @@ const styles = StyleSheet.create({
   totalPriceText: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#ff6b00",
+    color: "#16A34A",
   },
   divider: {
     marginVertical: 12,
