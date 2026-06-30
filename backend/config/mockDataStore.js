@@ -8,6 +8,8 @@ const carts = {}; // Maps userId -> Array of cart items
 const offers = [];
 const banners = [];
 const reviews = [];
+const combos = [];
+const sections = [];
 
 // Initialize all data in memory
 const initializeMockData = () => {
@@ -634,6 +636,8 @@ module.exports = {
   offers,
   banners,
   reviews,
+  combos,
+  sections,
   initializeMockData,
   queryMockFoods
 };
