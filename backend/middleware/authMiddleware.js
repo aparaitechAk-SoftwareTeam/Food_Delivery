@@ -9,7 +9,7 @@ const protect = async (req, res, next) => {
   }
   const token = authHeader.split(" ")[1];
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || "foodexpress_jwt_fallback_secret_key_12345");
     if (process.env.MOCK_DB === "true") {
       const { users } = require("../config/mockDataStore");
       const mockUser = users.find(u => u.id === decoded.id || u._id === decoded.id);

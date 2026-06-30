@@ -15,9 +15,17 @@ import {
   Card,
   IconButton,
   Divider,
+  Switch,
 } from "react-native-paper";
 import { useDispatch, useSelector } from "react-redux";
-import { logout, updateUserProfile, selectDefaultAddress } from "../../redux/slices/authSlice";
+import {
+  logout,
+  updateUserProfile,
+  selectDefaultAddress,
+  saveAddress,
+  updateAddress,
+  deleteAddress,
+} from "../../redux/slices/authSlice";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 const ProfileScreen = ({ navigation }) => {
@@ -30,6 +38,18 @@ const ProfileScreen = ({ navigation }) => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+
+  // Address CRUD States
+  const [addressModalVisible, setAddressModalVisible] = useState(false);
+  const [editingAddressId, setEditingAddressId] = useState(null); // null means adding new
+  const [addrLabel, setAddrLabel] = useState("Home");
+  const [addrLine1, setAddrLine1] = useState("");
+  const [addrLine2, setAddrLine2] = useState("");
+  const [addrCity, setAddrCity] = useState("");
+  const [addrState, setAddrState] = useState("");
+  const [addrPostalCode, setAddrPostalCode] = useState("");
+  const [addrCountry, setAddrCountry] = useState("India");
+  const [addrIsDefault, setAddrIsDefault] = useState(false);
 
   const handleOpenEdit = () => {
     setName(userProfile?.name || "");
@@ -49,6 +69,77 @@ const ProfileScreen = ({ navigation }) => {
 
   const handleSetDefaultAddress = (addressId) => {
     dispatch(selectDefaultAddress(addressId));
+  };
+
+  const handleOpenAddressModal = (addressItem = null) => {
+    if (addressItem) {
+      // Editing
+      setEditingAddressId(addressItem._id || addressItem.id);
+      setAddrLabel(addressItem.label || "Home");
+      setAddrLine1(addressItem.line1 || "");
+      setAddrLine2(addressItem.line2 || "");
+      setAddrCity(addressItem.city || "");
+      setAddrState(addressItem.state || "");
+      setAddrPostalCode(addressItem.postalCode || "");
+      setAddrCountry(addressItem.country || "India");
+      setAddrIsDefault(!!addressItem.isDefault);
+    } else {
+      // Adding new
+      setEditingAddressId(null);
+      setAddrLabel("Home");
+      setAddrLine1("");
+      setAddrLine2("");
+      setAddrCity("Baramati");
+      setAddrState("Maharashtra");
+      setAddrPostalCode("413102");
+      setAddrCountry("India");
+      setAddrIsDefault(addresses.length === 0); // Default if first
+    }
+    setAddressModalVisible(true);
+  };
+
+  const handleSaveAddress = () => {
+    if (!addrLine1 || !addrCity || !addrPostalCode) {
+      Alert.alert("Error", "Line 1, City, and Postal Code are required.");
+      return;
+    }
+
+    const payload = {
+      label: addrLabel,
+      line1: addrLine1,
+      line2: addrLine2,
+      city: addrCity,
+      state: addrState,
+      postalCode: addrPostalCode,
+      country: addrCountry,
+      isDefault: addrIsDefault,
+    };
+
+    if (editingAddressId) {
+      // Edit
+      dispatch(updateAddress({ addressId: editingAddressId, address: payload }));
+    } else {
+      // Add
+      dispatch(saveAddress(payload));
+    }
+    setAddressModalVisible(false);
+  };
+
+  const handleDeleteAddress = (addressId) => {
+    Alert.alert(
+      "Confirm Delete",
+      "Are you sure you want to remove this address?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            dispatch(deleteAddress(addressId));
+          },
+        },
+      ]
+    );
   };
 
   const handleLogout = () => {
@@ -113,16 +204,27 @@ const ProfileScreen = ({ navigation }) => {
       </Card>
 
       {/* Saved Addresses Section */}
-      <Text style={styles.sectionTitle}>Saved Addresses</Text>
+      <View style={styles.addressHeaderRow}>
+        <Text style={styles.sectionTitle}>Saved Addresses</Text>
+        <TouchableOpacity
+          style={styles.addAddressLink}
+          onPress={() => handleOpenAddressModal(null)}
+        >
+          <MaterialCommunityIcons name="plus" size={16} color="#ff6b00" />
+          <Text style={styles.addAddressLinkText}>ADD NEW</Text>
+        </TouchableOpacity>
+      </View>
+
       <Card style={styles.sectionCard}>
         {addresses.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No saved addresses yet. Open Home to add one.</Text>
+            <Text style={styles.emptyText}>No saved addresses yet. Add one to checkout.</Text>
           </View>
         ) : (
           addresses.map((item, index) => (
             <View key={item._id || item.id}>
               {index > 0 && <Divider />}
+<<<<<<< HEAD
               <TouchableOpacity
                 style={[styles.addressItem, item.isDefault && styles.defaultAddressItem]}
                 onPress={() => handleSetDefaultAddress(item._id || item.id)}
@@ -145,6 +247,46 @@ const ProfileScreen = ({ navigation }) => {
                   <MaterialCommunityIcons name="check-circle" size={18} color="#22C55E" />
                 )}
               </TouchableOpacity>
+=======
+              <View style={[styles.addressItemRow, item.isDefault && styles.defaultAddressItem]}>
+                <TouchableOpacity
+                  style={styles.addressItemLeft}
+                  onPress={() => handleSetDefaultAddress(item._id || item.id)}
+                >
+                  <MaterialCommunityIcons
+                    name={item.label === "Home" ? "home" : item.label === "Work" ? "briefcase" : "map-marker"}
+                    color={item.isDefault ? "#ff6b00" : "#666"}
+                    size={22}
+                    style={styles.addressIcon}
+                  />
+                  <View style={styles.addressInfoCol}>
+                    <Text style={[styles.addressLabel, item.isDefault && styles.defaultAddressLabel]}>
+                      {item.label} {item.isDefault && "(Default)"}
+                    </Text>
+                    <Text style={styles.addressText} numberOfLines={2}>
+                      {item.line1}, {item.line2 ? `${item.line2}, ` : ""}{item.city}, {item.state} - {item.postalCode}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+
+                <View style={styles.addressActions}>
+                  <IconButton
+                    icon="pencil-outline"
+                    size={18}
+                    iconColor="#ff6b00"
+                    onPress={() => handleOpenAddressModal(item)}
+                    style={styles.actionBtn}
+                  />
+                  <IconButton
+                    icon="trash-can-outline"
+                    size={18}
+                    iconColor="#d32f2f"
+                    onPress={() => handleDeleteAddress(item._id || item.id)}
+                    style={styles.actionBtn}
+                  />
+                </View>
+              </View>
+>>>>>>> e425c86c801fcd601a7e2e77e3c7d6edab9bb6f0
             </View>
           ))
         )}
@@ -250,6 +392,126 @@ const ProfileScreen = ({ navigation }) => {
           </View>
         </View>
       </Modal>
+
+      {/* Add / Edit Address Modal */}
+      <Modal
+        visible={addressModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setAddressModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>
+              {editingAddressId ? "Edit Address" : "Add New Address"}
+            </Text>
+            <Divider style={styles.modalDivider} />
+
+            <Text style={styles.inputLabel}>Address Label</Text>
+            <View style={styles.labelSelection}>
+              {["Home", "Work", "Other"].map(l => (
+                <TouchableOpacity
+                  key={l}
+                  style={[styles.labelChip, addrLabel === l && styles.activeLabelChip]}
+                  onPress={() => setAddrLabel(l)}
+                >
+                  <Text style={[styles.labelChipText, addrLabel === l && styles.activeLabelChipText]}>
+                    {l}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={styles.inputLabel}>Flat / Building / Area (Line 1)</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={addrLine1}
+              onChangeText={setAddrLine1}
+              placeholder="Flat No, Building Name, Street"
+            />
+
+            <Text style={styles.inputLabel}>Landmark / Locality (Line 2)</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={addrLine2}
+              onChangeText={setAddrLine2}
+              placeholder="Near Market Yard, City Center (Optional)"
+            />
+
+            <View style={styles.rowInputs}>
+              <View style={styles.halfInputCol}>
+                <Text style={styles.inputLabel}>City</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={addrCity}
+                  onChangeText={setAddrCity}
+                  placeholder="City"
+                />
+              </View>
+              <View style={styles.halfInputCol}>
+                <Text style={styles.inputLabel}>State</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={addrState}
+                  onChangeText={setAddrState}
+                  placeholder="State"
+                />
+              </View>
+            </View>
+
+            <View style={styles.rowInputs}>
+              <View style={styles.halfInputCol}>
+                <Text style={styles.inputLabel}>Postal Code</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={addrPostalCode}
+                  onChangeText={setAddrPostalCode}
+                  placeholder="6-Digit PIN"
+                  keyboardType="numeric"
+                  maxLength={6}
+                />
+              </View>
+              <View style={styles.halfInputCol}>
+                <Text style={styles.inputLabel}>Country</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={addrCountry}
+                  onChangeText={setAddrCountry}
+                  placeholder="Country"
+                />
+              </View>
+            </View>
+
+            <View style={styles.defaultToggleRow}>
+              <Text style={styles.defaultToggleLabel}>Set as Default Address</Text>
+              <Switch
+                value={addrIsDefault}
+                onValueChange={setAddrIsDefault}
+                color="#ff6b00"
+              />
+            </View>
+
+            <View style={styles.modalButtons}>
+              <Button
+                mode="text"
+                onPress={() => setAddressModalVisible(false)}
+                textColor="#666"
+                style={styles.modalCancel}
+              >
+                Cancel
+              </Button>
+              <Button
+                mode="contained"
+                onPress={handleSaveAddress}
+                buttonColor="#ff6b00"
+                style={styles.modalSave}
+              >
+                Save
+              </Button>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 };
@@ -332,14 +594,29 @@ const styles = StyleSheet.create({
   menuDivider: {
     backgroundColor: "#f0f0f0",
   },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: "bold",
-    color: "#666",
-    marginLeft: 4,
+  addressHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: 8,
+    paddingHorizontal: 4,
+  },
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: "bold",
+    color: "#555",
     textTransform: "uppercase",
     letterSpacing: 0.5,
+  },
+  addAddressLink: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  addAddressLinkText: {
+    fontSize: 11,
+    fontWeight: "bold",
+    color: "#ff6b00",
+    marginLeft: 4,
   },
   sectionCard: {
     borderRadius: 16,
@@ -352,14 +629,20 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     overflow: "hidden",
   },
-  addressItem: {
+  addressItemRow: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     paddingVertical: 12,
     paddingHorizontal: 16,
   },
   defaultAddressItem: {
     backgroundColor: "#fffdfa",
+  },
+  addressItemLeft: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
   },
   addressIcon: {
     marginRight: 12,
@@ -379,6 +662,14 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: "#666",
     marginTop: 2,
+  },
+  addressActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginLeft: 8,
+  },
+  actionBtn: {
+    margin: 0,
   },
   emptyContainer: {
     padding: 20,
@@ -404,10 +695,11 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     backgroundColor: "#fff",
-    width: "85%",
+    width: "88%",
     borderRadius: 20,
     padding: 20,
     elevation: 10,
+    maxHeight: "90%",
   },
   modalTitle: {
     fontSize: 18,
@@ -425,19 +717,19 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   modalInput: {
-    height: 44,
+    height: 42,
     borderWidth: 1,
     borderColor: "#e0e0e0",
     borderRadius: 8,
     paddingHorizontal: 12,
-    marginBottom: 16,
+    marginBottom: 14,
     backgroundColor: "#f9f9f9",
     fontSize: 14,
   },
   modalButtons: {
     flexDirection: "row",
     justifyContent: "flex-end",
-    marginTop: 8,
+    marginTop: 14,
   },
   modalCancel: {
     marginRight: 8,
@@ -445,6 +737,50 @@ const styles = StyleSheet.create({
   modalSave: {
     borderRadius: 8,
     paddingHorizontal: 12,
+  },
+  labelSelection: {
+    flexDirection: "row",
+    marginBottom: 14,
+  },
+  labelChip: {
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+    borderRadius: 16,
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+    marginRight: 10,
+    backgroundColor: "#f9f9f9",
+  },
+  activeLabelChip: {
+    borderColor: "#ff6b00",
+    backgroundColor: "#fff5ee",
+  },
+  labelChipText: {
+    fontSize: 12,
+    color: "#666",
+  },
+  activeLabelChipText: {
+    color: "#ff6b00",
+    fontWeight: "bold",
+  },
+  rowInputs: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  halfInputCol: {
+    width: "48%",
+  },
+  defaultToggleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 6,
+    marginBottom: 12,
+  },
+  defaultToggleLabel: {
+    fontSize: 13,
+    color: "#444",
+    fontWeight: "600",
   },
 });
 
