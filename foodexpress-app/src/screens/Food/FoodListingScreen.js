@@ -9,6 +9,7 @@ import {
   Animated,
   Alert,
   Modal,
+  ScrollView,
 } from "react-native";
 import {
   Text,

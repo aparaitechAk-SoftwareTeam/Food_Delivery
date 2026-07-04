@@ -33,6 +33,7 @@ const WishlistScreen = ({ navigation }) => {
       price: item.price,
       quantity: 1,
       restaurant: restName,
+      restaurantId: item.restaurant?._id || item.restaurant?.id || item.restaurant,
       image: item.image
     }));
     setSnackbarMsg(`${item.name} added to cart!`);

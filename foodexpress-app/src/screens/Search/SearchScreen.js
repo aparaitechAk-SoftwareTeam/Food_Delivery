@@ -82,7 +82,7 @@ const SearchScreen = ({ navigation }) => {
       style={styles.restaurantCard}
       onPress={() => handleRestaurantPress(item.name)}
     >
-      <Image source={{ uri: item.image }} style={styles.restaurantImage} />
+      <Image source={{ uri: item.image }} style={styles.restaurantImage} resizeMode="cover" />
       <View style={styles.restaurantInfo}>
         <Text style={styles.restaurantName}>{item.name}</Text>
         <Text style={styles.restaurantMeta}>
@@ -97,7 +97,7 @@ const SearchScreen = ({ navigation }) => {
       style={styles.foodCard}
       onPress={() => handleFoodPress(item.id || item._id)}
     >
-      <Image source={{ uri: item.image }} style={styles.foodImage} />
+      <Image source={{ uri: item.image }} style={styles.foodImage} resizeMode="cover" />
       <View style={styles.foodInfo}>
         <Text style={styles.foodName}>{item.name}</Text>
         <Text style={styles.foodRestaurant}>{item.restaurant}</Text>
@@ -114,7 +114,7 @@ const SearchScreen = ({ navigation }) => {
   return (
     <View style={styles.container}>
       <Searchbar
-        placeholder="Search for food, restaurants, cuisines..."
+        placeholder="Search for food, cuisines, categories..."
         onChangeText={setQuery}
         value={query}
         style={styles.searchBar}

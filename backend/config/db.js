@@ -13,10 +13,8 @@ const connectDB = async (uri) => {
   }
 
   try {
-    await mongoose.connect(uri, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    // Note: useNewUrlParser and useUnifiedTopology are no longer needed in Mongoose 8+
+    await mongoose.connect(uri);
     console.log("MongoDB connected");
     process.env.MOCK_DB = "false";
   } catch (error) {
@@ -26,3 +24,4 @@ const connectDB = async (uri) => {
 };
 
 module.exports = connectDB;
+

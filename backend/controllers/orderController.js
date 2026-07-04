@@ -1,4 +1,6 @@
 const Order = require("../models/Order");
+const mongoose = require("mongoose");
+
 
 exports.createOrder = async (req, res) => {
   try {
@@ -116,6 +118,10 @@ exports.getOrderDetails = async (req, res) => {
       return res.json(order);
     }
 
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid Order ID format" });
+    }
+
     const order = await Order.findById(id)
       .populate("restaurant")
       .populate("items.food");
@@ -162,6 +168,10 @@ exports.cancelOrder = async (req, res) => {
       orders[orderIndex] = order;
       
       return res.json(order);
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid Order ID format" });
     }
 
     const order = await Order.findById(id);
@@ -226,6 +236,10 @@ exports.reorder = async (req, res) => {
       };
       
       return exports.createOrder(req, res);
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid Order ID format" });
     }
 
     oldOrder = await Order.findById(id);

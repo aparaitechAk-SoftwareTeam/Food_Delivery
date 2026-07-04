@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
 import {
   View,
   StyleSheet,
@@ -24,6 +24,10 @@ import { fetchFavorites, fetchWishlist } from "../../redux/slices/wishlistSlice"
 import { fetchAddresses } from "../../redux/slices/authSlice";
 import api from "../../utils/api";
 
+// Time-of-day
+import { useTimeOfDay } from "../../hooks/useTimeOfDay";
+import { filterFoodsByPeriod } from "../../utils/timeOfDay";
+
 // Components
 import ScreenContainer from "../../components/ScreenContainer";
 import LocationBottomSheet from "../../components/LocationBottomSheet";
@@ -42,17 +46,20 @@ import MembershipCard from "../../components/MembershipCard";
 import LoadingSkeleton from "../../components/LoadingSkeleton";
 import EmptyState from "../../components/EmptyState";
 import ErrorState from "../../components/ErrorState";
+import TimeMealSection from "../../components/TimeMealSection";
 
 const { width } = Dimensions.get("window");
 
 // Enable LayoutAnimation for Android
 if (Platform.OS === "android") {
-  if (UIManager.setLayoutAnimationEnabledExperimental) {
+  if (UIManager.setLayoutAnimationEnabledExperimental && !global.nativeFabricUIManager && !global.RN$Bridgeless) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
   }
 }
 
 const HomeScreen = ({ navigation }) => {
+  // ── Time-of-day ────────────────────────────────────────────────────────────
+  const timeInfo = useTimeOfDay();
   const dispatch = useDispatch();
 
   // Redux Selectors
@@ -76,6 +83,23 @@ const HomeScreen = ({ navigation }) => {
   const [loadingSections, setLoadingSections] = useState(false);
   const [wholesomeExpanded, setWholesomeExpanded] = useState(false);
 
+  // ── Meal-time foods (memoised, re-derived when foods list or time period changes) ──
+  const timeMealFoods = useMemo(() => {
+    const allFoods = foods && foods.length > 0 ? foods : [];
+    return filterFoodsByPeriod(allFoods, timeInfo.period).slice(0, 10);
+  }, [foods, timeInfo.period]);
+
+  // IDs already shown in the time section — used to avoid duplication in Bestsellers
+  const timeMealIdSet = useMemo(
+    () => new Set(timeMealFoods.map((f) => (f._id || f.id)?.toString())),
+    [timeMealFoods]
+  );
+
+  const dedupedBestsellers = useMemo(
+    () => bestsellers.filter((f) => !timeMealIdSet.has((f._id || f.id)?.toString())),
+    [bestsellers, timeMealIdSet]
+  );
+
   // Animation values
   const scrollY = useRef(new Animated.Value(0)).current;
 
@@ -83,18 +107,32 @@ const HomeScreen = ({ navigation }) => {
   const fetchPremiumSections = async () => {
     setLoadingSections(true);
     try {
-      const [resBest, resNew, resHealthy, resCombos, resCategorized] = await Promise.all([
+      const results = await Promise.allSettled([
         api.get("/products/bestsellers"),
         api.get("/products/new-arrivals"),
         api.get("/products/healthy"),
         api.get("/products/combos"),
         api.get("/products/categorized")
       ]);
-      setBestsellers(resBest.data.foods || []);
-      setNewArrivals(resNew.data.foods || []);
-      setHealthyMeals(resHealthy.data.foods || []);
-      setCombos(resCombos.data.foods || []);
-      setCategorizedMenu(resCategorized.data || []);
+
+      const bestsellersData = results[0].status === "fulfilled" ? (results[0].value.data.foods || []) : [];
+      const newArrivalsData = results[1].status === "fulfilled" ? (results[1].value.data.foods || []) : [];
+      const healthyMealsData = results[2].status === "fulfilled" ? (results[2].value.data.foods || []) : [];
+      const combosData = results[3].status === "fulfilled" ? (results[3].value.data.foods || []) : [];
+      const categorizedMenuData = results[4].status === "fulfilled" ? (results[4].value.data || []) : [];
+
+      setBestsellers(bestsellersData);
+      setNewArrivals(newArrivalsData);
+      setHealthyMeals(healthyMealsData);
+      setCombos(combosData);
+      setCategorizedMenu(categorizedMenuData);
+
+      // Log failures for debugging
+      results.forEach((res, index) => {
+        if (res.status === "rejected") {
+          console.warn(`Premium API endpoint index ${index} failed:`, res.reason?.message);
+        }
+      });
     } catch (err) {
       console.log("Error loading premium sections:", err.message);
     } finally {
@@ -308,23 +346,24 @@ const HomeScreen = ({ navigation }) => {
                       <FoodCard key={item.id || item._id} food={item} navigation={navigation} />
                     ))}
                   </View>
-
-                  <View style={styles.restaurantsHeader}>
-                    <MaterialCommunityIcons name="silverware" size={20} color="#FF6F61" style={{ marginRight: 6 }} />
-                    <Text style={styles.restaurantsTitle}>Matching Restaurants</Text>
-                  </View>
-                  {filteredRestaurants.map((restaurant) => (
-                    <RestaurantCard
-                      key={restaurant.id || restaurant._id}
-                      restaurant={restaurant}
-                      navigation={navigation}
-                    />
-                  ))}
                 </>
               ) : (
                 <>
-                  {/* Dynamic Section 1: 🔥 Bestsellers */}
-                  {bestsellers.length > 0 && (
+                  {/* ── Time-Based Meal Section (above Bestsellers) ── */}
+                  <TimeMealSection
+                    period={timeInfo.period}
+                    greeting={timeInfo.greeting}
+                    emoji={timeInfo.emoji}
+                    subtitle={timeInfo.subtitle}
+                    accentColor={timeInfo.accentColor}
+                    gradientColors={timeInfo.gradientColors}
+                    timeLabel={timeInfo.timeLabel}
+                    foods={timeMealFoods}
+                    navigation={navigation}
+                  />
+
+                  {/* Dynamic Section 1: 🔥 Bestsellers (deduped) */}
+                  {dedupedBestsellers.length > 0 && (
                     <View style={styles.premiumSection}>
                       <View style={styles.sectionHeaderRow}>
                         <View>
@@ -336,7 +375,7 @@ const HomeScreen = ({ navigation }) => {
                         </TouchableOpacity>
                       </View>
                       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
-                        {bestsellers.map((item) => (
+                        {dedupedBestsellers.map((item) => (
                           <FoodCard key={item.id || item._id} food={item} navigation={navigation} />
                         ))}
                       </ScrollView>
@@ -427,6 +466,7 @@ const HomeScreen = ({ navigation }) => {
                           <Image
                             source={{ uri: group.category.image || "https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=200&q=80" }}
                             style={styles.catImage}
+                            resizeMode="cover"
                           />
                           <View style={styles.catHeaderTextCol}>
                             <Text style={styles.catTitle}>{group.category.name}</Text>
@@ -448,19 +488,6 @@ const HomeScreen = ({ navigation }) => {
                     </View>
                   ))}
 
-                  {/* Restaurants Recommendation Section */}
-                  <View style={styles.restaurantsHeader}>
-                    <MaterialCommunityIcons name="silverware" size={20} color="#FF6F61" style={{ marginRight: 6 }} />
-                    <Text style={styles.restaurantsTitle}>Recommended Restaurants</Text>
-                  </View>
-
-                  {filteredRestaurants.slice(0, 15).map((restaurant) => (
-                    <RestaurantCard
-                      key={restaurant.id || restaurant._id}
-                      restaurant={restaurant}
-                      navigation={navigation}
-                    />
-                  ))}
                 </>
               )}
             </>
@@ -728,7 +755,6 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 8,
     marginRight: 10,
-    resizeMode: "cover",
   },
 });
 

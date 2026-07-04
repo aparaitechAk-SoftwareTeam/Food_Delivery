@@ -29,6 +29,11 @@ exports.addToWishlist = async (req, res) => {
       return res.status(400).json({ message: "Food ID or Product ID is required" });
     }
 
+    const mongoose = require("mongoose");
+    if (!mongoose.Types.ObjectId.isValid(foodId)) {
+      return res.status(400).json({ message: "Invalid Food ID format" });
+    }
+
     const userId = req.user._id.toString();
     if (process.env.MOCK_DB === "true") {
       const { wishlists, foods } = require("../config/mockDataStore");
@@ -73,6 +78,11 @@ exports.removeFromWishlist = async (req, res) => {
     const { foodId } = req.params;
     if (!foodId) {
       return res.status(400).json({ message: "Food ID is required" });
+    }
+
+    const mongoose = require("mongoose");
+    if (!mongoose.Types.ObjectId.isValid(foodId)) {
+      return res.status(400).json({ message: "Invalid Food ID format" });
     }
 
     const userId = req.user._id.toString();

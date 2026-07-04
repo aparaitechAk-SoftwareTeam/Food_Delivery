@@ -15,4 +15,17 @@ export const store = configureStore({
     foods: foodsReducer,
     notifications: notificationsReducer,
   },
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware({
+      serializableCheck: {
+        // Ignore large, deep mock data paths to avoid performance overhead in Dev mode
+        ignoredPaths: [
+          "foods.foods",
+          "foods.categories",
+          "foods.featured",
+          "foods.popular",
+          "foods.restaurants",
+        ],
+      },
+    }),
 });

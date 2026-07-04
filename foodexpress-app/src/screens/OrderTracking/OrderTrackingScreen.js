@@ -15,6 +15,28 @@ const OrderTrackingScreen = ({ route, navigation }) => {
       setOrder(data);
     } catch (err) {
       console.log("Error fetching order in tracking:", err);
+      const isAuthErr =
+        err.message?.includes("Token") ||
+        err.message?.includes("authorized") ||
+        err.message?.includes("not valid") ||
+        err.message?.includes("401");
+      if (isAuthErr) {
+        Alert.alert(
+          "Session Expired",
+          "Your session has expired. Please log in again to continue.",
+          [
+            {
+              text: "OK",
+              onPress: () => {
+                navigation.reset({
+                  index: 0,
+                  routes: [{ name: "Login" }],
+                });
+              },
+            },
+          ]
+        );
+      }
     } finally {
       setLoading(false);
     }

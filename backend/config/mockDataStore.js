@@ -8,6 +8,8 @@ const carts = {}; // Maps userId -> Array of cart items
 const offers = [];
 const banners = [];
 const reviews = [];
+const combos = [];
+const sections = [];
 
 // Initialize all data in memory
 const initializeMockData = () => {
@@ -171,69 +173,42 @@ const initializeMockData = () => {
     ];
   };
 
-  const usedNames = new Set();
-  for (let i = 1; i <= 120; i++) {
-    let restName = "";
-    do {
-      const pref = prefixes[Math.floor(Math.random() * prefixes.length)];
-      const suff = suffixes[Math.floor(Math.random() * suffixes.length)];
-      restName = `${pref} ${suff}`;
-    } while (usedNames.has(restName));
-    
-    usedNames.add(restName);
+  // 2. 1 Single Restaurant
+  const singleRestaurant = {
+    _id: "rest-1",
+    id: "rest-1",
+    name: "FoodExpress Premium Kitchen",
+    address: "10, Vidyanagar Road, Baramati",
+    rating: 4.8,
+    deliveryTime: "20-25 mins",
+    image: "https://images.unsplash.com/photo-1600891964599-f61ba0e24092?auto=format&fit=crop&w=600&q=80",
+    reviewCount: 1250,
+    distance: 1.2,
+    cuisine: ["South Indian", "North Indian", "Chinese", "Desserts", "Beverages"],
+    offerPercentage: 20,
+    vegType: "both",
+    isOpen: true,
+    isFeatured: true,
+    restaurantType: "Multi Cuisine"
+  };
+  restaurants.push(singleRestaurant);
 
-    const rType = restaurantTypes[Math.floor(Math.random() * restaurantTypes.length)];
-    const vType = rType === "Pure Veg" ? "veg" : Math.random() > 0.4 ? "both" : "non-veg";
-    
-    const restObj = {
-      _id: `rest-${i}`,
-      id: `rest-${i}`,
-      name: restName,
-      address: `${10 + i}, ${locations[Math.floor(Math.random() * locations.length)]} Road`,
-      rating: parseFloat((3.8 + Math.random() * 1.1).toFixed(1)),
-      deliveryTime: deliveryTimes[Math.floor(Math.random() * deliveryTimes.length)],
-      image: restaurantImages[i % restaurantImages.length],
-      reviewCount: Math.floor(40 + Math.random() * 760),
-      distance: parseFloat((0.5 + Math.random() * 6.0).toFixed(1)),
-      cuisine: [cuisinesList[i % cuisinesList.length], cuisinesList[(i + 1) % cuisinesList.length]],
-      offerPercentage: Math.random() > 0.3 ? [10, 20, 30, 40, 50][Math.floor(Math.random() * 5)] : 0,
-      vegType: vType,
-      isOpen: Math.random() > 0.05,
-      isFeatured: Math.random() > 0.8,
-      restaurantType: rType
-    };
-    restaurants.push(restObj);
-  }
-
-  // 3. Generate 2500+ Food Items (approx 22 items per restaurant = 2640 total)
+  // 3. Generate Food Items (2 items per category = 200 total)
   let fId = 1;
-  restaurants.forEach((rest) => {
-    const numProducts = 21 + Math.floor(Math.random() * 4); // 21-24 items
-    const selectedFoodNames = new Set();
-
-    for (let pIndex = 0; pIndex < numProducts; pIndex++) {
-      const catObj = categories[Math.floor(Math.random() * categories.length)];
-      const templates = getTemplatesForCategory(catObj.name);
-      let template = templates[Math.floor(Math.random() * templates.length)];
+  const rest = restaurants[0];
+  categories.forEach((catObj) => {
+    const templates = getTemplatesForCategory(catObj.name);
+    const numItemsPerCategory = 2;
+    for (let pIndex = 0; pIndex < numItemsPerCategory; pIndex++) {
+      const template = templates[pIndex % templates.length];
       
-      let loopCount = 0;
-      while (selectedFoodNames.has(template.name) && loopCount < 10) {
-        template = templates[Math.floor(Math.random() * templates.length)];
-        loopCount++;
-      }
-      selectedFoodNames.add(template.name);
-
       const discountPercentage = Math.random() > 0.4 ? [10, 15, 20, 25, 30, 50][Math.floor(Math.random() * 6)] : 0;
       const price = template.price;
       const originalPrice = discountPercentage > 0 ? Math.round(price / (1 - (discountPercentage / 100))) : price;
 
       let isVeg = true;
-      if (rest.vegType === "non-veg") {
-        isVeg = false;
-      } else if (rest.vegType === "both") {
-        if (["Biryani", "Burger", "Pizza", "Chinese", "Fast Food", "Protein Meals", "Rolls", "Wraps", "Kebabs", "Tandoori"].includes(catObj.name)) {
-          isVeg = Math.random() > 0.5;
-        }
+      if (["Biryani", "Burger", "Pizza", "Chinese", "Fast Food", "Protein Meals", "Rolls", "Wraps", "Kebabs", "Tandoori"].includes(catObj.name)) {
+        isVeg = Math.random() > 0.5;
       }
 
       let finalFoodName = template.name;
@@ -252,7 +227,7 @@ const initializeMockData = () => {
         category: catObj,
         restaurant: rest,
         image: rest.image,
-        rating: parseFloat((3.8 + Math.random() * 1.1).toFixed(1)),
+        rating: parseFloat((4.0 + Math.random() * 0.9).toFixed(1)),
         isFeatured: Math.random() > 0.8,
         isPopular: Math.random() > 0.8,
         isBestSeller: Math.random() > 0.8,
@@ -260,8 +235,8 @@ const initializeMockData = () => {
         isCombo: catObj.name.toLowerCase().includes("combo") || catObj.name.toLowerCase().includes("pack") || Math.random() > 0.9,
         preparationTime: 10 + Math.floor(Math.random() * 30),
         isVeg: isVeg,
-        isAvailable: Math.random() > 0.05,
-        popularityScore: Math.floor(10 + Math.random() * 90),
+        isAvailable: true,
+        popularityScore: Math.floor(40 + Math.random() * 60),
         tags: template.tags,
       };
 
@@ -634,6 +609,8 @@ module.exports = {
   offers,
   banners,
   reviews,
+  combos,
+  sections,
   initializeMockData,
   queryMockFoods
 };

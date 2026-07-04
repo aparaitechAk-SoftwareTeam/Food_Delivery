@@ -85,7 +85,7 @@ const BannerCarousel = ({ banners = [], onBannerPress }) => {
         onPressIn={stopAutoPlay}
         onPressOut={startAutoPlay}
       >
-        <Image source={{ uri: item.image }} style={styles.bannerImage} />
+        <Image source={{ uri: item.image }} style={styles.bannerImage} resizeMode="cover" />
         <View style={styles.overlay} />
         <View style={styles.textContainer}>
           <Text style={styles.bannerTitle}>{item.title}</Text>
@@ -149,7 +149,6 @@ const styles = StyleSheet.create({
   bannerImage: {
     width: "100%",
     height: "100%",
-    resizeMode: "cover",
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,

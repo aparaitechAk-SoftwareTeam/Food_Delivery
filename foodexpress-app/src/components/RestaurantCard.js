@@ -40,12 +40,13 @@ const RestaurantCard = ({ restaurant, navigation }) => {
   return (
     <TouchableOpacity
       style={styles.card}
-      onPress={() => navigation.navigate("RestaurantDetail", { restaurantId: restaurant.id || restaurant._id })}
+      onPress={() => navigation.navigate("RestaurantDetail", { restaurant })}
+
       activeOpacity={0.9}
     >
       {/* Landscape Image Header */}
       <View style={styles.imageWrapper}>
-        <Image source={{ uri: restaurant.image }} style={styles.image} />
+        <Image source={{ uri: restaurant.image }} style={styles.image} resizeMode="cover" />
         
         {/* Favorite & Closed Overlays */}
         <View style={styles.overlayTop}>
@@ -110,7 +111,7 @@ const RestaurantCard = ({ restaurant, navigation }) => {
           </View>
           <View style={styles.metaDot} />
           <View style={styles.metaItem}>
-            <MaterialCommunityIcons name="food-fork-spoon" size={13} color="#667085" />
+            <MaterialCommunityIcons name="silverware-fork-knife" size={13} color="#667085" />
             <Text style={styles.metaText}>{restaurant.restaurantType || "Multi Cuisine"}</Text>
           </View>
         </View>
@@ -143,7 +144,6 @@ const styles = StyleSheet.create({
   image: {
     width: "100%",
     height: "100%",
-    resizeMode: "cover",
   },
   overlayTop: {
     position: "absolute",

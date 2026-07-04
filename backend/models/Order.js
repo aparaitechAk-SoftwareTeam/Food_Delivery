@@ -39,6 +39,8 @@ const orderSchema = new mongoose.Schema({
   },
   orderNumber: { type: String, required: true },
   cancellationReason: { type: String },
+  transactionId: { type: String },
+  paidAt: { type: Date },
   createdAt: { type: Date, default: Date.now },
 });
 
