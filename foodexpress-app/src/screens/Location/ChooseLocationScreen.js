@@ -13,6 +13,7 @@ import {
 import { Text, ActivityIndicator } from "react-native-paper";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Location from "expo-location";
+import { geocodeAsync, reverseGeocodeAsync } from "../../utils/locationHelper";
 
 const { width } = Dimensions.get("window");
 
@@ -122,12 +123,12 @@ const ChooseLocationScreen = ({ onSelectLocation, onUseCurrentLocation }) => {
       setLoading(true);
       try {
         // Geocode the search string to get real coordinates
-        const geocoded = await Location.geocodeAsync(searchQuery);
+        const geocoded = await geocodeAsync(searchQuery);
         if (geocoded && geocoded.length > 0) {
           const { latitude, longitude } = geocoded[0];
           
           // Reverse geocode to get city name
-          const reverse = await Location.reverseGeocodeAsync({ latitude, longitude });
+          const reverse = await reverseGeocodeAsync(latitude, longitude);
           const place = reverse?.[0] || {};
 
           const customAddress = {

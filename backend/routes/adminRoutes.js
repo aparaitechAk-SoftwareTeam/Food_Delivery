@@ -28,6 +28,16 @@ const {
   bulkUpload,
   bulkUpdate,
   updateRestaurantDetails,
+  updateOrderStatus,
+  toggleBlockUser,
+  getReviews,
+  updateReviewStatus,
+  deleteReview,
+  getDeliveryBoys,
+  createDeliveryBoy,
+  updateDeliveryBoy,
+  deleteDeliveryBoy,
+  assignOrderToRider,
 } = require("../controllers/adminController");
 const protect = require("../middleware/authMiddleware");
 const router = express.Router();
@@ -87,5 +97,19 @@ router.put("/restaurant", updateRestaurantDetails);
 // Bulk Operations
 router.post("/bulk-upload", bulkUpload);
 router.post("/bulk-update", bulkUpdate);
+
+// New Integrations
+router.put("/orders/:id/status", updateOrderStatus);
+router.put("/users/:id/block", toggleBlockUser);
+router.get("/reviews", getReviews);
+router.put("/reviews/:id/status", updateReviewStatus);
+router.delete("/reviews/:id", deleteReview);
+
+// Delivery Boy Management Integrations
+router.get("/delivery-boys", getDeliveryBoys);
+router.post("/delivery-boys", createDeliveryBoy);
+router.put("/delivery-boys/:id", updateDeliveryBoy);
+router.delete("/delivery-boys/:id", deleteDeliveryBoy);
+router.put("/orders/:id/assign", assignOrderToRider);
 
 module.exports = router;

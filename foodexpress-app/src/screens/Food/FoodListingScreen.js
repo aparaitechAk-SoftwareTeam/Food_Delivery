@@ -267,6 +267,7 @@ const FoodListingScreen = ({ navigation, route }) => {
   };
 
   const renderFoodCard = ({ item }) => {
+    const isAvailable = item.isAvailable !== false;
     const isFav = isFavorited(item);
     const rest = item.restaurant || {};
     const restName = rest.name || item.restaurant;
@@ -284,11 +285,16 @@ const FoodListingScreen = ({ navigation, route }) => {
     const distance = rest.distance || 1.2;
 
     return (
-      <Card style={styles.card}>
+      <Card style={[styles.card, !isAvailable && { opacity: 0.6 }]}>
         <View style={styles.cardRow}>
           {/* Left - Image, badge, heart */}
           <View style={styles.leftSection}>
-            <Image source={{ uri: item.image }} style={styles.cardImage} />
+            <Image source={{ uri: item.image }} style={styles.cardImage} blurRadius={!isAvailable ? 8 : 0} />
+            {!isAvailable && (
+              <View style={styles.unavailableOverlay}>
+                <Text style={styles.unavailableOverlayText}>Currently Unavailable</Text>
+              </View>
+            )}
             <View style={styles.offerBadge}>
               <Text style={styles.offerText}>{discountText}</Text>
             </View>
@@ -363,15 +369,27 @@ const FoodListingScreen = ({ navigation, route }) => {
           >
             Details
           </Button>
-          <Button
-            mode="contained"
-            onPress={() => handleBookNow(item)}
-            style={[styles.actionBtn, styles.bookBtn]}
-            labelStyle={styles.bookLabel}
-            buttonColor="#ff6b00"
-          >
-            Order Now
-          </Button>
+          {!isAvailable ? (
+            <Button
+              mode="contained"
+              onPress={() => Alert.alert("Notification Subscribed", `We will notify you when ${item.name} is back in stock!`)}
+              style={[styles.actionBtn, styles.bookBtn]}
+              labelStyle={styles.bookLabel}
+              buttonColor="#ff6b00"
+            >
+              Notify Me
+            </Button>
+          ) : (
+            <Button
+              mode="contained"
+              onPress={() => handleBookNow(item)}
+              style={[styles.actionBtn, styles.bookBtn]}
+              labelStyle={styles.bookLabel}
+              buttonColor="#ff6b00"
+            >
+              Order Now
+            </Button>
+          )}
           <IconButton
             icon="chat-processing-outline"
             iconColor="#ff6b00"
@@ -1003,6 +1021,24 @@ const styles = StyleSheet.create({
   sortTextActive: {
     color: "#ff6b00",
     fontWeight: "bold",
+  },
+  unavailableOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  unavailableOverlayText: {
+    color: "#FFFFFF",
+    fontSize: 9,
+    fontWeight: "805",
+    textTransform: "uppercase",
+    textAlign: "center",
+    paddingHorizontal: 4,
   },
 });
 

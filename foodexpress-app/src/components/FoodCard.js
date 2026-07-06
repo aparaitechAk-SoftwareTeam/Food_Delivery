@@ -11,6 +11,7 @@ const FoodCard = ({ food, navigation }) => {
   const dispatch = useDispatch();
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const [customizeVisible, setCustomizeVisible] = useState(false);
+  const isAvailable = food.isAvailable !== false;
 
   // Redux Selectors
   const token = useSelector((state) => state.auth.token);
@@ -56,6 +57,7 @@ const FoodCard = ({ food, navigation }) => {
         quantity: 1,
         image: food.image,
         restaurantName: food.restaurant?.name || "",
+        restaurantId: food.restaurant?._id || food.restaurant?.id || food.restaurant,
       })
     );
   };
@@ -82,6 +84,7 @@ const FoodCard = ({ food, navigation }) => {
         quantity: customizationData.quantity,
         image: food.image,
         restaurantName: food.restaurant?.name || "",
+        restaurantId: food.restaurant?._id || food.restaurant?.id || food.restaurant,
         customisationText: `${customizationData.size} | ${customizationData.addons.join(", ") || "No extras"}`,
       })
     );
@@ -114,14 +117,19 @@ const FoodCard = ({ food, navigation }) => {
   };
 
   return (
-    <Animated.View style={[styles.card, { transform: [{ scale: scaleAnim }] }]}>
+    <Animated.View style={[styles.card, { transform: [{ scale: scaleAnim }] }, !isAvailable && { opacity: 0.6 }]}>
       <TouchableOpacity
         activeOpacity={0.9}
         onPress={() => navigation && navigation.navigate("FoodDetails", { foodId: food.id || food._id })}
       >
         {/* Top Section: Image & Badges */}
         <View style={styles.imageWrapper}>
-          <Image source={{ uri: food.image || undefined }} style={styles.image} resizeMode="cover" />
+          <Image source={{ uri: food.image || undefined }} style={styles.image} resizeMode="cover" blurRadius={!isAvailable ? 8 : 0} />
+          {!isAvailable && (
+            <View style={styles.unavailableOverlay}>
+              <Text style={styles.unavailableOverlayText}>Currently Unavailable</Text>
+            </View>
+          )}
           <View style={styles.overlayRow}>
             {/* Veg/Non-Veg Badge */}
             <View style={[styles.vegBadge, food.isVeg ? styles.vegBorder : styles.nonVegBorder]}>
@@ -200,7 +208,15 @@ const FoodCard = ({ food, navigation }) => {
             )}
           </View>
 
-          {itemQty > 0 ? (
+          {!isAvailable ? (
+            <TouchableOpacity
+              style={styles.notifyButton}
+              onPress={() => Alert.alert("Notification Subscribed", `We will notify you when ${food.name} is back in stock!`)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.notifyButtonText}>Notify Me</Text>
+            </TouchableOpacity>
+          ) : itemQty > 0 ? (
             <View style={styles.qtyContainer}>
               <TouchableOpacity style={styles.qtyBtn} onPress={handleDecrement}>
                 <MaterialCommunityIcons name="minus" size={16} color="#FF6F61" />
@@ -443,6 +459,38 @@ const styles = StyleSheet.create({
   },
   newText: {
     fontSize: 8,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+  },
+  unavailableOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  unavailableOverlayText: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontWeight: "800",
+    textTransform: "uppercase",
+    textAlign: "center",
+    paddingHorizontal: 8,
+  },
+  notifyButton: {
+    backgroundColor: "#FF6F61",
+    borderRadius: 8,
+    width: 72,
+    height: 30,
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 1,
+  },
+  notifyButtonText: {
+    fontSize: 10,
     fontWeight: "bold",
     color: "#FFFFFF",
   },

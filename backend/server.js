@@ -21,6 +21,7 @@ const bannerRoutes      = require("./routes/bannerRoutes");
 const searchRoutes      = require("./routes/searchRoutes");
 const adminRoutes       = require("./routes/adminRoutes");
 const paymentRoutes     = require("./routes/paymentRoutes");
+const deliveryRoutes    = require("./routes/deliveryRoutes");
 const errorHandler      = require("./middleware/errorHandler");
 const seedDatabase      = require("./config/seed");
 
@@ -46,6 +47,7 @@ app.use("/api/banners",     bannerRoutes);
 app.use("/api/search",      searchRoutes);
 app.use("/api/payment",     paymentRoutes);
 app.use("/api/admin",       adminRoutes);
+app.use("/api/delivery",    deliveryRoutes);
 
 // ── Global error handler (must be last) ────────────────────────────────────────
 app.use(errorHandler);

@@ -46,6 +46,10 @@ const protect = async (req, res, next) => {
         res.status(401);
         throw new Error("User not found");
       }
+      if (mockUser.isBlocked) {
+        res.status(401);
+        throw new Error("Your account has been blocked. Contact support.");
+      }
       req.user = mockUser;
       return next();
     }
@@ -54,6 +58,10 @@ const protect = async (req, res, next) => {
     if (!req.user) {
       res.status(401);
       throw new Error("User not found");
+    }
+    if (req.user.isBlocked) {
+      res.status(401);
+      throw new Error("Your account has been blocked. Contact support.");
     }
     next();
   } catch (error) {

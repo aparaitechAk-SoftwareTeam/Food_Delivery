@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   FolderHeart, 
@@ -13,12 +13,20 @@ import {
   ArrowUpDown, 
   Upload, 
   Settings as SettingsIcon,
+  ClipboardList,
+  Users,
+  CreditCard,
+  Star,
+  BarChart3,
+  Bell,
   LogOut
 } from 'lucide-react';
 
 const Sidebar = () => {
+  const navigate = useNavigate();
   const menuItems = [
     { name: 'Dashboard', icon: <LayoutDashboard className="w-4 h-4" />, path: '/admin/food-management' },
+    { name: 'Orders', icon: <ClipboardList className="w-4 h-4" />, path: '/admin/food-management/orders' },
     { name: 'Categories', icon: <FolderHeart className="w-4 h-4" />, path: '/admin/food-management/categories' },
     { name: 'Food Items', icon: <ListCollapse className="w-4 h-4" />, path: '/admin/food-management/foods' },
     { name: 'Featured Sections', icon: <ChefHat className="w-4 h-4" />, path: '/admin/food-management/featured' },
@@ -27,10 +35,22 @@ const Sidebar = () => {
     { name: 'Cuisine Manager', icon: <Utensils className="w-4 h-4" />, path: '/admin/food-management/cuisines' },
     { name: 'Tags', icon: <Tag className="w-4 h-4" />, path: '/admin/food-management/tags' },
     { name: 'Inventory', icon: <Database className="w-4 h-4" />, path: '/admin/food-management/inventory' },
+    { name: 'Customers', icon: <Users className="w-4 h-4" />, path: '/admin/food-management/customers' },
+    { name: 'Delivery Boys', icon: <Users className="w-4 h-4" />, path: '/admin/food-management/delivery-boys' },
+    { name: 'Payments & QR', icon: <CreditCard className="w-4 h-4" />, path: '/admin/food-management/payments' },
+    { name: 'Reviews Manager', icon: <Star className="w-4 h-4" />, path: '/admin/food-management/reviews' },
+    { name: 'Push Notifications', icon: <Bell className="w-4 h-4" />, path: '/admin/food-management/notifications' },
+    { name: 'Platform Reports', icon: <BarChart3 className="w-4 h-4" />, path: '/admin/food-management/reports' },
     { name: 'Menu Ordering', icon: <ArrowUpDown className="w-4 h-4" />, path: '/admin/food-management/menu-order' },
     { name: 'Bulk Import', icon: <Upload className="w-4 h-4" />, path: '/admin/food-management/import' },
     { name: 'Settings', icon: <SettingsIcon className="w-4 h-4" />, path: '/admin/food-management/settings' },
   ];
+
+  const handleSignOut = () => {
+    localStorage.removeItem('admin_token');
+    localStorage.removeItem('admin_user');
+    navigate('/admin/login');
+  };
 
   return (
     <aside className="fixed inset-y-0 left-0 z-20 flex flex-col w-[240px] bg-slate-950 text-slate-400 border-r border-slate-800 shrink-0 select-none">
@@ -73,7 +93,10 @@ const Sidebar = () => {
 
       {/* Logout */}
       <div className="p-4 border-t border-slate-900 shrink-0">
-        <button className="flex items-center gap-3 w-full px-3 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:bg-rose-950/20 hover:text-rose-400 transition-all duration-200">
+        <button 
+          onClick={handleSignOut}
+          className="flex items-center gap-3 w-full px-3 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:bg-rose-950/20 hover:text-rose-400 transition-all duration-200 cursor-pointer"
+        >
           <LogOut className="w-4 h-4" />
           <span>Sign Out</span>
         </button>

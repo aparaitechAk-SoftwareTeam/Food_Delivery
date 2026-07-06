@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { View, StyleSheet, FlatList, Image, Dimensions, TouchableOpacity } from "react-native";
+import { View, StyleSheet, FlatList, Image, Dimensions, TouchableOpacity, Platform } from "react-native";
 import { Text } from "react-native-paper";
 
 const { width } = Dimensions.get("window");
@@ -66,6 +66,19 @@ const BannerCarousel = ({ banners = [], onBannerPress }) => {
     }
   };
 
+  const getItemLayout = (data, index) => ({
+    length: CAROUSEL_WIDTH + 16,
+    offset: (CAROUSEL_WIDTH + 16) * index,
+    index,
+  });
+
+  const onScrollToIndexFailed = (info) => {
+    const wait = new Promise((resolve) => setTimeout(resolve, 50));
+    wait.then(() => {
+      flatListRef.current?.scrollToIndex({ index: info.index, animated: true });
+    });
+  };
+
   const onViewableItemsChanged = useRef(({ viewableItems }) => {
     if (viewableItems.length > 0) {
       setActiveIndex(viewableItems[0].index);
@@ -113,6 +126,12 @@ const BannerCarousel = ({ banners = [], onBannerPress }) => {
         viewabilityConfig={viewabilityConfig}
         contentContainerStyle={styles.flatListContent}
         keyExtractor={(item) => item.id || item._id}
+        getItemLayout={getItemLayout}
+        onScrollToIndexFailed={onScrollToIndexFailed}
+        initialNumToRender={3}
+        maxToRenderPerBatch={3}
+        windowSize={3}
+        removeClippedSubviews={Platform.OS === "android"}
       />
       {/* Pagination indicators */}
       <View style={styles.paginationRow}>

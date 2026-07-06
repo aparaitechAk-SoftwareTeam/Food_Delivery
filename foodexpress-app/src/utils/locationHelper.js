@@ -1,4 +1,5 @@
 import { SERVICE_CONFIG } from "../constants/serviceConfig";
+import * as Location from "expo-location";
 
 // ─── Haversine Distance Formula ───────────────────────────────────────────────
 
@@ -80,3 +81,77 @@ export const isOutsideBaramati = (address) => {
 
   return true;
 };
+
+/**
+  * Geocodes an address string using Nominatim with Location fallback
+  */
+export async function geocodeAsync(addressString) {
+  try {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addressString)}&limit=1`,
+      {
+        headers: {
+          "User-Agent": "FoodExpressApp/1.0",
+        },
+      }
+    );
+    const data = await response.json();
+    if (data && data.length > 0) {
+      return [{
+        latitude: Number(data[0].lat),
+        longitude: Number(data[0].lon),
+      }];
+    }
+  } catch (err) {
+    console.warn("Nominatim geocode failed, falling back to expo-location:", err);
+  }
+
+  try {
+    const results = await Location.geocodeAsync(addressString);
+    return results;
+  } catch (err) {
+    console.error("expo-location geocoding failed:", err);
+    return [];
+  }
+}
+
+/**
+  * Reverse geocodes coordinates using Nominatim with Location fallback
+  */
+export async function reverseGeocodeAsync(latitude, longitude) {
+  try {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`,
+      {
+        headers: {
+          "User-Agent": "FoodExpressApp/1.0",
+        },
+      }
+    );
+    const data = await response.json();
+    if (data && data.address) {
+      const addr = data.address;
+      return [{
+        name: data.display_name.split(",")[0] || addr.road || addr.suburb || "",
+        street: addr.road || "",
+        streetNumber: addr.house_number || "",
+        district: addr.suburb || addr.neighbourhood || "",
+        city: addr.city || addr.town || addr.village || "",
+        subregion: addr.county || "",
+        region: addr.state || "",
+        postalCode: addr.postcode || "",
+        country: addr.country || "India",
+      }];
+    }
+  } catch (err) {
+    console.warn("Nominatim reverse geocode failed, falling back to expo-location:", err);
+  }
+
+  try {
+    const results = await Location.reverseGeocodeAsync({ latitude, longitude });
+    return results;
+  } catch (err) {
+    console.error("expo-location reverse geocoding failed:", err);
+    return [];
+  }
+}

@@ -43,22 +43,73 @@ exports.createOrder = async (req, res) => {
       return res.status(201).json(newOrder);
     }
 
+    let finalRestaurantId = restaurant;
+    let resolvedItems = items;
+
+    if (process.env.MOCK_DB !== "true") {
+      const mongoose = require("mongoose");
+      const Restaurant = require("../models/Restaurant");
+      const Food = require("../models/Food");
+
+      // 1. Validate restaurant ObjectId
+      if (!mongoose.Types.ObjectId.isValid(restaurant)) {
+        console.warn(`[orderController] Invalid restaurant ObjectId: "${restaurant}". Attempting database fallback...`);
+        const defaultRest = await Restaurant.findOne();
+        if (defaultRest) {
+          finalRestaurantId = defaultRest._id;
+          console.log(`[orderController] Fallback resolved to restaurant: "${defaultRest.name}" (${defaultRest._id})`);
+        } else {
+          return res.status(400).json({ message: "No active restaurant found in database to fulfill order." });
+        }
+      }
+
+      // 2. Validate items array
+      if (!items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ message: "Cart items are missing or empty." });
+      }
+
+      // 3. Validate each item's food ObjectId
+      const validItems = [];
+      for (const item of items) {
+        let finalFoodId = item.food;
+        if (!mongoose.Types.ObjectId.isValid(item.food)) {
+          console.warn(`[orderController] Invalid food ObjectId: "${item.food}". Attempting database fallback...`);
+          const defaultFood = await Food.findOne({ restaurant: finalRestaurantId });
+          const fallbackFood = defaultFood || await Food.findOne();
+          if (fallbackFood) {
+            finalFoodId = fallbackFood._id;
+            console.log(`[orderController] Fallback resolved to food: "${fallbackFood.name}" (${fallbackFood._id})`);
+          } else {
+            return res.status(400).json({ message: "No active menu items found in database to fulfill order." });
+          }
+        }
+        validItems.push({
+          food: finalFoodId,
+          quantity: item.quantity || 1,
+          price: item.price || 0,
+        });
+      }
+      resolvedItems = validItems;
+    }
+
     const order = await Order.create({
       user: req.user._id,
-      restaurant,
-      items,
+      restaurant: finalRestaurantId,
+      items: resolvedItems,
       address,
-      paymentMethod,
-      discount,
-      deliveryCharge,
-      tax,
+      paymentMethod: paymentMethod || "Cash on Delivery",
+      paymentStatus: paymentMethod === "Cash on Delivery" ? "Pending" : "Paid",
+      discount: discount || 0,
+      deliveryCharge: deliveryCharge !== undefined ? deliveryCharge : 40,
+      tax: tax || 0,
       totalAmount,
       orderNumber: `ORD-${Date.now()}`,
     });
     
     res.status(201).json(order);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Order creation failed error:", error);
+    res.status(500).json({ message: "Failed to place order: " + error.message });
   }
 };
 

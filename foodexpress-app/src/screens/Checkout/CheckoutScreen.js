@@ -81,7 +81,7 @@ const CheckoutScreen = ({ navigation }) => {
 
     // Extract restaurant details
     const firstItem = items[0];
-    const restaurantId = firstItem.restaurantId || firstItem.restaurant?._id || firstItem.restaurant?.id || "r-1";
+    const restaurantId = firstItem.restaurantId || firstItem.restaurant?._id || firstItem.restaurant?.id || firstItem.restaurant || "r-1";
 
     const backendItems = items.map((item) => ({
       food: (item.id || item._id).toString().split("-")[0],
@@ -209,7 +209,7 @@ const CheckoutScreen = ({ navigation }) => {
     setIsProcessing(true);
 
     const firstItem = items[0];
-    const restaurantId = firstItem.restaurantId || firstItem.restaurant?._id || firstItem.restaurant?.id || "r-1";
+    const restaurantId = firstItem.restaurantId || firstItem.restaurant?._id || firstItem.restaurant?.id || firstItem.restaurant || "r-1";
     const backendItems = items.map((item) => ({
       food: (item.id || item._id).toString().split("-")[0],
       quantity: item.quantity,
@@ -473,7 +473,7 @@ const CheckoutScreen = ({ navigation }) => {
       <Portal>
         <Dialog visible={showUPIOverlay} onDismiss={cancelUPIPayment} style={styles.upiDialog}>
           <Dialog.Title style={styles.upiDialogTitle}>
-            <MaterialCommunityIcons name="google-wallet" size={24} color="#ff6b00" style={{ marginRight: 8 }} />
+            <MaterialCommunityIcons name="wallet" size={24} color="#ff6b00" style={{ marginRight: 8 }} />
             UPI Payment Portal
           </Dialog.Title>
           <Dialog.Content>

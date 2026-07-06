@@ -30,6 +30,7 @@ const PeopleAlsoBought = ({ recommendedFoods = [] }) => {
         quantity: 1,
         image: item.image,
         restaurantName: item.restaurant?.name || "",
+        restaurantId: item.restaurant?._id || item.restaurant?.id || item.restaurant,
       })
     );
   };

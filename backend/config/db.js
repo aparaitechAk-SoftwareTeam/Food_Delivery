@@ -13,8 +13,10 @@ const connectDB = async (uri) => {
   }
 
   try {
-    // Note: useNewUrlParser and useUnifiedTopology are no longer needed in Mongoose 8+
-    await mongoose.connect(uri);
+    // Set a short server selection timeout so we fail fast and fall back to Mock DB
+    await mongoose.connect(uri, {
+      serverSelectionTimeoutMS: 3000
+    });
     console.log("MongoDB connected");
     process.env.MOCK_DB = "false";
   } catch (error) {

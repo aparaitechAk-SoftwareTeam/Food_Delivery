@@ -45,8 +45,8 @@ const OrderTrackingScreen = ({ route, navigation }) => {
   useEffect(() => {
     fetchDetails();
     
-    // Poll every 10 seconds to show dynamic status changes if they occur
-    const interval = setInterval(fetchDetails, 10000);
+    // Poll every 3 seconds for real-time order state updates
+    const interval = setInterval(fetchDetails, 3000);
     return () => clearInterval(interval);
   }, [orderId]);
 
@@ -68,19 +68,28 @@ const OrderTrackingScreen = ({ route, navigation }) => {
   }
 
   // Get index of the current status
-  const statuses = ["Pending", "Confirmed", "Preparing", "Rider Assigned", "Out For Delivery", "Delivered"];
+  const statuses = ["Order Accepted", "Preparing", "Picked Up", "On The Way", "Arrived", "Delivered", "Completed"];
   
   // Map backend status to our tracking status index
   let currentStatusIndex = 0;
-  if (order.status === "Confirmed") currentStatusIndex = 1;
-  else if (order.status === "Preparing") currentStatusIndex = 2;
-  else if (order.status === "Out For Delivery") currentStatusIndex = 4;
-  else if (order.status === "Delivered") currentStatusIndex = 5;
-  else if (order.status === "Cancelled") currentStatusIndex = -1;
-
-  // We can inject "Rider Assigned" (index 3) when preparation is underway to look premium!
-  if (order.status === "Preparing" && new Date(order.createdAt).getTime() % 2 === 0) {
+  if (order.status === "Pending") currentStatusIndex = 0;
+  else if (order.status === "Confirmed") currentStatusIndex = 0;
+  else if (order.status === "Preparing") {
+    if (order.deliveryStatus === "Arrived At Restaurant") {
+      currentStatusIndex = 1;
+    } else if (order.deliveryStatus === "Accepted") {
+      currentStatusIndex = 0;
+    } else {
+      currentStatusIndex = 1;
+    }
+  } else if (order.status === "Out For Delivery" || order.deliveryStatus === "Picked Up") {
     currentStatusIndex = 3;
+  } else if (order.status === "Delivered" || order.deliveryStatus === "Delivered") {
+    currentStatusIndex = 5;
+  } else if (order.status === "Completed") {
+    currentStatusIndex = 6;
+  } else if (order.status === "Cancelled") {
+    currentStatusIndex = -1;
   }
 
   const renderTimelineStep = (title, subtitle, index, icon) => {
@@ -137,12 +146,13 @@ const OrderTrackingScreen = ({ route, navigation }) => {
   };
 
   const stepsData = [
-    { title: "Order Placed", subtitle: "We have received your order request", icon: "clipboard-text-outline" },
     { title: "Order Accepted", subtitle: "Restaurant has confirmed your order", icon: "check-decagram-outline" },
-    { title: "Food Preparing", subtitle: "Kitchen is preparing your delicious meal", icon: "fire" },
-    { title: "Rider Assigned", subtitle: "Delivery executive is picking up the food", icon: "account-check-outline" },
-    { title: "Out for Delivery", subtitle: "Rider is rushing to your address", icon: "moped" },
+    { title: "Preparing", subtitle: "Kitchen is preparing your delicious meal", icon: "fire" },
+    { title: "Picked Up", subtitle: "Rider has picked up your food package", icon: "account-check-outline" },
+    { title: "On The Way", subtitle: "Rider is rushing to your address", icon: "moped" },
+    { title: "Arrived", subtitle: "Rider has arrived near your location", icon: "map-marker-radius" },
     { title: "Delivered", subtitle: "Food has reached your door! Enjoy!", icon: "home-circle-outline" },
+    { title: "Completed", subtitle: "Order finalized and payment settled", icon: "clipboard-check-outline" },
   ];
 
   const handleCallRider = () => {
@@ -179,6 +189,27 @@ const OrderTrackingScreen = ({ route, navigation }) => {
         )}
       </View>
 
+      {/* Payment Information Card */}
+      <View style={styles.paymentInfoCard}>
+        <View style={styles.paymentRow}>
+          <MaterialCommunityIcons name="wallet-outline" size={20} color="#ff6b00" style={{ marginRight: 12 }} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.paymentLabel}>Payment Method</Text>
+            <Text style={styles.paymentValue}>{order.paymentMethod}</Text>
+          </View>
+        </View>
+        <View style={styles.paymentDivider} />
+        <View style={styles.paymentRow}>
+          <MaterialCommunityIcons name="credit-card-check-outline" size={20} color="#ff6b00" style={{ marginRight: 12 }} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.paymentLabel}>Payment Status</Text>
+            <Text style={[styles.paymentValue, { color: order.paymentStatus === "Paid" ? "#2e7d32" : "#f59e0b", fontWeight: "bold" }]}>
+              {order.paymentStatus}
+            </Text>
+          </View>
+        </View>
+      </View>
+
       {/* Map Mock representation */}
       <View style={styles.mapMockCard}>
         <View style={styles.mapBackground}>
@@ -203,26 +234,44 @@ const OrderTrackingScreen = ({ route, navigation }) => {
 
       {/* Rider Info Card */}
       {order.status !== "Cancelled" && (
-        <View style={styles.riderCard}>
-          <Image
-            source={{ uri: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=120&q=80" }}
-            style={styles.riderAvatar}
-          />
-          <View style={styles.riderInfo}>
-            <Text style={styles.riderName}>Ramesh Kumar</Text>
-            <Text style={styles.riderDetails}>FoodExpress Delivery Executive</Text>
-            <View style={styles.ratingRow}>
-              <MaterialCommunityIcons name="star" size={14} color="#ffb300" />
-              <Text style={styles.ratingText}>4.8 Rating • Splendor (MH 12 AB 1234)</Text>
+        order.deliveryBoy ? (
+          <View style={styles.riderCard}>
+            <Image
+              source={{ uri: (typeof order.deliveryBoy === 'object' && order.deliveryBoy.profilePhoto) || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80" }}
+              style={styles.riderAvatar}
+            />
+            <View style={styles.riderInfo}>
+              <Text style={styles.riderName}>
+                {typeof order.deliveryBoy === 'object' ? order.deliveryBoy.name : 'Assigned Rider'}
+              </Text>
+              <Text style={styles.riderDetails}>FoodExpress Delivery Executive</Text>
+              <View style={styles.ratingRow}>
+                <MaterialCommunityIcons name="star" size={14} color="#ffb300" />
+                <Text style={styles.ratingText}>
+                  {typeof order.deliveryBoy === 'object' ? `${order.deliveryBoy.vehicleType || 'Bike'} (${order.deliveryBoy.vehicleNumber || 'Plate Pending'})` : ''}
+                </Text>
+              </View>
+            </View>
+            {typeof order.deliveryBoy === 'object' && order.deliveryBoy.phone && (
+              <TouchableOpacity
+                style={styles.callBtn}
+                onPress={() => Linking.openURL(`tel:${order.deliveryBoy.phone}`)}
+              >
+                <MaterialCommunityIcons name="phone" size={20} color="#fff" />
+              </TouchableOpacity>
+            )}
+          </View>
+        ) : (
+          <View style={styles.riderCard}>
+            <View style={[styles.riderAvatar, { backgroundColor: "#fff3e0", alignItems: "center", justifyContent: "center" }]}>
+              <MaterialCommunityIcons name="account-clock-outline" size={24} color="#ff6b00" />
+            </View>
+            <View style={styles.riderInfo}>
+              <Text style={styles.riderName}>Rider Assignment Pending</Text>
+              <Text style={styles.riderDetails}>Selecting the best rider for your delivery...</Text>
             </View>
           </View>
-          <TouchableOpacity
-            style={styles.callBtn}
-            onPress={handleCallRider}
-          >
-            <MaterialCommunityIcons name="phone" size={20} color="#fff" />
-          </TouchableOpacity>
-        </View>
+        )
       )}
 
       {/* Status Timeline */}
@@ -460,6 +509,32 @@ const styles = StyleSheet.create({
     color: "#777",
     marginTop: 3,
     lineHeight: 14,
+  },
+  paymentInfoCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#eee",
+  },
+  paymentRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  paymentLabel: {
+    fontSize: 11,
+    color: "#888",
+  },
+  paymentValue: {
+    fontSize: 13,
+    color: "#333",
+    marginTop: 2,
+  },
+  paymentDivider: {
+    height: 1,
+    backgroundColor: "#eee",
+    marginVertical: 12,
   },
 });
 

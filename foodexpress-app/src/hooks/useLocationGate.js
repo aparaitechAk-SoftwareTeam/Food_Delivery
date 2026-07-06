@@ -3,7 +3,7 @@ import { AppState, Platform } from "react-native";
 import * as Location from "expo-location";
 import { useDispatch, useSelector } from "react-redux";
 import { setActiveAddress } from "../redux/slices/authSlice";
-import { isInsideServiceArea, isOutsideBaramati } from "../utils/locationHelper";
+import { isInsideServiceArea, isOutsideBaramati, reverseGeocodeAsync } from "../utils/locationHelper";
 
 /** @typedef {'checking'|'choose'|'denied'|'outside'|'inside'} GateStatus */
 
@@ -124,7 +124,7 @@ export function useLocationGate() {
       // 3. Reverse geocode to build standard address object
       let place = {};
       try {
-        const geocoded = await Location.reverseGeocodeAsync({ latitude, longitude });
+        const geocoded = await reverseGeocodeAsync(latitude, longitude);
         if (geocoded && geocoded.length > 0) {
           place = geocoded[0];
         }

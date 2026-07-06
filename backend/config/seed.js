@@ -459,7 +459,15 @@ const seedDatabase = async () => {
 
     console.log("Database successfully seeded in MongoDB mode!");
   } catch (error) {
-    console.error("Error seeding database:", error);
+    console.error("Error seeding database:", error.message);
+    console.warn("Falling back to Mock In-Memory Database Mode...");
+    process.env.MOCK_DB = "true";
+    try {
+      const { initializeMockData } = require("./mockDataStore");
+      initializeMockData();
+    } catch (e) {
+      console.error("Failed to initialize mock data:", e.message);
+    }
   }
 };
 

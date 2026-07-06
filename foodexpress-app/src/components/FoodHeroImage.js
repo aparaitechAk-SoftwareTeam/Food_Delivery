@@ -1,5 +1,5 @@
 import React from "react";
-import { View, StyleSheet, Image, TouchableOpacity, Share, Alert, Platform } from "react-native";
+import { View, StyleSheet, Image, TouchableOpacity, Share, Alert, Platform, Text } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useDispatch, useSelector } from "react-redux";
@@ -56,8 +56,14 @@ const FoodHeroImage = ({ food }) => {
 
   return (
     <View style={styles.container}>
-      <Image source={{ uri: food?.image || undefined }} style={styles.image} resizeMode="cover" />
+      <Image source={{ uri: food?.image || undefined }} style={styles.image} resizeMode="cover" blurRadius={food?.isAvailable === false ? 10 : 0} />
       
+      {food?.isAvailable === false && (
+        <View style={styles.unavailableOverlay}>
+          <Text style={styles.unavailableText}>Currently Unavailable</Text>
+        </View>
+      )}
+
       {/* Navigation & Action Overlays */}
       <View style={styles.headerRow}>
         <TouchableOpacity style={styles.iconButton} onPress={handleBack} activeOpacity={0.8}>
@@ -121,6 +127,23 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  unavailableOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  unavailableText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "900",
+    textTransform: "uppercase",
+    letterSpacing: 1,
   },
 });
 

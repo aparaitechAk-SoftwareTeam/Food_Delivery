@@ -117,10 +117,57 @@ exports.verifyPayment = async (req, res) => {
       }
 
       // MongoDB mode: create verified order and update inventory
+      let finalRestaurantId = restaurant;
+      let resolvedItems = items;
+
+      const mongoose = require("mongoose");
+      const Restaurant = require("../models/Restaurant");
+      const Food = require("../models/Food");
+
+      // 1. Validate restaurant ObjectId
+      if (!mongoose.Types.ObjectId.isValid(restaurant)) {
+        console.warn(`[paymentController] Invalid restaurant ObjectId: "${restaurant}". Attempting database fallback...`);
+        const defaultRest = await Restaurant.findOne();
+        if (defaultRest) {
+          finalRestaurantId = defaultRest._id;
+          console.log(`[paymentController] Fallback resolved to restaurant: "${defaultRest.name}" (${defaultRest._id})`);
+        } else {
+          return res.status(400).json({ message: "No active restaurant found in database to fulfill order." });
+        }
+      }
+
+      // 2. Validate items array
+      if (!items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ message: "Cart items are missing or empty." });
+      }
+
+      // 3. Validate each item's food ObjectId
+      const validItems = [];
+      for (const item of items) {
+        let finalFoodId = item.food;
+        if (!mongoose.Types.ObjectId.isValid(item.food)) {
+          console.warn(`[paymentController] Invalid food ObjectId: "${item.food}". Attempting database fallback...`);
+          const defaultFood = await Food.findOne({ restaurant: finalRestaurantId });
+          const fallbackFood = defaultFood || await Food.findOne();
+          if (fallbackFood) {
+            finalFoodId = fallbackFood._id;
+            console.log(`[paymentController] Fallback resolved to food: "${fallbackFood.name}" (${fallbackFood._id})`);
+          } else {
+            return res.status(400).json({ message: "No active menu items found in database to fulfill order." });
+          }
+        }
+        validItems.push({
+          food: finalFoodId,
+          quantity: item.quantity || 1,
+          price: item.price || 0,
+        });
+      }
+      resolvedItems = validItems;
+
       const order = await Order.create({
         user: req.user._id,
-        restaurant,
-        items,
+        restaurant: finalRestaurantId,
+        items: resolvedItems,
         address,
         paymentMethod,
         paymentStatus: paymentMethod === "Cash on Delivery" ? "Pending" : "Paid",

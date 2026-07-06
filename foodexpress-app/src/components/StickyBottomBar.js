@@ -49,7 +49,15 @@ const StickyBottomBar = ({ food, onAddPress }) => {
 
       {/* Right part: Add / Quantity Selector button */}
       <View style={styles.rightCol}>
-        {inCart ? (
+        {food.isAvailable === false ? (
+          <TouchableOpacity 
+            style={[styles.addButton, { backgroundColor: "#FF6F61" }]} 
+            onPress={() => require("react-native").Alert.alert("Notification Subscribed", `We will notify you when ${food.name} is back in stock!`)} 
+            activeOpacity={0.8}
+          >
+            <Text style={styles.addButtonText}>Notify Me</Text>
+          </TouchableOpacity>
+        ) : inCart ? (
           <View style={styles.qtyContainer}>
             <TouchableOpacity style={styles.qtyBtn} onPress={handleDecrement} activeOpacity={0.8}>
               <MaterialCommunityIcons name="minus" size={20} color="#FFFFFF" />

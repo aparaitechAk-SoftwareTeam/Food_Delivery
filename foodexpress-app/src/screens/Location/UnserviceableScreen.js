@@ -16,7 +16,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useDispatch, useSelector } from "react-redux";
 import * as Location from "expo-location";
 import { setActiveAddress } from "../../redux/slices/authSlice";
-import { isOutsideBaramati } from "../../utils/locationHelper";
+import { isOutsideBaramati, reverseGeocodeAsync } from "../../utils/locationHelper";
 import LocationBottomSheet from "../../components/LocationBottomSheet";
 import api from "../../utils/api";
 
@@ -72,7 +72,7 @@ const UnserviceableScreen = ({ navigation }) => {
         accuracy: Location.Accuracy.Balanced,
       });
       const { latitude, longitude } = location.coords;
-      const geocoded = await Location.reverseGeocodeAsync({ latitude, longitude });
+      const geocoded = await reverseGeocodeAsync(latitude, longitude);
 
       if (geocoded && geocoded.length > 0) {
         const place = geocoded[0];

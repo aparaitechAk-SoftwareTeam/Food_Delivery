@@ -7,6 +7,7 @@ const Category = require("../models/Category");
 const Combo = require("../models/Combo");
 const Banner = require("../models/Banner");
 const FeaturedSection = require("../models/FeaturedSection");
+const Review = require("../models/Review");
 
 exports.getDashboardStats = async (req, res) => {
   if (process.env.MOCK_DB === "true") {
@@ -610,6 +611,268 @@ exports.updateRestaurantDetails = async (req, res) => {
     Object.assign(restaurant, req.body);
     await restaurant.save();
     res.json(restaurant);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.updateOrderStatus = async (req, res) => {
+  const { id } = req.params;
+  const { status, paymentStatus } = req.body;
+
+  if (process.env.MOCK_DB === "true") {
+    const { orders } = require("../config/mockDataStore");
+    const idx = orders.findIndex(o => o._id === id || o.id === id);
+    if (idx !== -1) {
+      const targetOrder = orders[idx];
+      const targetStatus = status !== undefined ? status : targetOrder.status;
+      const targetPaymentStatus = paymentStatus !== undefined ? paymentStatus : targetOrder.paymentStatus;
+      
+      if (targetStatus === "Completed" && targetPaymentStatus !== "Paid") {
+        return res.status(400).json({ message: "Order cannot be completed until payment is confirmed." });
+      }
+      
+      if (status) {
+        targetOrder.status = status;
+        targetOrder.orderStatus = status;
+      }
+      if (paymentStatus) targetOrder.paymentStatus = paymentStatus;
+      if (status === "Completed") {
+        targetOrder.completedAt = new Date();
+        targetOrder.deliveryStatus = "Completed";
+        targetOrder.riderStatus = "Completed";
+      }
+      return res.json(targetOrder);
+    }
+    return res.status(404).json({ message: "Order not found" });
+  }
+
+  try {
+    const order = await Order.findById(id);
+    if (!order) return res.status(404).json({ message: "Order not found" });
+
+    const finalStatus = status !== undefined ? status : order.status;
+    const finalPaymentStatus = paymentStatus !== undefined ? paymentStatus : order.paymentStatus;
+
+    if (finalStatus === "Completed" && finalPaymentStatus !== "Paid") {
+      return res.status(400).json({ message: "Order cannot be completed until payment is confirmed." });
+    }
+
+    if (status) {
+      order.status = status;
+      order.orderStatus = status;
+    }
+    if (paymentStatus) {
+      order.paymentStatus = paymentStatus;
+      if (paymentStatus === "Paid") {
+        order.paidAt = new Date();
+        order.paymentReceivedAt = new Date();
+      }
+    }
+    if (status === "Completed") {
+      order.completedAt = new Date();
+      order.deliveryStatus = "Completed";
+      order.riderStatus = "Completed";
+    }
+
+    await order.save();
+    
+    const updated = await Order.findById(id).populate("user restaurant");
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.toggleBlockUser = async (req, res) => {
+  const { id } = req.params;
+  if (process.env.MOCK_DB === "true") {
+    const { users } = require("../config/mockDataStore");
+    const idx = users.findIndex(u => u._id === id || u.id === id);
+    if (idx !== -1) {
+      users[idx].isBlocked = !users[idx].isBlocked;
+      return res.json(users[idx]);
+    }
+    return res.status(404).json({ message: "User not found" });
+  }
+  try {
+    const user = await User.findById(id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+    user.isBlocked = !user.isBlocked;
+    await user.save();
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.getReviews = async (req, res) => {
+  if (process.env.MOCK_DB === "true") {
+    const { reviews } = require("../config/mockDataStore");
+    return res.json(reviews || []);
+  }
+  try {
+    const reviews = await Review.find().populate("user", "name email").populate("food", "name").populate("restaurant", "name");
+    res.json(reviews);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.updateReviewStatus = async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  if (process.env.MOCK_DB === "true") {
+    const { reviews } = require("../config/mockDataStore");
+    const idx = reviews.findIndex(r => r._id === id || r.id === id);
+    if (idx !== -1) {
+      reviews[idx].status = status;
+      return res.json(reviews[idx]);
+    }
+    return res.status(404).json({ message: "Review not found" });
+  }
+  try {
+    const updated = await Review.findByIdAndUpdate(id, { status }, { new: true }).populate("user", "name email").populate("food", "name");
+    if (!updated) return res.status(404).json({ message: "Review not found" });
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.deleteReview = async (req, res) => {
+  const { id } = req.params;
+  if (process.env.MOCK_DB === "true") {
+    const { reviews } = require("../config/mockDataStore");
+    const idx = reviews.findIndex(r => r._id === id || r.id === id);
+    if (idx !== -1) {
+      const deleted = reviews.splice(idx, 1);
+      return res.json({ message: "Review deleted", deleted });
+    }
+    return res.status(404).json({ message: "Review not found" });
+  }
+  try {
+    const deleted = await Review.findByIdAndDelete(id);
+    if (!deleted) return res.status(404).json({ message: "Review not found" });
+    res.json({ message: "Review deleted", deleted });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// ── Delivery Boy Management ───────────────────────────────────────────────────
+
+exports.getDeliveryBoys = async (req, res) => {
+  try {
+    const riders = await User.find({ role: "delivery" }).select("-password");
+    res.json(riders);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.createDeliveryBoy = async (req, res) => {
+  const { name, email, password, phone, vehicleType, vehicleNumber, licenseNumber, profilePhoto } = req.body;
+  
+  try {
+    const existing = await User.findOne({ email });
+    if (existing) {
+      return res.status(400).json({ message: "Email already registered" });
+    }
+
+    const bcrypt = require("bcryptjs");
+    const hashed = await bcrypt.hash(password, 10);
+
+    const rider = await User.create({
+      name,
+      email,
+      password: hashed,
+      phone,
+      role: "delivery",
+      vehicleType,
+      vehicleNumber,
+      licenseNumber,
+      profilePhoto: profilePhoto || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80",
+    });
+
+    // Strip password in response
+    const result = rider.toObject();
+    delete result.password;
+
+    res.status(201).json(result);
+  } catch (error) {
+    res.status(550).json({ message: error.message });
+  }
+};
+
+exports.updateDeliveryBoy = async (req, res) => {
+  const { id } = req.params;
+  const { name, email, phone, vehicleType, vehicleNumber, licenseNumber, profilePhoto, isBlocked } = req.body;
+
+  try {
+    const rider = await User.findOne({ _id: id, role: "delivery" });
+    if (!rider) {
+      return res.status(404).json({ message: "Delivery boy not found" });
+    }
+
+    if (name) rider.name = name;
+    if (email) rider.email = email;
+    if (phone) rider.phone = phone;
+    if (vehicleType) rider.vehicleType = vehicleType;
+    if (vehicleNumber) rider.vehicleNumber = vehicleNumber;
+    if (licenseNumber) rider.licenseNumber = licenseNumber;
+    if (profilePhoto) rider.profilePhoto = profilePhoto;
+    if (isBlocked !== undefined) rider.isBlocked = isBlocked;
+
+    await rider.save();
+    
+    const result = rider.toObject();
+    delete result.password;
+
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.deleteDeliveryBoy = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const deleted = await User.findOneAndDelete({ _id: id, role: "delivery" });
+    if (!deleted) {
+      return res.status(404).json({ message: "Delivery boy not found" });
+    }
+    res.json({ message: "Delivery boy deleted successfully", deleted });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.assignOrderToRider = async (req, res) => {
+  const { riderId } = req.body;
+  const orderId = req.params.id;
+
+  try {
+    const order = await Order.findById(orderId);
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    const rider = await User.findOne({ _id: riderId, role: "delivery" });
+    if (!rider) {
+      return res.status(400).json({ message: "Invalid delivery boy selected" });
+    }
+
+    order.deliveryBoy = riderId;
+    order.deliveryStatus = "Assigned";
+    // Keep overall status Preparing or similar when assigned
+    if (order.status === "Pending" || order.status === "Confirmed") {
+      order.status = "Confirmed";
+    }
+
+    await order.save();
+    res.json({ message: "Order assigned to delivery rider", order });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

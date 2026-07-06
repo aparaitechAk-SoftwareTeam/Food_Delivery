@@ -45,6 +45,27 @@ const TopHeader = () => {
   } else if (path.includes('/settings')) {
     title = 'Catalog Settings';
     subtitle = 'Manage global menu variables, default taxes, currency symbols, and default times.';
+  } else if (path.includes('/orders')) {
+    title = 'Order Tracker & Dispatch';
+    subtitle = 'Confirm incoming customer orders, manage kitchen statuses, print invoices, and update delivery states.';
+  } else if (path.includes('/customers')) {
+    title = 'Customer Directory';
+    subtitle = 'View platform customers, order frequencies, total expenditures, addresses, and manage access blocks.';
+  } else if (path.includes('/delivery-boys')) {
+    title = 'Delivery Personnel Registry';
+    subtitle = 'Register new riders, configure vehicle details, verify license numbers, and manage block lists.';
+  } else if (path.includes('/payments')) {
+    title = 'Payment Methods & Logs';
+    subtitle = 'Activate payment gateways (COD, UPI, Card, QR Scan), edit gateway options, and view transactions.';
+  } else if (path.includes('/reviews')) {
+    title = 'Ratings & Feedback Moderation';
+    subtitle = 'Approve, delete, or hide customer reviews left for restaurants or food items.';
+  } else if (path.includes('/reports')) {
+    title = 'Sales Revenue & Reports';
+    subtitle = 'Export platform financial records in Excel/CSV/PDF, and analyze sales performance metrics.';
+  } else if (path.includes('/notifications')) {
+    title = 'Push Notification Broadcaster';
+    subtitle = 'Compose and dispatch real-time promotional alerts or platform notifications to customers.';
   }
 
   return (

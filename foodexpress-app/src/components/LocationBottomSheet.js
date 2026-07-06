@@ -18,6 +18,7 @@ import {
   setActiveAddress,
   selectDefaultAddress,
 } from "../redux/slices/authSlice";
+import { reverseGeocodeAsync } from "../utils/locationHelper";
 
 const LocationBottomSheet = ({ visible, onClose }) => {
   const dispatch = useDispatch();
@@ -63,10 +64,7 @@ const LocationBottomSheet = ({ visible, onClose }) => {
       const { latitude, longitude } = location.coords;
       
       // Reverse geocoding to address
-      const geocoded = await Location.reverseGeocodeAsync({
-        latitude,
-        longitude,
-      });
+      const geocoded = await reverseGeocodeAsync(latitude, longitude);
 
       if (geocoded && geocoded.length > 0) {
         const place = geocoded[0];
