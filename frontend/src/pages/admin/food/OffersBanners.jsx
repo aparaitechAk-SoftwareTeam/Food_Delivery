@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ImageIcon, Plus, Edit2, Trash2, Save, X, RefreshCw, Eye, EyeOff } from 'lucide-react';
 import Sidebar from '../../../components/admin/Sidebar';
 import TopHeader from '../../../components/admin/TopHeader';
+import { API_BASE_URL } from '../../../config';
 
 const DEFAULT_BANNERS = [
   { title: 'Super Saver Mornings', description: 'Get flat 20% off on all breakfast combos', image: 'https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?w=600&auto=format&fit=crop&q=60', cta: '/breakfast', isActive: true },

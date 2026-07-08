@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Sparkles, Plus, Trash2, Edit2, Check, Save, X, RotateCcw } from 'lucide-react';
 import Sidebar from '../../../components/admin/Sidebar';
 import TopHeader from '../../../components/admin/TopHeader';
+import { API_BASE_URL } from '../../../config';
 
 const ComboMeals = () => {
   const [combos, setCombos] = useState([]);

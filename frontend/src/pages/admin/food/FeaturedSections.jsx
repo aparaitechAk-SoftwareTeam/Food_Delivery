@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ChefHat, Save, Edit2, Trash2, Plus, X, Check, RefreshCw } from 'lucide-react';
 import Sidebar from '../../../components/admin/Sidebar';
 import TopHeader from '../../../components/admin/TopHeader';
+import { API_BASE_URL } from '../../../config';
 
 const DEFAULT_SECTIONS = [
   { title: '🔥 Bestsellers', subtitle: 'Most loved dishes near you', maxItems: 10, isVisible: true, displayOrder: 1 },

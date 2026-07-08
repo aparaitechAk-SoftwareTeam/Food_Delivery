@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Utensils, Plus, Trash2, Save, RefreshCw } from 'lucide-react';
 import Sidebar from '../../../components/admin/Sidebar';
 import TopHeader from '../../../components/admin/TopHeader';
+import { API_BASE_URL } from '../../../config';
 
 const DEFAULT_CUISINES = ['Italian', 'North Indian', 'South Indian', 'Chinese', 'Continental', 'Mexican', 'Fast Food', 'Desserts'];
 

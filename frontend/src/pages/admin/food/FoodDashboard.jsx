@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ChefHat, FolderHeart, Sparkles, EyeOff, AlertTriangle, TrendingUp, ShoppingBag, Award, Clock, HelpCircle, RefreshCw } from 'lucide-react';
 import Sidebar from '../../../components/admin/Sidebar';
 import TopHeader from '../../../components/admin/TopHeader';
+import { API_BASE_URL } from '../../../config';
 
 const FoodDashboard = () => {
   const [loading, setLoading] = useState(false);
