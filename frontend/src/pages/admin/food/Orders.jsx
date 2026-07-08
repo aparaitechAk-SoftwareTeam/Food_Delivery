@@ -23,7 +23,7 @@ const Orders = () => {
         }
       });
       const data = await response.json();
-      setRiders(Array.isArray(data) ? data.filter(r => r.isOnline && !r.isBlocked) : []);
+      setRiders(Array.isArray(data) ? data.filter(r => !r.isBlocked) : []);
     } catch (e) {
       console.error(e);
     }
