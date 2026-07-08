@@ -36,6 +36,16 @@ const limiter = rateLimit({
   legacyHeaders: false,
 });
 
+const cors = require('cors');
+app.use(cors({
+  origin: [
+    'https://food-delivery-rouge-one.vercel.app',
+    'http://localhost:5173',
+    'http://localhost:3000'
+  ],
+  credentials: true
+}));
+
 // ── App ────────────────────────────────────────────────────────────────────────
 const app = express();
 app.use(helmet());
