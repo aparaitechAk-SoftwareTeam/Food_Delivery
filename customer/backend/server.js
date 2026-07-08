@@ -46,6 +46,7 @@ app.use(
   cors({
     origin: [
       "https://food-delivery-rouge-one.vercel.app",
+      "https://cloudkitchen.aparaitech.org",
       "http://localhost:5173",
       "http://localhost:8081",
       "http://localhost:8082",
