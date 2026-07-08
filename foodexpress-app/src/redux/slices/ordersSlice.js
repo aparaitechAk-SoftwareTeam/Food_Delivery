@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import orderService from "../../services/orderService";
 import mockData from "../../mockData/data";
+import { logout } from "./authSlice";
 
 const initialState = {
   currentOrders: [],
@@ -26,14 +27,7 @@ export const placeOrder = createAsyncThunk(
     try {
       return await orderService.placeOrder(payload);
     } catch (error) {
-      const newOrder = {
-        id: Date.now(),
-        orderNumber: `FE${Math.floor(1000 + Math.random() * 9000)}`,
-        status: "Confirmed",
-        totalAmount: payload.totalAmount,
-        items: payload.items,
-      };
-      return newOrder;
+      return thunkAPI.rejectWithValue(error.message || "Failed to place order");
     }
   },
 );
@@ -109,6 +103,10 @@ const ordersSlice = createSlice({
       })
       .addCase(reorderThunk.fulfilled, (state, action) => {
         state.currentOrders.unshift(action.payload);
+      })
+      .addCase(logout.fulfilled, (state) => {
+        state.currentOrders = [];
+        state.history = [];
       });
   },
 });

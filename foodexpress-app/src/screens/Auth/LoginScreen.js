@@ -8,7 +8,7 @@ import AppButton from "../../components/AppButton";
 import { login } from "../../redux/slices/authSlice";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
-const LoginScreen = ({ navigation }) => {
+const LoginScreen = ({ navigation, route }) => {
   const dispatch = useDispatch();
   const auth = useSelector((state) => state.auth);
   
@@ -82,10 +82,24 @@ const LoginScreen = ({ navigation }) => {
           await AsyncStorage.removeItem("foodexpress_remembered_user");
           await AsyncStorage.setItem("foodexpress_remember_me", "false");
         }
-        navigation.replace("Main");
+        
+        const redirectTo = route.params?.redirectTo;
+        if (redirectTo) {
+          if (redirectTo === "Main") {
+            navigation.replace("Main", { screen: route.params.redirectTab });
+          } else {
+            navigation.replace("Main");
+            setTimeout(() => {
+              navigation.navigate(redirectTo, route.params.redirectParams || {});
+            }, 100);
+          }
+        } else {
+          navigation.replace("Main");
+        }
       })
       .catch((err) => {
-        setSnackbarMsg(err || "Invalid credentials");
+        const errorMsg = typeof err === "string" ? err : (err?.message || "Invalid credentials");
+        setSnackbarMsg(errorMsg);
         setSnackbarVisible(true);
       });
   };
@@ -164,7 +178,7 @@ const LoginScreen = ({ navigation }) => {
             >
               <Checkbox
                 status={rememberMe ? "checked" : "unchecked"}
-                color="#ff6b00"
+                color="#22C55E"
                 onPress={() => setRememberMe(!rememberMe)}
               />
               <Text style={styles.rememberMeText}>Remember Me</Text>
@@ -184,7 +198,7 @@ const LoginScreen = ({ navigation }) => {
             onPress={handleLogin}
             style={styles.loginBtn}
             contentStyle={{ paddingVertical: 6 }}
-            buttonColor="#ff6b00"
+            buttonColor="#22C55E"
             textColor="#fff"
           >
             Login
@@ -232,7 +246,7 @@ const LoginScreen = ({ navigation }) => {
                 keyboardType="email-address"
                 autoCapitalize="none"
                 style={styles.dialogInput}
-                activeOutlineColor="#ff6b00"
+                activeOutlineColor="#22C55E"
               />
               {!!forgotMessage && (
                 <Text style={forgotMessage.includes("sent") ? styles.successDialogText : styles.errorText}>
@@ -247,7 +261,7 @@ const LoginScreen = ({ navigation }) => {
               <AppButton
                 loading={forgotLoading}
                 onPress={handleForgotPassword}
-                textColor="#ff6b00"
+                textColor="#22C55E"
               >
                 Send
               </AppButton>
@@ -285,7 +299,7 @@ const styles = StyleSheet.create({
   brandText: {
     fontSize: 38,
     fontWeight: "bold",
-    color: "#ff6b00",
+    color: "#22C55E",
     letterSpacing: 1,
   },
   taglineText: {
@@ -338,7 +352,7 @@ const styles = StyleSheet.create({
   },
   forgotText: {
     fontSize: 13,
-    color: "#ff6b00",
+    color: "#22C55E",
     fontWeight: "600",
   },
   loginBtn: {
@@ -357,7 +371,7 @@ const styles = StyleSheet.create({
   },
   registerLink: {
     fontSize: 14,
-    color: "#ff6b00",
+    color: "#22C55E",
     fontWeight: "bold",
     marginLeft: 6,
   },

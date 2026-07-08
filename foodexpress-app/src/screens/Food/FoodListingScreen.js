@@ -9,6 +9,7 @@ import {
   Animated,
   Alert,
   Modal,
+  ScrollView,
 } from "react-native";
 import {
   Text,
@@ -23,15 +24,17 @@ import {
 import { useDispatch, useSelector } from "react-redux";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { fetchFoods } from "../../redux/slices/foodsSlice";
-import { toggleFavoriteRestaurant, fetchFavorites } from "../../redux/slices/wishlistSlice";
+import { toggleFavoriteRestaurant, fetchFavorites, addFoodToWishlist, removeFoodFromWishlist } from "../../redux/slices/wishlistSlice";
 import FilterDrawer from "../../components/FilterDrawer";
+import FoodCard from "../../components/FoodCard";
+import api from "../../utils/api";
 
 const FoodListingScreen = ({ navigation, route }) => {
   const dispatch = useDispatch();
 
   // Redux Selectors
   const { categories, loading } = useSelector((state) => state.foods);
-  const { favorites } = useSelector((state) => state.wishlist);
+  const { favorites, items: wishlistItems } = useSelector((state) => state.wishlist);
   const { token } = useSelector((state) => state.auth);
 
   // Pagination & Filtering Local States
@@ -58,6 +61,7 @@ const FoodListingScreen = ({ navigation, route }) => {
   // Modal Visibilities
   const [filterDrawerVisible, setFilterDrawerVisible] = useState(false);
   const [sortModalVisible, setSortModalVisible] = useState(false);
+  const [isGridView, setIsGridView] = useState(false);
 
   // Load initial route parameters
   useEffect(() => {
@@ -87,6 +91,15 @@ const FoodListingScreen = ({ navigation, route }) => {
       setPaginationLoading(true);
     }
 
+    const filterType = route.params?.filterType;
+    let endpoint = "/foods";
+    if (filterType === "bestsellers") endpoint = "/products/bestsellers";
+    else if (filterType === "new-arrivals") endpoint = "/products/new-arrivals";
+    else if (filterType === "healthy") endpoint = "/products/healthy";
+    else if (filterType === "combos") endpoint = "/products/combos";
+    else if (filterType === "category") endpoint = `/products/category/${route.params?.category}`;
+    else if (filterType === "cuisine") endpoint = `/products/cuisine/${route.params?.cuisine}`;
+
     const params = {
       q: searchQuery || undefined,
       category: activeFilters.category || undefined,
@@ -103,7 +116,13 @@ const FoodListingScreen = ({ navigation, route }) => {
     };
 
     try {
-      const response = await dispatch(fetchFoods(params)).unwrap();
+      let response;
+      if (filterType) {
+        const { data } = await api.get(endpoint, { params });
+        response = data;
+      } else {
+        response = await dispatch(fetchFoods(params)).unwrap();
+      }
       const newFoods = response.foods || [];
       
       if (shouldReset || page === 1) {
@@ -149,23 +168,28 @@ const FoodListingScreen = ({ navigation, route }) => {
   };
 
   const toggleFavorite = (item) => {
-    const rest = item.restaurant || {};
-    const mapped = {
-      id: rest.id || rest._id || item.restaurantId || item.id,
-      _id: rest._id || rest.id || item.restaurantId || item._id,
-      name: rest.name || item.restaurant,
-      image: item.image,
-      rating: rest.rating || item.rating || 4.2,
-      deliveryTime: rest.deliveryTime || "25 mins",
-      cuisine: rest.cuisine?.join(", ") || item.category || "Food",
-    };
-    dispatch(toggleFavoriteRestaurant(mapped));
+    if (!token) {
+      Alert.alert(
+        "Login Required",
+        "Please log in to add items to your wishlist.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Login", onPress: () => navigation.navigate("Login", { redirectTo: "FoodListing", redirectParams: route.params }) }
+        ]
+      );
+      return;
+    }
+    const fid = item.id || item._id;
+    if (isFavorited(item)) {
+      dispatch(removeFoodFromWishlist(fid));
+    } else {
+      dispatch(addFoodToWishlist(item));
+    }
   };
 
   const isFavorited = (item) => {
-    const rest = item.restaurant || {};
-    const rid = rest._id || rest.id || item.restaurantId || item.id;
-    return favorites.some((fav) => (fav._id || fav.id)?.toString() === rid?.toString());
+    const fid = item.id || item._id;
+    return wishlistItems.some((w) => (w.id || w._id)?.toString() === fid?.toString());
   };
 
   const getActiveFiltersCount = () => {
@@ -243,6 +267,7 @@ const FoodListingScreen = ({ navigation, route }) => {
   };
 
   const renderFoodCard = ({ item }) => {
+    const isAvailable = item.isAvailable !== false;
     const isFav = isFavorited(item);
     const rest = item.restaurant || {};
     const restName = rest.name || item.restaurant;
@@ -260,11 +285,16 @@ const FoodListingScreen = ({ navigation, route }) => {
     const distance = rest.distance || 1.2;
 
     return (
-      <Card style={styles.card}>
+      <Card style={[styles.card, !isAvailable && { opacity: 0.6 }]}>
         <View style={styles.cardRow}>
           {/* Left - Image, badge, heart */}
           <View style={styles.leftSection}>
-            <Image source={{ uri: item.image }} style={styles.cardImage} />
+            <Image source={{ uri: item.image }} style={styles.cardImage} blurRadius={!isAvailable ? 8 : 0} />
+            {!isAvailable && (
+              <View style={styles.unavailableOverlay}>
+                <Text style={styles.unavailableOverlayText}>Currently Unavailable</Text>
+              </View>
+            )}
             <View style={styles.offerBadge}>
               <Text style={styles.offerText}>{discountText}</Text>
             </View>
@@ -339,15 +369,27 @@ const FoodListingScreen = ({ navigation, route }) => {
           >
             Details
           </Button>
-          <Button
-            mode="contained"
-            onPress={() => handleBookNow(item)}
-            style={[styles.actionBtn, styles.bookBtn]}
-            labelStyle={styles.bookLabel}
-            buttonColor="#ff6b00"
-          >
-            Order Now
-          </Button>
+          {!isAvailable ? (
+            <Button
+              mode="contained"
+              onPress={() => Alert.alert("Notification Subscribed", `We will notify you when ${item.name} is back in stock!`)}
+              style={[styles.actionBtn, styles.bookBtn]}
+              labelStyle={styles.bookLabel}
+              buttonColor="#ff6b00"
+            >
+              Notify Me
+            </Button>
+          ) : (
+            <Button
+              mode="contained"
+              onPress={() => handleBookNow(item)}
+              style={[styles.actionBtn, styles.bookBtn]}
+              labelStyle={styles.bookLabel}
+              buttonColor="#ff6b00"
+            >
+              Order Now
+            </Button>
+          )}
           <IconButton
             icon="chat-processing-outline"
             iconColor="#ff6b00"
@@ -498,10 +540,19 @@ const FoodListingScreen = ({ navigation, route }) => {
 
         {/* Results title and dynamic count */}
         <View style={styles.titleContainer}>
-          <Text style={styles.titleText}>Top Products & Restaurants</Text>
-          <Text style={styles.countText}>
-            {loading && currentPage === 1 ? "Searching..." : `${totalCount} results match filters`}
-          </Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.titleText}>Top Products & Restaurants</Text>
+            <Text style={styles.countText}>
+              {loading && currentPage === 1 ? "Searching..." : `${totalCount} results match filters`}
+            </Text>
+          </View>
+          <IconButton
+            icon={isGridView ? "view-list" : "view-grid"}
+            iconColor="#ff6b00"
+            size={22}
+            onPress={() => setIsGridView(!isGridView)}
+            style={{ margin: 0 }}
+          />
         </View>
       </View>
     );
@@ -531,9 +582,11 @@ const FoodListingScreen = ({ navigation, route }) => {
 
       {/* Main lists */}
       <FlatList
+        key={isGridView ? "grid" : "list"}
+        numColumns={isGridView ? 2 : 1}
         data={foodsList}
         keyExtractor={(item) => (item.id || item._id).toString()}
-        renderItem={renderFoodCard}
+        renderItem={isGridView ? ({ item }) => <FoodCard food={item} navigation={navigation} /> : renderFoodCard}
         ListHeaderComponent={renderHeaderComponent}
         refreshing={loading && currentPage === 1}
         onRefresh={() => loadFoods(1, true)}
@@ -725,6 +778,9 @@ const styles = StyleSheet.create({
     height: 32,
   },
   titleContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 16,
     marginTop: 14,
     marginBottom: 8,
@@ -965,6 +1021,24 @@ const styles = StyleSheet.create({
   sortTextActive: {
     color: "#ff6b00",
     fontWeight: "bold",
+  },
+  unavailableOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  unavailableOverlayText: {
+    color: "#FFFFFF",
+    fontSize: 9,
+    fontWeight: "805",
+    textTransform: "uppercase",
+    textAlign: "center",
+    paddingHorizontal: 4,
   },
 });
 

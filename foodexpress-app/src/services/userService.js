@@ -21,6 +21,14 @@ const userService = {
     const { data } = await api.put(`/user/addresses/${addressId}/default`);
     return data;
   },
+  updateAddress: async (addressId, address) => {
+    const { data } = await api.put(`/user/addresses/${addressId}`, address);
+    return data;
+  },
+  deleteAddress: async (addressId) => {
+    const { data } = await api.delete(`/user/addresses/${addressId}`);
+    return data;
+  },
 };
 
 export default userService;

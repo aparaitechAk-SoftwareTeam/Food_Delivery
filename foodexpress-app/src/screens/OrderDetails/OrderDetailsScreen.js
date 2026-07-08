@@ -48,7 +48,8 @@ const OrderDetailsScreen = ({ route, navigation }) => {
         setSnackbarVisible(true);
       })
       .catch((err) => {
-        Alert.alert("Error", err || "Could not cancel order.");
+        const errorMsg = typeof err === "string" ? err : (err?.message || "Could not cancel order.");
+        Alert.alert("Error", errorMsg);
       })
       .finally(() => {
         setCancelLoading(false);
@@ -58,7 +59,7 @@ const OrderDetailsScreen = ({ route, navigation }) => {
   if (loading) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator color="#ff6b00" size="large" />
+        <ActivityIndicator color="#22C55E" size="large" />
         <Text style={styles.loadingText}>Fetching order details...</Text>
       </View>
     );
@@ -85,7 +86,7 @@ const OrderDetailsScreen = ({ route, navigation }) => {
           
           <View style={styles.statusRow}>
             <Text style={styles.statusLabel}>Current Status: </Text>
-            <Text style={[styles.statusValue, { color: order.status === "Cancelled" ? "#c62828" : order.status === "Delivered" ? "#2e7d32" : "#ff6b00" }]}>
+            <Text style={[styles.statusValue, { color: order.status === "Cancelled" ? "#c62828" : order.status === "Delivered" ? "#2e7d32" : "#22C55E" }]}>
               {order.status}
             </Text>
           </View>
@@ -116,7 +117,13 @@ const OrderDetailsScreen = ({ route, navigation }) => {
             />
             <View style={styles.restaurantDetails}>
               <Text style={styles.restaurantName}>{order.restaurant?.name || "Restaurant"}</Text>
-              <Text style={styles.restaurantAddress}>{order.restaurant?.cuisine?.join(", ") || "Multi Cuisine"}</Text>
+              <Text style={styles.restaurantAddress}>
+                {Array.isArray(order.restaurant?.cuisine)
+                  ? order.restaurant.cuisine.join(", ")
+                  : typeof order.restaurant?.cuisine === "string"
+                  ? order.restaurant.cuisine
+                  : "Multi Cuisine"}
+              </Text>
             </View>
           </View>
         </View>
@@ -201,6 +208,16 @@ const OrderDetailsScreen = ({ route, navigation }) => {
               <Text style={styles.detailTextVal}>{order.paymentMethod || "Cash on Delivery"}</Text>
             </View>
           </View>
+          <Divider style={styles.detailDivider} />
+          <View style={styles.detailRow}>
+            <MaterialCommunityIcons name="credit-card-check-outline" size={18} color="#666" style={styles.detailIcon} />
+            <View style={styles.detailTextCol}>
+              <Text style={styles.detailTextLabel}>Payment Status</Text>
+              <Text style={[styles.detailTextVal, { color: order.paymentStatus === "Paid" ? "#0f8a5f" : "#ff6b00", fontWeight: "bold" }]}>
+                {order.paymentStatus || "Pending"}
+              </Text>
+            </View>
+          </View>
         </View>
 
         {/* Actions bottom */}
@@ -224,19 +241,19 @@ const OrderDetailsScreen = ({ route, navigation }) => {
               </Text>
               <RadioButton.Group onValueChange={value => setCancelReason(value)} value={cancelReason}>
                 <View style={styles.radioRow}>
-                  <RadioButton value="Ordered by mistake" color="#ff6b00" />
+                  <RadioButton value="Ordered by mistake" color="#22C55E" />
                   <Text style={styles.radioLabel}>Ordered by mistake</Text>
                 </View>
                 <View style={styles.radioRow}>
-                  <RadioButton value="Delivery taking too long" color="#ff6b00" />
+                  <RadioButton value="Delivery taking too long" color="#22C55E" />
                   <Text style={styles.radioLabel}>Delivery taking too long</Text>
                 </View>
                 <View style={styles.radioRow}>
-                  <RadioButton value="Change of plans" color="#ff6b00" />
+                  <RadioButton value="Change of plans" color="#22C55E" />
                   <Text style={styles.radioLabel}>Change of plans</Text>
                 </View>
                 <View style={styles.radioRow}>
-                  <RadioButton value="Found better option" color="#ff6b00" />
+                  <RadioButton value="Found better option" color="#22C55E" />
                   <Text style={styles.radioLabel}>Found better option</Text>
                 </View>
               </RadioButton.Group>
@@ -271,7 +288,7 @@ const OrderDetailsScreen = ({ route, navigation }) => {
 // Simple AppButton helper inside
 const AppButton = ({ loading, children, onPress, textColor, mode = "text" }) => (
   <TouchableOpacity onPress={onPress} disabled={loading} style={styles.btnAction}>
-    {loading ? <ActivityIndicator size="small" color="#ff6b00" /> : <Text style={[styles.btnActionText, { color: textColor }]}>{children}</Text>}
+    {loading ? <ActivityIndicator size="small" color="#22C55E" /> : <Text style={[styles.btnActionText, { color: textColor }]}>{children}</Text>}
   </TouchableOpacity>
 );
 
@@ -466,7 +483,7 @@ const styles = StyleSheet.create({
   grandTotalValue: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#ff6b00",
+    color: "#16A34A",
   },
   detailRow: {
     flexDirection: "row",
@@ -493,14 +510,14 @@ const styles = StyleSheet.create({
     backgroundColor: "#f5f5f5",
   },
   trackOrderBtn: {
-    backgroundColor: "#ff6b00",
+    backgroundColor: "#22C55E",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 14,
     borderRadius: 12,
     marginTop: 8,
-    shadowColor: "#ff6b00",
+    shadowColor: "#22C55E",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 6,

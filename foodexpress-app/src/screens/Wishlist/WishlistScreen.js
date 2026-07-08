@@ -33,6 +33,7 @@ const WishlistScreen = ({ navigation }) => {
       price: item.price,
       quantity: 1,
       restaurant: restName,
+      restaurantId: item.restaurant?._id || item.restaurant?.id || item.restaurant,
       image: item.image
     }));
     setSnackbarMsg(`${item.name} added to cart!`);
@@ -100,14 +101,14 @@ const WishlistScreen = ({ navigation }) => {
             onPress={() => handleAddToCart(item)}
           >
             <Text style={styles.addBtnText}>ADD</Text>
-            <MaterialCommunityIcons name="plus" size={12} color="#ff6b00" style={styles.addPlus} />
+            <MaterialCommunityIcons name="plus" size={12} color="#22C55E" style={styles.addPlus} />
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.removeIconBtn}
             onPress={() => handleRemove(item.id || item._id)}
           >
-            <MaterialCommunityIcons name="heart" size={20} color="#ff3b30" />
+            <MaterialCommunityIcons name="heart" size={20} color="#22C55E" />
           </TouchableOpacity>
         </View>
       </View>
@@ -212,7 +213,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   tagBadge: {
-    backgroundColor: "#fff3e0",
+    backgroundColor: "#DCFCE7",
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
@@ -220,7 +221,7 @@ const styles = StyleSheet.create({
   },
   tagText: {
     fontSize: 10,
-    color: "#e65100",
+    color: "#16A34A",
     fontWeight: "bold",
   },
   foodName: {
@@ -311,7 +312,7 @@ const styles = StyleSheet.create({
   addBtnText: {
     fontSize: 12,
     fontWeight: "bold",
-    color: "#ff6b00",
+    color: "#22C55E",
   },
   addPlus: {
     marginLeft: 2,
@@ -359,7 +360,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   exploreBtn: {
-    backgroundColor: "#ff6b00",
+    backgroundColor: "#22C55E",
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,

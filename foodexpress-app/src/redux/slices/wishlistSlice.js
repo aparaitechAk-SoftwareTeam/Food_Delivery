@@ -2,6 +2,7 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import favoriteService from "../../services/favoriteService";
 import wishlistService from "../../services/wishlistService";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { logout } from "./authSlice";
 
 // Wishlist refers to saved foods, Favorites refers to saved restaurants
 
@@ -149,6 +150,10 @@ const wishlistSlice = createSlice({
       })
       .addCase(removeFoodFromWishlist.fulfilled, (state, action) => {
         state.items = action.payload || [];
+      })
+      .addCase(logout.fulfilled, (state) => {
+        state.items = [];
+        state.favorites = [];
       });
   },
 });

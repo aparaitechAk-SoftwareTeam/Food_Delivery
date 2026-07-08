@@ -33,12 +33,25 @@ const orderSchema = new mongoose.Schema({
       "Preparing",
       "Out For Delivery",
       "Delivered",
+      "Completed",
       "Cancelled",
     ],
     default: "Pending",
   },
   orderNumber: { type: String, required: true },
+  deliveryBoy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+  deliveryStatus: {
+    type: String,
+    enum: ["None", "Assigned", "Accepted", "Arrived At Restaurant", "Picked Up", "Delivered", "Completed", "Rejected"],
+    default: "None"
+  },
+  riderStatus: { type: String },
+  orderStatus: { type: String },
+  paymentReceivedAt: { type: Date },
+  completedAt: { type: Date },
   cancellationReason: { type: String },
+  transactionId: { type: String },
+  paidAt: { type: Date },
   createdAt: { type: Date, default: Date.now },
 });
 

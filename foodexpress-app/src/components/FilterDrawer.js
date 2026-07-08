@@ -255,7 +255,7 @@ const FilterDrawer = ({ visible, onClose, filters, onApply, categories }) => {
               <Switch
                 value={isOpen}
                 onValueChange={setIsOpen}
-                trackColor={{ false: "#ccc", true: "#ff6b00" }}
+                trackColor={{ false: "#ccc", true: "#22C55E" }}
                 thumbColor="#fff"
               />
             </View>
@@ -277,7 +277,7 @@ const FilterDrawer = ({ visible, onClose, filters, onApply, categories }) => {
               mode="contained"
               onPress={handleApply}
               style={[styles.actionBtn, styles.applyBtn]}
-              buttonColor="#ff6b00"
+              buttonColor="#22C55E"
             >
               Apply Filters
             </Button>
@@ -338,15 +338,15 @@ const styles = StyleSheet.create({
     borderColor: "#e0e0e0",
   },
   chipActive: {
-    backgroundColor: "#ffefd6",
-    borderColor: "#ff6b00",
+    backgroundColor: "#DCFCE7",
+    borderColor: "#22C55E",
   },
   chipText: {
     color: "#666",
     fontSize: 12,
   },
   chipTextActive: {
-    color: "#ff6b00",
+    color: "#16A34A",
     fontWeight: "bold",
   },
   toggleRow: {
