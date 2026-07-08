@@ -224,30 +224,6 @@ const ProfileScreen = ({ navigation }) => {
           addresses.map((item, index) => (
             <View key={item._id || item.id}>
               {index > 0 && <Divider />}
-<<<<<<< HEAD
-              <TouchableOpacity
-                style={[styles.addressItem, item.isDefault && styles.defaultAddressItem]}
-                onPress={() => handleSetDefaultAddress(item._id || item.id)}
-              >
-                <MaterialCommunityIcons
-                  name={item.label === "Home" ? "home" : item.label === "Work" ? "briefcase" : "map-marker"}
-                  color={item.isDefault ? "#22C55E" : "#666"}
-                  size={22}
-                  style={styles.addressIcon}
-                />
-                <View style={styles.addressInfoCol}>
-                  <Text style={[styles.addressLabel, item.isDefault && styles.defaultAddressLabel]}>
-                    {item.label} {item.isDefault && "(Default)"}
-                  </Text>
-                  <Text style={styles.addressText} numberOfLines={2}>
-                    {item.line1}, {item.line2 ? `${item.line2}, ` : ""}{item.city}, {item.state} - {item.postalCode}
-                  </Text>
-                </View>
-                {item.isDefault && (
-                  <MaterialCommunityIcons name="check-circle" size={18} color="#22C55E" />
-                )}
-              </TouchableOpacity>
-=======
               <View style={[styles.addressItemRow, item.isDefault && styles.defaultAddressItem]}>
                 <TouchableOpacity
                   style={styles.addressItemLeft}
@@ -286,7 +262,6 @@ const ProfileScreen = ({ navigation }) => {
                   />
                 </View>
               </View>
->>>>>>> e425c86c801fcd601a7e2e77e3c7d6edab9bb6f0
             </View>
           ))
         )}

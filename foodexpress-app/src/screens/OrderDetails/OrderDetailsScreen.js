@@ -208,6 +208,16 @@ const OrderDetailsScreen = ({ route, navigation }) => {
               <Text style={styles.detailTextVal}>{order.paymentMethod || "Cash on Delivery"}</Text>
             </View>
           </View>
+          <Divider style={styles.detailDivider} />
+          <View style={styles.detailRow}>
+            <MaterialCommunityIcons name="credit-card-check-outline" size={18} color="#666" style={styles.detailIcon} />
+            <View style={styles.detailTextCol}>
+              <Text style={styles.detailTextLabel}>Payment Status</Text>
+              <Text style={[styles.detailTextVal, { color: order.paymentStatus === "Paid" ? "#0f8a5f" : "#ff6b00", fontWeight: "bold" }]}>
+                {order.paymentStatus || "Pending"}
+              </Text>
+            </View>
+          </View>
         </View>
 
         {/* Actions bottom */}

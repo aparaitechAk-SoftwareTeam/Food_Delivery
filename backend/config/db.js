@@ -13,9 +13,9 @@ const connectDB = async (uri) => {
   }
 
   try {
+    // Set a short server selection timeout so we fail fast and fall back to Mock DB
     await mongoose.connect(uri, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
+      serverSelectionTimeoutMS: 3000
     });
     console.log("MongoDB connected");
     process.env.MOCK_DB = "false";
@@ -26,3 +26,4 @@ const connectDB = async (uri) => {
 };
 
 module.exports = connectDB;
+

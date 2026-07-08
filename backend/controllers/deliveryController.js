@@ -1,0 +1,203 @@
+const User = require("../models/User");
+const Order = require("../models/Order");
+const Review = require("../models/Review");
+
+// 1. Toggle Online/Offline Status
+exports.toggleOnlineStatus = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(450).json({ message: "Rider profile not found" });
+    }
+    user.isOnline = !user.isOnline;
+    await user.save();
+
+    res.json({
+      message: `Status updated to ${user.isOnline ? "Online" : "Offline"}`,
+      isOnline: user.isOnline,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// 2. Update Live GPS Location
+exports.updateLocation = async (req, res) => {
+  const { latitude, longitude } = req.body;
+  if (latitude === undefined || longitude === undefined) {
+    return res.status(400).json({ message: "Latitude and Longitude are required" });
+  }
+
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(450).json({ message: "Rider profile not found" });
+    }
+
+    user.location = {
+      latitude: Number(latitude),
+      longitude: Number(longitude),
+      updatedAt: new Date(),
+    };
+    await user.save();
+
+    res.json({ message: "Rider location updated successfully", location: user.location });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// 3. Get Assigned Orders
+exports.getAssignedOrders = async (req, res) => {
+  try {
+    // Find active orders assigned to the delivery boy that are not finished
+    const orders = await Order.find({
+      deliveryBoy: req.user._id,
+      deliveryStatus: { $in: ["Assigned", "Accepted", "Arrived At Restaurant", "Picked Up"] },
+    })
+      .populate("user", "name phone email")
+      .populate("restaurant", "name address coordinates image")
+      .populate("items.food", "name image price");
+
+    res.json(orders);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// 4. Update Delivery Workflow Status
+exports.updateDeliveryStatus = async (req, res) => {
+  const { status } = req.body; // Assigned, Accepted, Arrived At Restaurant, Picked Up, Delivered, Cash Collected, Completed, Rejected
+  const orderId = req.params.id;
+
+  const validStatuses = ["Assigned", "Accepted", "Arrived At Restaurant", "Picked Up", "Delivered", "Cash Collected", "Completed", "Rejected"];
+  if (!validStatuses.includes(status)) {
+    return res.status(400).json({ message: "Invalid delivery status value" });
+  }
+
+  try {
+    const order = await Order.findOne({ _id: orderId, deliveryBoy: req.user._id });
+    if (!order) {
+      return res.status(450).json({ message: "Assigned order not found" });
+    }
+
+    if (status === "Completed" && order.paymentStatus !== "Paid") {
+      return res.status(400).json({ message: "Order cannot be completed until payment is confirmed." });
+    }
+
+    if (status === "Cash Collected") {
+      order.paymentStatus = "Paid";
+      order.paidAt = new Date();
+      order.paymentReceivedAt = new Date();
+    } else if (status === "Completed") {
+      order.status = "Completed";
+      order.deliveryStatus = "Completed";
+      order.completedAt = new Date();
+    } else if (status === "Rejected") {
+      order.status = "Confirmed";
+      order.deliveryBoy = undefined;
+      order.deliveryStatus = "None";
+    } else {
+      order.deliveryStatus = status;
+      if (status === "Accepted") {
+        order.status = "Preparing";
+      } else if (status === "Picked Up") {
+        order.status = "Out For Delivery";
+      } else if (status === "Delivered") {
+        order.status = "Delivered";
+      }
+    }
+
+    // Sync redundant tracking status fields for Feature 9 compatibility
+    order.riderStatus = order.deliveryStatus;
+    order.orderStatus = order.status;
+
+    await order.save();
+    res.json({ message: "Order status synchronized successfully", order });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// 5. Get Rider Earnings & Performance widgets
+exports.getRiderEarnings = async (req, res) => {
+  try {
+    const orders = await Order.find({ deliveryBoy: req.user._id, status: "Delivered" });
+
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const weekStart = new Date();
+    weekStart.setDate(weekStart.getDate() - 7);
+
+    const monthStart = new Date();
+    monthStart.setDate(monthStart.getDate() - 30);
+
+    let todayEarnings = 0;
+    let weeklyEarnings = 0;
+    let monthlyEarnings = 0;
+
+    orders.forEach((o) => {
+      const orderDate = new Date(o.createdAt);
+      // We assume delivery fee payout to rider is ₹40 per completed delivery (deliveryCharge value)
+      const pay = o.deliveryCharge || 40;
+
+      if (orderDate >= todayStart) {
+        todayEarnings += pay;
+      }
+      if (orderDate >= weekStart) {
+        weeklyEarnings += pay;
+      }
+      if (orderDate >= monthStart) {
+        monthlyEarnings += pay;
+      }
+    });
+
+    const reviews = await Review.find({ deliveryBoy: req.user._id, status: "Approved" });
+    const avgRating = reviews.length > 0
+      ? Number((reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1))
+      : 4.8; // Default rating
+
+    res.json({
+      todayEarnings,
+      weeklyEarnings,
+      monthlyEarnings,
+      completedCount: orders.length,
+      avgRating,
+      ratingCount: reviews.length,
+      averageDeliveryTime: 25, // Mock default in minutes
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// 6. Get Rider Delivery History
+exports.getRiderHistory = async (req, res) => {
+  try {
+    const orders = await Order.find({
+      deliveryBoy: req.user._id,
+      status: { $in: ["Delivered", "Cancelled"] },
+    })
+      .populate("user", "name phone email")
+      .populate("restaurant", "name address")
+      .sort({ createdAt: -1 });
+
+    res.json(orders);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// 7. Get Rider Reviews
+exports.getRiderReviews = async (req, res) => {
+  try {
+    const reviews = await Review.find({ deliveryBoy: req.user._id, status: "Approved" })
+      .populate("user", "name")
+      .sort({ createdAt: -1 });
+
+    res.json(reviews);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};

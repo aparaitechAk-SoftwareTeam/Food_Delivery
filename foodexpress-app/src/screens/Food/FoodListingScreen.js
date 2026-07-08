@@ -9,6 +9,7 @@ import {
   Animated,
   Alert,
   Modal,
+  ScrollView,
 } from "react-native";
 import {
   Text,
@@ -266,6 +267,7 @@ const FoodListingScreen = ({ navigation, route }) => {
   };
 
   const renderFoodCard = ({ item }) => {
+    const isAvailable = item.isAvailable !== false;
     const isFav = isFavorited(item);
     const rest = item.restaurant || {};
     const restName = rest.name || item.restaurant;
@@ -283,11 +285,16 @@ const FoodListingScreen = ({ navigation, route }) => {
     const distance = rest.distance || 1.2;
 
     return (
-      <Card style={styles.card}>
+      <Card style={[styles.card, !isAvailable && { opacity: 0.6 }]}>
         <View style={styles.cardRow}>
           {/* Left - Image, badge, heart */}
           <View style={styles.leftSection}>
-            <Image source={{ uri: item.image }} style={styles.cardImage} />
+            <Image source={{ uri: item.image }} style={styles.cardImage} blurRadius={!isAvailable ? 8 : 0} />
+            {!isAvailable && (
+              <View style={styles.unavailableOverlay}>
+                <Text style={styles.unavailableOverlayText}>Currently Unavailable</Text>
+              </View>
+            )}
             <View style={styles.offerBadge}>
               <Text style={styles.offerText}>{discountText}</Text>
             </View>
@@ -295,7 +302,7 @@ const FoodListingScreen = ({ navigation, route }) => {
               <MaterialCommunityIcons
                 name={isFav ? "heart" : "heart-outline"}
                 size={20}
-                color={isFav ? "#22C55E" : "#fff"}
+                color={isFav ? "#ff3366" : "#fff"}
               />
             </TouchableOpacity>
           </View>
@@ -362,18 +369,30 @@ const FoodListingScreen = ({ navigation, route }) => {
           >
             Details
           </Button>
-          <Button
-            mode="contained"
-            onPress={() => handleBookNow(item)}
-            style={[styles.actionBtn, styles.bookBtn]}
-            labelStyle={styles.bookLabel}
-            buttonColor="#22C55E"
-          >
-            Order Now
-          </Button>
+          {!isAvailable ? (
+            <Button
+              mode="contained"
+              onPress={() => Alert.alert("Notification Subscribed", `We will notify you when ${item.name} is back in stock!`)}
+              style={[styles.actionBtn, styles.bookBtn]}
+              labelStyle={styles.bookLabel}
+              buttonColor="#ff6b00"
+            >
+              Notify Me
+            </Button>
+          ) : (
+            <Button
+              mode="contained"
+              onPress={() => handleBookNow(item)}
+              style={[styles.actionBtn, styles.bookBtn]}
+              labelStyle={styles.bookLabel}
+              buttonColor="#ff6b00"
+            >
+              Order Now
+            </Button>
+          )}
           <IconButton
             icon="chat-processing-outline"
-            iconColor="#22C55E"
+            iconColor="#ff6b00"
             size={20}
             onPress={() => handleChat(item)}
             style={styles.iconActionBtn}
@@ -553,7 +572,7 @@ const FoodListingScreen = ({ navigation, route }) => {
           right={() => (
             <IconButton
               icon="microphone"
-              iconColor="#22C55E"
+              iconColor="#ff6b00"
               size={22}
               onPress={() => Alert.alert("Voice Search", "Listening...")}
             />
@@ -577,13 +596,13 @@ const FoodListingScreen = ({ navigation, route }) => {
         showsVerticalScrollIndicator={false}
         ListFooterComponent={
           paginationLoading ? (
-            <ActivityIndicator color="#22C55E" size="small" style={{ marginVertical: 16 }} />
+            <ActivityIndicator color="#ff6b00" size="small" style={{ marginVertical: 16 }} />
           ) : null
         }
         ListEmptyComponent={
           <View style={styles.centerContainer}>
             {loading && currentPage === 1 ? (
-              <ActivityIndicator color="#22C55E" size="large" />
+              <ActivityIndicator color="#ff6b00" size="large" />
             ) : (
               <>
                 <Text style={styles.emptyTitle}>No Results Found</Text>
@@ -593,7 +612,7 @@ const FoodListingScreen = ({ navigation, route }) => {
                 <Button
                   mode="contained"
                   onPress={handleResetFilters}
-                  buttonColor="#22C55E"
+                  buttonColor="#ff6b00"
                   style={styles.resetBtn}
                 >
                   Clear Filters
@@ -653,7 +672,7 @@ const FoodListingScreen = ({ navigation, route }) => {
                       {opt.label}
                     </Text>
                     {isSelected && (
-                      <MaterialCommunityIcons name="check" size={20} color="#22C55E" />
+                      <MaterialCommunityIcons name="check" size={20} color="#ff6b00" />
                     )}
                   </TouchableOpacity>
                 );
@@ -722,8 +741,8 @@ const styles = StyleSheet.create({
     shadowRadius: 1,
   },
   circularIconBgActive: {
-    borderColor: "#22C55E",
-    backgroundColor: "#DCFCE7",
+    borderColor: "#ff6b00",
+    backgroundColor: "#fffdf9",
   },
   circularIconText: {
     fontSize: 24,
@@ -736,7 +755,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   circularCategoryLabelActive: {
-    color: "#16A34A",
+    color: "#ff6b00",
     fontWeight: "bold",
   },
   chipsScroll: {
@@ -808,7 +827,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: "#16A34A",
+    backgroundColor: "#e53935",
     paddingVertical: 3,
     alignItems: "center",
   },
@@ -895,7 +914,7 @@ const styles = StyleSheet.create({
   priceTag: {
     fontSize: 13,
     fontWeight: "bold",
-    color: "#16A34A",
+    color: "#ff6b00",
     marginRight: 4,
   },
   actionsRow: {
@@ -993,15 +1012,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   sortOptionActive: {
-    backgroundColor: "#DCFCE7",
+    backgroundColor: "#fffbf5",
   },
   sortText: {
     fontSize: 14,
     color: "#555",
   },
   sortTextActive: {
-    color: "#16A34A",
+    color: "#ff6b00",
     fontWeight: "bold",
+  },
+  unavailableOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  unavailableOverlayText: {
+    color: "#FFFFFF",
+    fontSize: 9,
+    fontWeight: "805",
+    textTransform: "uppercase",
+    textAlign: "center",
+    paddingHorizontal: 4,
   },
 });
 

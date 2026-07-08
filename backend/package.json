@@ -4,7 +4,10 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "predev": "node kill-port.js",
+    "kill-port": "node kill-port.js",
+    "fresh": "node kill-port.js && nodemon server.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -15,7 +18,7 @@
     "express-async-errors": "^3.1.1",
     "jsonwebtoken": "^9.0.2",
     "mongodb": "^7.4.0",
-    "mongoose": "^7.5.0",
+    "mongoose": "^8.24.1",
     "morgan": "^1.10.0"
   },
   "devDependencies": {

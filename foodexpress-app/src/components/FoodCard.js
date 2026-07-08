@@ -1,22 +1,32 @@
-import React, { useRef, useEffect } from "react";
-import { View, StyleSheet, TouchableOpacity, Image, Animated, Alert } from "react-native";
+import React, { useRef, useState } from "react";
+import { View, StyleSheet, TouchableOpacity, Image, Animated, Alert, Platform } from "react-native";
 import { Text } from "react-native-paper";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useDispatch, useSelector } from "react-redux";
-import { addToCart, removeFromCart, updateQuantity } from "../redux/slices/cartSlice";
+import { addToCart, removeFromCart, increaseQuantity, decreaseQuantity } from "../redux/slices/cartSlice";
 import { addFoodToWishlist, removeFoodFromWishlist } from "../redux/slices/wishlistSlice";
+import CustomizationBottomSheet from "./CustomizationBottomSheet";
 
 const FoodCard = ({ food, navigation }) => {
   const dispatch = useDispatch();
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  const [customizeVisible, setCustomizeVisible] = useState(false);
+  const isAvailable = food.isAvailable !== false;
 
   // Redux Selectors
   const token = useSelector((state) => state.auth.token);
-  const cartItems = useSelector((state) => state.cart.items);
+  const cartItems = useSelector((state) => state.cart.items) || [];
   const wishlistFoods = useSelector((state) => state.wishlist.items) || [];
 
-  const cartItem = cartItems.find((item) => item.id === food.id);
-  const isWishlisted = wishlistFoods.some((f) => (f.id || f._id) === (food.id || food._id));
+  const baseId = (food?.id || food?._id)?.toString();
+  // Aggregate quantity across all customization variants
+  const itemQty = cartItems
+    .filter((ci) => ci.id?.toString() === baseId || ci.id?.toString().startsWith(baseId))
+    .reduce((sum, ci) => sum + ci.quantity, 0);
+
+  const isWishlisted = wishlistFoods.some(
+    (f) => (f.id || f._id || f)?.toString() === (food?.id || food?._id || food)?.toString()
+  );
 
   const animatePress = () => {
     Animated.sequence([
@@ -35,44 +45,68 @@ const FoodCard = ({ food, navigation }) => {
 
   const handleAddToCart = () => {
     animatePress();
+    if (food.isCustomizable) {
+      setCustomizeVisible(true);
+      return;
+    }
     dispatch(
       addToCart({
-        id: food.id,
+        id: food._id || food.id,
         name: food.name,
         price: food.price,
         quantity: 1,
         image: food.image,
         restaurantName: food.restaurant?.name || "",
+        restaurantId: food.restaurant?._id || food.restaurant?.id || food.restaurant,
       })
     );
   };
 
   const handleIncrement = () => {
-    if (cartItem) {
-      dispatch(updateQuantity({ id: food.id, quantity: cartItem.quantity + 1 }));
+    if (food.isCustomizable) {
+      setCustomizeVisible(true);
+      return;
     }
+    dispatch(increaseQuantity(food._id || food.id));
   };
 
   const handleDecrement = () => {
-    if (cartItem) {
-      if (cartItem.quantity > 1) {
-        dispatch(updateQuantity({ id: food.id, quantity: cartItem.quantity - 1 }));
-      } else {
-        dispatch(removeFromCart(food.id));
-      }
-    }
+    dispatch(decreaseQuantity(food._id || food.id));
+  };
+
+  const handleCustomizationComplete = (customizationData) => {
+    const customId = `${food._id || food.id}-${customizationData.size}-${customizationData.addons.join("-")}`;
+    dispatch(
+      addToCart({
+        id: customId,
+        name: `${food.name} (${customizationData.size})`,
+        price: customizationData.price,
+        quantity: customizationData.quantity,
+        image: food.image,
+        restaurantName: food.restaurant?.name || "",
+        restaurantId: food.restaurant?._id || food.restaurant?.id || food.restaurant,
+        customisationText: `${customizationData.size} | ${customizationData.addons.join(", ") || "No extras"}`,
+      })
+    );
   };
 
   const handleWishlistPress = () => {
     if (!token) {
-      Alert.alert(
-        "Login Required",
-        "Please login to save this food to your wishlist.",
-        [
-          { text: "Cancel", style: "cancel" },
-          { text: "Login", onPress: () => navigation.navigate("Login") },
-        ]
-      );
+      if (Platform.OS === "web") {
+        const confirmLogin = window.confirm("Please login to save this food to your wishlist. Go to Login page?");
+        if (confirmLogin) {
+          navigation.navigate("Login");
+        }
+      } else {
+        Alert.alert(
+          "Login Required",
+          "Please login to save this food to your wishlist.",
+          [
+            { text: "Cancel", style: "cancel" },
+            { text: "Login", onPress: () => navigation.navigate("Login") },
+          ]
+        );
+      }
       return;
     }
     if (isWishlisted) {
@@ -83,77 +117,89 @@ const FoodCard = ({ food, navigation }) => {
   };
 
   return (
-    <Animated.View style={[styles.card, { transform: [{ scale: scaleAnim }] }]}>
-      {/* Top Section: Image & Badges */}
-      <View style={styles.imageWrapper}>
-        <Image source={{ uri: food.image }} style={styles.image} />
-        <View style={styles.overlayRow}>
-          {/* Veg/Non-Veg Badge */}
-          <View style={[styles.vegBadge, food.isVeg ? styles.vegBorder : styles.nonVegBorder]}>
-            <View style={[styles.vegDot, { backgroundColor: food.isVeg ? "#2E7D32" : "#D92D20" }]} />
+    <Animated.View style={[styles.card, { transform: [{ scale: scaleAnim }] }, !isAvailable && { opacity: 0.6 }]}>
+      <TouchableOpacity
+        activeOpacity={0.9}
+        onPress={() => navigation && navigation.navigate("FoodDetails", { foodId: food.id || food._id })}
+      >
+        {/* Top Section: Image & Badges */}
+        <View style={styles.imageWrapper}>
+          <Image source={{ uri: food.image || undefined }} style={styles.image} resizeMode="cover" blurRadius={!isAvailable ? 8 : 0} />
+          {!isAvailable && (
+            <View style={styles.unavailableOverlay}>
+              <Text style={styles.unavailableOverlayText}>Currently Unavailable</Text>
+            </View>
+          )}
+          <View style={styles.overlayRow}>
+            {/* Veg/Non-Veg Badge */}
+            <View style={[styles.vegBadge, food.isVeg ? styles.vegBorder : styles.nonVegBorder]}>
+              <View style={[styles.vegDot, { backgroundColor: food.isVeg ? "#2E7D32" : "#D92D20" }]} />
+            </View>
+
+            {/* Wishlist Heart */}
+            <TouchableOpacity
+              style={styles.heartButton}
+              onPress={handleWishlistPress}
+              activeOpacity={0.7}
+            >
+              <MaterialCommunityIcons
+                name={isWishlisted ? "heart" : "heart-outline"}
+                size={20}
+                color={isWishlisted ? "#FF6F61" : "#475467"}
+              />
+            </TouchableOpacity>
           </View>
 
-          {/* Wishlist Heart */}
-          <TouchableOpacity
-            style={styles.heartButton}
-            onPress={handleWishlistPress}
-            activeOpacity={0.7}
-          >
-            <MaterialCommunityIcons
-              name={isWishlisted ? "heart" : "heart-outline"}
-              size={20}
-              color={isWishlisted ? "#FF6F61" : "#475467"}
-            />
-          </TouchableOpacity>
+          {food.isBestSeller && (
+            <View style={styles.bestsellerBadge}>
+              <MaterialCommunityIcons name="fire" size={10} color="#FFFFFF" style={{ marginRight: 2 }} />
+              <Text style={styles.bestsellerText}>BESTSELLER</Text>
+            </View>
+          )}
+
+          {food.isNewArrival && (
+            <View style={styles.newBadge}>
+              <Text style={styles.newText}>NEW</Text>
+            </View>
+          )}
+
+          {/* Discount Overlay Badge */}
+          {food.discountPercentage > 0 && (
+            <View style={styles.discountBadge}>
+              <Text style={styles.discountText}>{food.discountPercentage}% OFF</Text>
+            </View>
+          )}
         </View>
 
-        {food.isBestSeller && (
-          <View style={styles.bestsellerBadge}>
-            <MaterialCommunityIcons name="fire" size={10} color="#FFFFFF" style={{ marginRight: 2 }} />
-            <Text style={styles.bestsellerText}>BESTSELLER</Text>
-          </View>
-        )}
+        {/* Info Section */}
+        <View style={styles.infoWrapper}>
+          {/* Restaurant Name */}
+          <Text style={styles.restaurantName} numberOfLines={1}>
+            {food.restaurant?.name || "FoodExpress Kitchen"}
+          </Text>
 
-        {food.isNewArrival && (
-          <View style={styles.newBadge}>
-            <Text style={styles.newText}>NEW</Text>
-          </View>
-        )}
+          {/* Food Name */}
+          <Text style={styles.foodName} numberOfLines={1}>
+            {food.name}
+          </Text>
 
-        {/* Discount Overlay Badge */}
-        {food.discountPercentage > 0 && (
-          <View style={styles.discountBadge}>
-            <Text style={styles.discountText}>{food.discountPercentage}% OFF</Text>
-          </View>
-        )}
-      </View>
-
-      {/* Info Section */}
-      <View style={styles.infoWrapper}>
-        {/* Restaurant Name */}
-        <Text style={styles.restaurantName} numberOfLines={1}>
-          {food.restaurant?.name || "FoodExpress Kitchen"}
-        </Text>
-
-        {/* Food Name */}
-        <Text style={styles.foodName} numberOfLines={1}>
-          {food.name}
-        </Text>
-
-        {/* Ratings & Prep Time */}
-        <View style={styles.metaRow}>
-          <View style={styles.metaItem}>
-            <MaterialCommunityIcons name="star" size={14} color="#FF9F43" />
-            <Text style={styles.metaText}>{food.rating || "4.1"}</Text>
-          </View>
-          <View style={styles.metaDot} />
-          <View style={styles.metaItem}>
-            <MaterialCommunityIcons name="clock-outline" size={12} color="#667085" />
-            <Text style={styles.metaText}>{food.preparationTime || 20} min</Text>
+          {/* Ratings & Prep Time */}
+          <View style={styles.metaRow}>
+            <View style={styles.metaItem}>
+              <MaterialCommunityIcons name="star" size={14} color="#FF9F43" />
+              <Text style={styles.metaText}>{food.rating || "4.1"}</Text>
+            </View>
+            <View style={styles.metaDot} />
+            <View style={styles.metaItem}>
+              <MaterialCommunityIcons name="clock-outline" size={12} color="#667085" />
+              <Text style={styles.metaText}>{food.preparationTime || 20} min</Text>
+            </View>
           </View>
         </View>
+      </TouchableOpacity>
 
-        {/* Price & Quantity Controls */}
+      {/* Price & Quantity Controls */}
+      <View style={[styles.infoWrapper, { paddingTop: 0 }]}>
         <View style={styles.footerRow}>
           <View style={styles.priceContainer}>
             <Text style={styles.price}>₹{food.price}</Text>
@@ -162,12 +208,20 @@ const FoodCard = ({ food, navigation }) => {
             )}
           </View>
 
-          {cartItem ? (
+          {!isAvailable ? (
+            <TouchableOpacity
+              style={styles.notifyButton}
+              onPress={() => Alert.alert("Notification Subscribed", `We will notify you when ${food.name} is back in stock!`)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.notifyButtonText}>Notify Me</Text>
+            </TouchableOpacity>
+          ) : itemQty > 0 ? (
             <View style={styles.qtyContainer}>
               <TouchableOpacity style={styles.qtyBtn} onPress={handleDecrement}>
                 <MaterialCommunityIcons name="minus" size={16} color="#FF6F61" />
               </TouchableOpacity>
-              <Text style={styles.qtyText}>{cartItem.quantity}</Text>
+              <Text style={styles.qtyText}>{itemQty}</Text>
               <TouchableOpacity style={styles.qtyBtn} onPress={handleIncrement}>
                 <MaterialCommunityIcons name="plus" size={16} color="#FF6F61" />
               </TouchableOpacity>
@@ -184,6 +238,14 @@ const FoodCard = ({ food, navigation }) => {
           )}
         </View>
       </View>
+
+      {/* Customization Bottom Sheet */}
+      <CustomizationBottomSheet
+        visible={customizeVisible}
+        onClose={() => setCustomizeVisible(false)}
+        food={food}
+        onAddComplete={handleCustomizationComplete}
+      />
     </Animated.View>
   );
 };
@@ -212,7 +274,6 @@ const styles = StyleSheet.create({
   image: {
     width: "100%",
     height: "100%",
-    resizeMode: "cover",
   },
   overlayRow: {
     position: "absolute",
@@ -398,6 +459,38 @@ const styles = StyleSheet.create({
   },
   newText: {
     fontSize: 8,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+  },
+  unavailableOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  unavailableOverlayText: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontWeight: "800",
+    textTransform: "uppercase",
+    textAlign: "center",
+    paddingHorizontal: 8,
+  },
+  notifyButton: {
+    backgroundColor: "#FF6F61",
+    borderRadius: 8,
+    width: 72,
+    height: 30,
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 1,
+  },
+  notifyButtonText: {
+    fontSize: 10,
     fontWeight: "bold",
     color: "#FFFFFF",
   },

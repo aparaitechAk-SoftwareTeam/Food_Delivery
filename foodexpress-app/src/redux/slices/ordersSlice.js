@@ -27,14 +27,7 @@ export const placeOrder = createAsyncThunk(
     try {
       return await orderService.placeOrder(payload);
     } catch (error) {
-      const newOrder = {
-        id: Date.now(),
-        orderNumber: `FE${Math.floor(1000 + Math.random() * 9000)}`,
-        status: "Confirmed",
-        totalAmount: payload.totalAmount,
-        items: payload.items,
-      };
-      return newOrder;
+      return thunkAPI.rejectWithValue(error.message || "Failed to place order");
     }
   },
 );

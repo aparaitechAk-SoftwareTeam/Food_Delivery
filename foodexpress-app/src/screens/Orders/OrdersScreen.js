@@ -30,6 +30,7 @@ const OrdersScreen = ({ navigation }) => {
           price: item.price,
           quantity: item.quantity,
           restaurant: order.restaurant?.name || order.restaurant || "Restaurant",
+          restaurantId: order.restaurant?._id || order.restaurant?.id || order.restaurant,
         })
       );
     });

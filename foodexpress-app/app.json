@@ -4,16 +4,13 @@
     "slug": "foodexpress-app",
     "version": "1.0.0",
     "orientation": "portrait",
-
     "userInterfaceStyle": "automatic",
-    "splash": {
-      "resizeMode": "contain",
-      "backgroundColor": "#FFFFFF"
-    },
     "updates": {
       "fallbackToCacheTimeout": 0
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true
     },
@@ -22,6 +19,10 @@
         "backgroundColor": "#FFFFFF"
       }
     },
-    "web": {}
+    "web": {},
+    "plugins": [
+      "expo-asset",
+      "expo-splash-screen"
+    ]
   }
 }

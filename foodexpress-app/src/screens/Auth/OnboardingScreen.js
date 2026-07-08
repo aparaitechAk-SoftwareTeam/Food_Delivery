@@ -1,4 +1,4 @@
-git pull origin Atharvimport React from "react";
+import React from "react";
 import { View, StyleSheet, Image } from "react-native";
 import { Button, Text, Avatar } from "react-native-paper";
 

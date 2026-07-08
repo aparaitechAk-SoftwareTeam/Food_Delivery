@@ -37,7 +37,7 @@ exports.register = async (req, res) => {
     };
     users.push(mockUser);
     return res.status(201).json({
-      user: { id: mockUser.id, name: mockUser.name, email: mockUser.email, phone: mockUser.phone },
+      user: { id: mockUser.id, name: mockUser.name, email: mockUser.email, phone: mockUser.phone, role: mockUser.role || "customer" },
       token: generateToken(mockUser.id),
     });
   }
@@ -50,7 +50,7 @@ exports.register = async (req, res) => {
   const hashed = await bcrypt.hash(password, 10);
   const user = await User.create({ name, email, phone, password: hashed });
   res.status(201).json({
-    user: { id: user._id, name: user.name, email: user.email, phone: user.phone },
+    user: { id: user._id, name: user.name, email: user.email, phone: user.phone, role: user.role },
     token: generateToken(user._id),
   });
 };
@@ -68,7 +68,7 @@ exports.login = async (req, res) => {
     }
     // We allow logging in to any mock user with any password for easy testing
     return res.json({
-      user: { id: user.id || user._id, name: user.name, email: user.email, phone: user.phone },
+      user: { id: user.id || user._id, name: user.name, email: user.email, phone: user.phone, role: user.role || "customer" },
       token: generateToken(user.id || user._id),
     });
   }
@@ -80,7 +80,7 @@ exports.login = async (req, res) => {
     throw new Error("Invalid email or password");
   }
   res.json({
-    user: { id: user._id, name: user.name, email: user.email, phone: user.phone },
+    user: { id: user._id, name: user.name, email: user.email, phone: user.phone, role: user.role },
     token: generateToken(user._id),
   });
 };

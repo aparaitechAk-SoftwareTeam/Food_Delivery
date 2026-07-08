@@ -279,73 +279,43 @@ const seedDatabase = async () => {
       ];
     };
 
-    const restaurantsBatch = [];
-    const usedNames = new Set();
+    const singleRestaurant = {
+      name: "Krushna's Restaurant",
+      address: "10, Vidyanagar Road, Baramati",
+      rating: 4.8,
+      deliveryTime: "20-25 mins",
+      image: "https://images.unsplash.com/photo-1600891964599-f61ba0e24092?auto=format&fit=crop&w=600&q=80",
+      reviewCount: 1250,
+      distance: 1.2,
+      cuisine: ["South Indian", "North Indian", "Chinese", "Desserts", "Beverages"],
+      offerPercentage: 20,
+      vegType: "both",
+      isOpen: true,
+      isFeatured: true,
+      restaurantType: "Multi Cuisine"
+    };
 
-    for (let i = 1; i <= 120; i++) {
-      let restName = "";
-      do {
-        const pref = prefixes[Math.floor(Math.random() * prefixes.length)];
-        const suff = suffixes[Math.floor(Math.random() * suffixes.length)];
-        restName = `${pref} ${suff}`;
-      } while (usedNames.has(restName));
-      
-      usedNames.add(restName);
+    const seededRestaurants = [await Restaurant.create(singleRestaurant)];
+    console.log("Seeded 1 Restaurant.");
 
-      const rType = restaurantTypes[Math.floor(Math.random() * restaurantTypes.length)];
-      const vType = rType === "Pure Veg" ? "veg" : Math.random() > 0.4 ? "both" : "non-veg";
-      
-      const restObj = {
-        name: restName,
-        address: `${10 + i}, ${locations[Math.floor(Math.random() * locations.length)]} Road`,
-        rating: parseFloat((3.8 + Math.random() * 1.1).toFixed(1)),
-        deliveryTime: deliveryTimes[Math.floor(Math.random() * deliveryTimes.length)],
-        image: restaurantImages[i % restaurantImages.length],
-        reviewCount: Math.floor(40 + Math.random() * 760),
-        distance: parseFloat((0.5 + Math.random() * 6.0).toFixed(1)),
-        cuisine: [cuisinesList[i % cuisinesList.length], cuisinesList[(i + 1) % cuisinesList.length]],
-        offerPercentage: Math.random() > 0.3 ? [10, 20, 30, 40, 50][Math.floor(Math.random() * 5)] : 0,
-        vegType: vType,
-        isOpen: Math.random() > 0.05,
-        isFeatured: Math.random() > 0.8,
-        restaurantType: rType
-      };
-      restaurantsBatch.push(restObj);
-    }
-
-    const seededRestaurants = await Restaurant.insertMany(restaurantsBatch);
-    console.log(`Seeded ${seededRestaurants.length} Restaurants.`);
-
-    // 4. Seed 2500+ Food Items (approx 22 items per restaurant = 2640 total)
+    // 4. Seed Food Items (2 items per category = 200 total)
     console.log("Seeding Food items...");
     const foodsBatch = [];
-    seededRestaurants.forEach((rest) => {
-      const numProducts = 21 + Math.floor(Math.random() * 4); // 21-24 items
-      const selectedFoodNames = new Set();
+    const rest = seededRestaurants[0];
 
-      for (let pIndex = 0; pIndex < numProducts; pIndex++) {
-        const catObj = seededCategories[Math.floor(Math.random() * seededCategories.length)];
-        const templates = getTemplatesForCategory(catObj.name);
-        let template = templates[Math.floor(Math.random() * templates.length)];
-        
-        let loopCount = 0;
-        while (selectedFoodNames.has(template.name) && loopCount < 10) {
-          template = templates[Math.floor(Math.random() * templates.length)];
-          loopCount++;
-        }
-        selectedFoodNames.add(template.name);
+    seededCategories.forEach((catObj) => {
+      const templates = getTemplatesForCategory(catObj.name);
+      const numItemsPerCategory = 2;
+      for (let pIndex = 0; pIndex < numItemsPerCategory; pIndex++) {
+        const template = templates[pIndex % templates.length];
 
         const discountPercentage = Math.random() > 0.4 ? [10, 15, 20, 25, 30, 50][Math.floor(Math.random() * 6)] : 0;
         const price = template.price;
         const originalPrice = discountPercentage > 0 ? Math.round(price / (1 - (discountPercentage / 100))) : price;
 
         let isVeg = true;
-        if (rest.vegType === "non-veg") {
-          isVeg = false;
-        } else if (rest.vegType === "both") {
-          if (["Biryani", "Burger", "Pizza", "Chinese", "Fast Food", "Protein Meals", "Rolls", "Wraps", "Kebabs", "Tandoori"].includes(catObj.name)) {
-            isVeg = Math.random() > 0.5;
-          }
+        if (["Biryani", "Burger", "Pizza", "Chinese", "Fast Food", "Protein Meals", "Rolls", "Wraps", "Kebabs", "Tandoori"].includes(catObj.name)) {
+          isVeg = Math.random() > 0.5;
         }
 
         let finalFoodName = template.name;
@@ -362,7 +332,7 @@ const seedDatabase = async () => {
           category: catObj._id,
           restaurant: rest._id,
           image: rest.image,
-          rating: parseFloat((3.8 + Math.random() * 1.1).toFixed(1)),
+          rating: parseFloat((4.0 + Math.random() * 0.9).toFixed(1)),
           isFeatured: Math.random() > 0.8,
           isPopular: Math.random() > 0.8,
           isBestSeller: Math.random() > 0.8,
@@ -370,8 +340,8 @@ const seedDatabase = async () => {
           isCombo: catObj.name.toLowerCase().includes("combo") || catObj.name.toLowerCase().includes("pack") || Math.random() > 0.9,
           preparationTime: 10 + Math.floor(Math.random() * 30),
           isVeg: isVeg,
-          isAvailable: Math.random() > 0.05,
-          popularityScore: Math.floor(10 + Math.random() * 90),
+          isAvailable: true,
+          popularityScore: Math.floor(40 + Math.random() * 60),
           tags: template.tags,
         };
         foodsBatch.push(foodObj);
@@ -489,7 +459,15 @@ const seedDatabase = async () => {
 
     console.log("Database successfully seeded in MongoDB mode!");
   } catch (error) {
-    console.error("Error seeding database:", error);
+    console.error("Error seeding database:", error.message);
+    console.warn("Falling back to Mock In-Memory Database Mode...");
+    process.env.MOCK_DB = "true";
+    try {
+      const { initializeMockData } = require("./mockDataStore");
+      initializeMockData();
+    } catch (e) {
+      console.error("Failed to initialize mock data:", e.message);
+    }
   }
 };
 

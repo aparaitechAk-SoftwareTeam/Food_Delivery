@@ -1,0 +1,16 @@
+{
+  "expo": {
+    "name": "FoodExpress Rider",
+    "slug": "foodexpress-rider",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.foodexpress.rider"
+    },
+    "web": {}
+  }
+}

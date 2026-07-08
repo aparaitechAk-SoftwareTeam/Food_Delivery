@@ -208,6 +208,9 @@ exports.getFoods = async (req, res) => {
     const totalCount = await Food.countDocuments(foodQueryObj);
     const foods = await dbQuery.skip(skipNum).limit(limitNum);
     const categories = await Category.find();
+    const restaurants = await Restaurant.find().limit(30);
+    const Coupon = require("../models/Coupon");
+    const offers = await Coupon.find().limit(50);
 
     // Fetch featured/popular lists from all foods for the homepage
     const featured = await Food.find({ isFeatured: true }).populate("category restaurant").limit(10);
@@ -218,6 +221,8 @@ exports.getFoods = async (req, res) => {
       categories,
       featured,
       popular,
+      restaurants,
+      offers,
       total: totalCount,
       page: pageNum,
       pages: Math.ceil(totalCount / limitNum),
@@ -229,24 +234,72 @@ exports.getFoods = async (req, res) => {
 };
 
 exports.getFoodById = async (req, res) => {
+  let food;
   if (process.env.MOCK_DB === "true") {
     const { foods } = require("../config/mockDataStore");
-    const food = foods.find(f => (f.id || f._id) === req.params.id);
+    food = foods.find(f => (f.id || f._id) === req.params.id);
     if (!food) {
       res.status(404);
       throw new Error("Food not found");
     }
-    return res.json(food);
+  } else {
+    food = await Food.findById(req.params.id).populate(
+      "category restaurant reviews",
+    );
+    if (!food) {
+      res.status(404);
+      throw new Error("Food not found");
+    }
   }
 
-  const food = await Food.findById(req.params.id).populate(
-    "category restaurant reviews",
-  );
-  if (!food) {
-    res.status(404);
-    throw new Error("Food not found");
+  // Fetch recommended foods from same category
+  let recommendedFoods = [];
+  try {
+    if (process.env.MOCK_DB === "true") {
+      const { foods } = require("../config/mockDataStore");
+      const catId = food.category?._id || food.category?.id || food.category;
+      recommendedFoods = foods.filter(f => 
+        (f.category?._id || f.category?.id || f.category) === catId && 
+        (f.id || f._id) !== (food.id || food._id)
+      ).slice(0, 6);
+    } else {
+      recommendedFoods = await Food.find({
+        category: food.category?._id || food.category,
+        _id: { $ne: food._id }
+      }).limit(6).populate("category restaurant");
+    }
+  } catch (err) {
+    console.error("Error fetching recommended foods:", err);
   }
-  res.json(food);
+
+  const isVeg = food.isVeg !== undefined ? food.isVeg : true;
+  const isBestseller = food.isBestSeller || food.isBestseller || false;
+
+  const formattedResponse = {
+    _id: food._id || food.id,
+    name: food.name,
+    description: food.description || "",
+    price: food.price,
+    originalPrice: food.originalPrice || food.price,
+    image: food.image,
+    category: food.category,
+    rating: food.rating || 4.5,
+    serves: food.servingSize || "1",
+    isVeg: isVeg,
+    isBestseller: isBestseller,
+    ingredients: food.ingredients && food.ingredients.length > 0 ? food.ingredients : ["Water", "Salt", "Spices", "Wheat Flour", "Vegetable Oil"],
+    nutrition: {
+      calories: food.calories ? `${food.calories} kcal` : "210 kcal",
+      protein: food.protein ? `${food.protein} g` : "4.8 g",
+      carbs: food.carbs ? `${food.carbs} g` : "28 g",
+      fat: food.fat ? `${food.fat} g` : "6.5 g"
+    },
+    temperature: food.spiceLevel === "High" ? "Served Piping Hot" : "Served Hot",
+    allergens: food.allergens && food.allergens.length > 0 ? food.allergens.join(", ") : "None",
+    recommendedFoods: recommendedFoods
+  };
+
+  res.json(formattedResponse);
 };
 
 exports.getProductsByCategory = async (req, res) => {
