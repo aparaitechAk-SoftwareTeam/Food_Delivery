@@ -9,6 +9,10 @@ const router = express.Router();
 
 router.use(protect);
 router.get("/", getWishlist);
+router.post("/add", addToWishlist);
+router.delete("/remove/:foodId", removeFromWishlist);
+
+// Fallbacks
 router.post("/", addToWishlist);
 router.delete("/:foodId", removeFromWishlist);
 

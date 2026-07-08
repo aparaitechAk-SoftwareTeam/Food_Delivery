@@ -19,7 +19,7 @@ exports.getFoods = async (req, res) => {
   } = req.query;
 
   if (process.env.MOCK_DB === "true") {
-    const { queryMockFoods, categories, foods } = require("../config/mockDataStore");
+    const { queryMockFoods, categories, foods, restaurants, offers } = require("../config/mockDataStore");
     const result = queryMockFoods(req.query);
     const featured = foods.filter(f => f.isFeatured).slice(0, 10);
     const popular = foods.filter(f => f.isPopular).slice(0, 10);
@@ -28,6 +28,8 @@ exports.getFoods = async (req, res) => {
       categories: categories,
       featured,
       popular,
+      restaurants: restaurants.slice(0, 30), // Slice to keep it light but representative
+      offers: offers.slice(0, 50),
       total: result.total,
       page: result.page,
       pages: result.pages,
@@ -206,6 +208,9 @@ exports.getFoods = async (req, res) => {
     const totalCount = await Food.countDocuments(foodQueryObj);
     const foods = await dbQuery.skip(skipNum).limit(limitNum);
     const categories = await Category.find();
+    const restaurants = await Restaurant.find().limit(30);
+    const Coupon = require("../models/Coupon");
+    const offers = await Coupon.find().limit(50);
 
     // Fetch featured/popular lists from all foods for the homepage
     const featured = await Food.find({ isFeatured: true }).populate("category restaurant").limit(10);
@@ -216,6 +221,8 @@ exports.getFoods = async (req, res) => {
       categories,
       featured,
       popular,
+      restaurants,
+      offers,
       total: totalCount,
       page: pageNum,
       pages: Math.ceil(totalCount / limitNum),
@@ -227,22 +234,228 @@ exports.getFoods = async (req, res) => {
 };
 
 exports.getFoodById = async (req, res) => {
+  let food;
   if (process.env.MOCK_DB === "true") {
     const { foods } = require("../config/mockDataStore");
-    const food = foods.find(f => (f.id || f._id) === req.params.id);
+    food = foods.find(f => (f.id || f._id) === req.params.id);
     if (!food) {
       res.status(404);
       throw new Error("Food not found");
     }
-    return res.json(food);
+  } else {
+    food = await Food.findById(req.params.id).populate(
+      "category restaurant reviews",
+    );
+    if (!food) {
+      res.status(404);
+      throw new Error("Food not found");
+    }
   }
 
-  const food = await Food.findById(req.params.id).populate(
-    "category restaurant reviews",
-  );
-  if (!food) {
-    res.status(404);
-    throw new Error("Food not found");
+  // Fetch recommended foods from same category
+  let recommendedFoods = [];
+  try {
+    if (process.env.MOCK_DB === "true") {
+      const { foods } = require("../config/mockDataStore");
+      const catId = food.category?._id || food.category?.id || food.category;
+      recommendedFoods = foods.filter(f => 
+        (f.category?._id || f.category?.id || f.category) === catId && 
+        (f.id || f._id) !== (food.id || food._id)
+      ).slice(0, 6);
+    } else {
+      recommendedFoods = await Food.find({
+        category: food.category?._id || food.category,
+        _id: { $ne: food._id }
+      }).limit(6).populate("category restaurant");
+    }
+  } catch (err) {
+    console.error("Error fetching recommended foods:", err);
   }
-  res.json(food);
+
+  const isVeg = food.isVeg !== undefined ? food.isVeg : true;
+  const isBestseller = food.isBestSeller || food.isBestseller || false;
+
+  const formattedResponse = {
+    _id: food._id || food.id,
+    name: food.name,
+    description: food.description || "",
+    price: food.price,
+    originalPrice: food.originalPrice || food.price,
+    image: food.image,
+    category: food.category,
+    rating: food.rating || 4.5,
+    serves: food.servingSize || "1",
+    isVeg: isVeg,
+    isBestseller: isBestseller,
+    ingredients: food.ingredients && food.ingredients.length > 0 ? food.ingredients : ["Water", "Salt", "Spices", "Wheat Flour", "Vegetable Oil"],
+    nutrition: {
+      calories: food.calories ? `${food.calories} kcal` : "210 kcal",
+      protein: food.protein ? `${food.protein} g` : "4.8 g",
+      carbs: food.carbs ? `${food.carbs} g` : "28 g",
+      fat: food.fat ? `${food.fat} g` : "6.5 g"
+    },
+    temperature: food.spiceLevel === "High" ? "Served Piping Hot" : "Served Hot",
+    allergens: food.allergens && food.allergens.length > 0 ? food.allergens.join(", ") : "None",
+    recommendedFoods: recommendedFoods
+  };
+
+  res.json(formattedResponse);
+};
+
+exports.getProductsByCategory = async (req, res) => {
+  req.query.category = req.params.category;
+  return exports.getFoods(req, res);
+};
+
+exports.getProductsByCuisine = async (req, res) => {
+  const { cuisine } = req.params;
+  
+  if (process.env.MOCK_DB === "true") {
+    const { queryMockFoods } = require("../config/mockDataStore");
+    const result = queryMockFoods(req.query);
+    const searchRegex = new RegExp(cuisine, "i");
+    const filtered = result.foods.filter(f => f.restaurant && f.restaurant.cuisine && f.restaurant.cuisine.some(c => searchRegex.test(c)));
+    return res.json({
+      foods: filtered,
+      total: filtered.length,
+      page: result.page,
+      pages: result.pages
+    });
+  }
+
+  try {
+    const searchRegex = new RegExp(cuisine, "i");
+    const matchingRests = await Restaurant.find({ cuisine: { $in: [searchRegex] } }).select("_id");
+    const restIds = matchingRests.map(r => r._id);
+    req.query.restaurant = restIds;
+    return exports.getFoods(req, res);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.getBestsellers = async (req, res) => {
+  if (process.env.MOCK_DB === "true") {
+    const { foods } = require("../config/mockDataStore");
+    const filtered = foods.filter(f => f.isBestSeller).slice(0, 30);
+    return res.json({ foods: filtered });
+  }
+  try {
+    const filtered = await Food.find({ isBestSeller: true }).populate("category restaurant").limit(30);
+    res.json({ foods: filtered });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.getNewArrivals = async (req, res) => {
+  if (process.env.MOCK_DB === "true") {
+    const { foods } = require("../config/mockDataStore");
+    const sorted = [...foods].sort((a, b) => {
+      const idA = parseInt(a.id.split("-")[1]) || 0;
+      const idB = parseInt(b.id.split("-")[1]) || 0;
+      return idB - idA;
+    }).slice(0, 30);
+    return res.json({ foods: sorted });
+  }
+  try {
+    const filtered = await Food.find().populate("category restaurant").sort({ createdAt: -1 }).limit(30);
+    res.json({ foods: filtered });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.getHealthy = async (req, res) => {
+  if (process.env.MOCK_DB === "true") {
+    const { foods } = require("../config/mockDataStore");
+    const filtered = foods.filter(f => f.isHealthy).slice(0, 30);
+    return res.json({ foods: filtered });
+  }
+  try {
+    const filtered = await Food.find({ isHealthy: true }).populate("category restaurant").limit(30);
+    res.json({ foods: filtered });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.getCombos = async (req, res) => {
+  if (process.env.MOCK_DB === "true") {
+    const { foods } = require("../config/mockDataStore");
+    const filtered = foods.filter(f => f.isCombo).slice(0, 30);
+    return res.json({ foods: filtered });
+  }
+  try {
+    const filtered = await Food.find({ isCombo: true }).populate("category restaurant").limit(30);
+    res.json({ foods: filtered });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.getTrending = async (req, res) => {
+  req.query.sort = "popularity";
+  return exports.getFoods(req, res);
+};
+
+exports.getPopular = async (req, res) => {
+  if (process.env.MOCK_DB === "true") {
+    const { foods } = require("../config/mockDataStore");
+    const filtered = foods.filter(f => f.isPopular).slice(0, 30);
+    return res.json({ foods: filtered });
+  }
+  try {
+    const filtered = await Food.find({ isPopular: true }).populate("category restaurant").limit(30);
+    res.json({ foods: filtered });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.getRecommended = async (req, res) => {
+  req.query.sort = "rating_desc";
+  return exports.getFoods(req, res);
+};
+
+exports.getCategorizedMenu = async (req, res) => {
+  if (process.env.MOCK_DB === "true") {
+    const { foods, categories } = require("../config/mockDataStore");
+    const result = categories.map(cat => {
+      const catFoods = foods.filter(f => f.category && (f.category.id === cat.id || f.category._id === cat._id));
+      return {
+        category: cat,
+        totalCount: catFoods.length,
+        foods: catFoods.slice(0, 4) // First 4 for grid preview
+      };
+    }).filter(group => group.totalCount > 0);
+    return res.json(result);
+  }
+
+  try {
+    const agg = await Food.aggregate([
+      {
+        $group: {
+          _id: "$category",
+          totalCount: { $sum: 1 },
+          foods: { $push: "$$ROOT" }
+        }
+      },
+      {
+        $project: {
+          category: "$_id",
+          totalCount: 1,
+          foods: { $slice: ["$foods", 4] }
+        }
+      }
+    ]);
+    const populated = await Food.populate(agg, [
+      { path: "category", model: "Category" },
+      { path: "foods.category", model: "Category" },
+      { path: "foods.restaurant", model: "Restaurant" }
+    ]);
+    res.json(populated.filter(group => group.category));
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };

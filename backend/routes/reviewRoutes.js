@@ -3,7 +3,7 @@ const Review = require("../models/Review");
 const router = express.Router();
 
 router.get("/food/:foodId", async (req, res) => {
-  const reviews = await Review.find({ food: req.params.foodId }).populate(
+  const reviews = await Review.find({ food: req.params.foodId, status: { $ne: "Hidden" } }).populate(
     "user",
     "name",
   );

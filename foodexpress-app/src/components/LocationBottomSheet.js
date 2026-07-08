@@ -18,6 +18,7 @@ import {
   setActiveAddress,
   selectDefaultAddress,
 } from "../redux/slices/authSlice";
+import { reverseGeocodeAsync } from "../utils/locationHelper";
 
 const LocationBottomSheet = ({ visible, onClose }) => {
   const dispatch = useDispatch();
@@ -63,10 +64,7 @@ const LocationBottomSheet = ({ visible, onClose }) => {
       const { latitude, longitude } = location.coords;
       
       // Reverse geocoding to address
-      const geocoded = await Location.reverseGeocodeAsync({
-        latitude,
-        longitude,
-      });
+      const geocoded = await reverseGeocodeAsync(latitude, longitude);
 
       if (geocoded && geocoded.length > 0) {
         const place = geocoded[0];
@@ -78,6 +76,8 @@ const LocationBottomSheet = ({ visible, onClose }) => {
           state: place.region || "",
           postalCode: place.postalCode || "",
           country: place.country || "India",
+          latitude,
+          longitude,
         };
         
         // Update active address
@@ -112,26 +112,31 @@ const LocationBottomSheet = ({ visible, onClose }) => {
     }
     
     // Simple mock search results based on query
+    const isQueryBaramati = searchQuery.toLowerCase().includes("baramati");
     const results = [
       {
         id: "s1",
         label: "Search Result",
-        line1: searchQuery,
-        line2: "Baramati Road",
-        city: "Pune",
+        line1: isQueryBaramati ? "MIDC Road" : searchQuery,
+        line2: isQueryBaramati ? "MIDC Baramati" : "Baramati Road",
+        city: isQueryBaramati ? "Baramati" : "Pune",
         state: "Maharashtra",
-        postalCode: "411001",
+        postalCode: isQueryBaramati ? "413133" : "411001",
         country: "India",
+        latitude: isQueryBaramati ? 18.1750 : 18.5204,
+        longitude: isQueryBaramati ? 74.6100 : 73.8567,
       },
       {
         id: "s2",
         label: "Search Result 2",
-        line1: `${searchQuery} Plaza`,
-        line2: "Senapati Bapat Rd",
-        city: "Pune",
+        line1: isQueryBaramati ? "College Road" : `${searchQuery} Plaza`,
+        line2: isQueryBaramati ? "Vidyanagar" : "Senapati Bapat Rd",
+        city: isQueryBaramati ? "Baramati" : "Pune",
         state: "Maharashtra",
-        postalCode: "411016",
+        postalCode: isQueryBaramati ? "413102" : "411016",
         country: "India",
+        latitude: isQueryBaramati ? 18.1620 : 18.5204,
+        longitude: isQueryBaramati ? 74.5780 : 73.8567,
       }
     ];
     setSearchResults(results);

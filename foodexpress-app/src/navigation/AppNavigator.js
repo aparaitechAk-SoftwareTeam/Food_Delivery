@@ -26,13 +26,18 @@ import FoodDetailsScreen from "../screens/Food/FoodDetailsScreen";
 import CheckoutScreen from "../screens/Checkout/CheckoutScreen";
 import SearchScreen from "../screens/Search/SearchScreen";
 import OrderDetailsScreen from "../screens/OrderDetails/OrderDetailsScreen";
+import RestaurantDetailsScreen from "../screens/Home/RestaurantDetailsScreen";
 import OrderTrackingScreen from "../screens/OrderTracking/OrderTrackingScreen";
+import OrderSuccessScreen from "../screens/Checkout/OrderSuccessScreen";
+
+
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
 const MainTabs = () => {
   const wishlistItems = useSelector((state) => state.wishlist.items || []);
+  const { token } = useSelector((state) => state.auth);
 
   return (
     <Tab.Navigator
@@ -72,6 +77,14 @@ const MainTabs = () => {
       <Tab.Screen
         name="Orders"
         component={OrdersScreen}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            if (!token) {
+              e.preventDefault();
+              navigation.navigate("Login", { redirectTo: "Main", redirectTab: "Orders" });
+            }
+          },
+        })}
         options={{
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons
@@ -85,6 +98,14 @@ const MainTabs = () => {
       <Tab.Screen
         name="Wishlist"
         component={WishlistScreen}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            if (!token) {
+              e.preventDefault();
+              navigation.navigate("Login", { redirectTo: "Main", redirectTab: "Wishlist" });
+            }
+          },
+        })}
         options={{
           tabBarBadge: wishlistItems.length > 0 ? wishlistItems.length : undefined,
           tabBarBadgeStyle: { backgroundColor: "#ff6b00", color: "#fff", fontSize: 10 },
@@ -100,6 +121,14 @@ const MainTabs = () => {
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            if (!token) {
+              e.preventDefault();
+              navigation.navigate("Login", { redirectTo: "Main", redirectTab: "Profile" });
+            }
+          },
+        })}
         options={{
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons
@@ -123,14 +152,85 @@ const AppNavigator = () => {
         <Stack.Screen name="Splash" component={SplashScreen} />
         <Stack.Screen name="Onboarding" component={OnboardingScreen} />
         <Stack.Screen name="Login" component={LoginScreen} />
-        <Stack.Screen name="Register" component={RegisterScreen} />
-        <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+        <Stack.Screen
+          name="Register"
+          component={RegisterScreen}
+          options={{
+            headerShown: true,
+            title: "Create Account",
+            headerTintColor: "#ff6b00",
+            headerTitleStyle: { fontWeight: "bold" },
+          }}
+        />
+        <Stack.Screen
+          name="ForgotPassword"
+          component={ForgotPasswordScreen}
+          options={{
+            headerShown: true,
+            title: "Reset Password",
+            headerTintColor: "#ff6b00",
+            headerTitleStyle: { fontWeight: "bold" },
+          }}
+        />
         <Stack.Screen name="Main" component={MainTabs} />
-        <Stack.Screen name="Notifications" component={NotificationsScreen} />
-        <Stack.Screen name="FoodListing" component={FoodListingScreen} />
-        <Stack.Screen name="FoodDetails" component={FoodDetailsScreen} />
-        <Stack.Screen name="Checkout" component={CheckoutScreen} />
-        <Stack.Screen name="Cart" component={CartScreen} />
+        <Stack.Screen
+          name="Notifications"
+          component={NotificationsScreen}
+          options={{
+            headerShown: true,
+            title: "Notifications",
+            headerTintColor: "#ff6b00",
+            headerTitleStyle: { fontWeight: "bold" },
+          }}
+        />
+        <Stack.Screen
+          name="FoodListing"
+          component={FoodListingScreen}
+          options={({ route }) => ({
+            headerShown: true,
+            title: route.params?.category || route.params?.restaurant || "Explore Food",
+            headerTintColor: "#ff6b00",
+            headerTitleStyle: { fontWeight: "bold" },
+          })}
+        />
+        <Stack.Screen
+          name="FoodDetails"
+          component={FoodDetailsScreen}
+          options={{
+            headerShown: true,
+            title: "Food Details",
+            headerTintColor: "#ff6b00",
+            headerTitleStyle: { fontWeight: "bold" },
+          }}
+        />
+        <Stack.Screen
+          name="Checkout"
+          component={CheckoutScreen}
+          options={{
+            headerShown: true,
+            title: "Checkout",
+            headerTintColor: "#ff6b00",
+            headerTitleStyle: { fontWeight: "bold" },
+          }}
+        />
+        <Stack.Screen
+          name="OrderSuccess"
+          component={OrderSuccessScreen}
+          options={{
+            headerShown: false,
+          }}
+        />
+
+        <Stack.Screen
+          name="Cart"
+          component={CartScreen}
+          options={{
+            headerShown: true,
+            title: "My Cart",
+            headerTintColor: "#ff6b00",
+            headerTitleStyle: { fontWeight: "bold" },
+          }}
+        />
         <Stack.Screen
           name="OrderDetails"
           component={OrderDetailsScreen}
@@ -147,6 +247,16 @@ const AppNavigator = () => {
           options={{
             headerShown: true,
             title: "Track Order",
+            headerTintColor: "#ff6b00",
+            headerTitleStyle: { fontWeight: "bold" },
+          }}
+        />
+        <Stack.Screen
+          name="RestaurantDetail"
+          component={RestaurantDetailsScreen}
+          options={{
+            headerShown: true,
+            title: "Restaurant Details",
             headerTintColor: "#ff6b00",
             headerTitleStyle: { fontWeight: "bold" },
           }}

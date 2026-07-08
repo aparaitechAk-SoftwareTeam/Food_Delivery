@@ -8,7 +8,7 @@ import AppButton from "../../components/AppButton";
 import { login } from "../../redux/slices/authSlice";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
-const LoginScreen = ({ navigation }) => {
+const LoginScreen = ({ navigation, route }) => {
   const dispatch = useDispatch();
   const auth = useSelector((state) => state.auth);
   
@@ -82,10 +82,24 @@ const LoginScreen = ({ navigation }) => {
           await AsyncStorage.removeItem("foodexpress_remembered_user");
           await AsyncStorage.setItem("foodexpress_remember_me", "false");
         }
-        navigation.replace("Main");
+        
+        const redirectTo = route.params?.redirectTo;
+        if (redirectTo) {
+          if (redirectTo === "Main") {
+            navigation.replace("Main", { screen: route.params.redirectTab });
+          } else {
+            navigation.replace("Main");
+            setTimeout(() => {
+              navigation.navigate(redirectTo, route.params.redirectParams || {});
+            }, 100);
+          }
+        } else {
+          navigation.replace("Main");
+        }
       })
       .catch((err) => {
-        setSnackbarMsg(err || "Invalid credentials");
+        const errorMsg = typeof err === "string" ? err : (err?.message || "Invalid credentials");
+        setSnackbarMsg(errorMsg);
         setSnackbarVisible(true);
       });
   };

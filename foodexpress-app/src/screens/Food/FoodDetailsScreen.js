@@ -1,104 +1,283 @@
-import React, { useEffect, useState } from "react";
-import { View, StyleSheet, ScrollView } from "react-native";
-import { Text, Card, Button, Chip } from "react-native-paper";
-import foodService from "../../services/foodService";
-import { useDispatch } from "react-redux";
+import React, { useEffect, useState, useRef } from "react";
+import { 
+  View, 
+  StyleSheet, 
+  ScrollView, 
+  ActivityIndicator, 
+  Animated, 
+  Dimensions, 
+  Platform,
+  TouchableOpacity
+} from "react-native";
+import { Text, Button } from "react-native-paper";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useDispatch, useSelector } from "react-redux";
 import { addToCart } from "../../redux/slices/cartSlice";
-import { addToWishlist } from "../../redux/slices/wishlistSlice";
 
-const FoodDetailsScreen = ({ route }) => {
+// Components
+import FoodHeroImage from "../../components/FoodHeroImage";
+import FoodInfo from "../../components/FoodInfo";
+import PriceSection from "../../components/PriceSection";
+import DishDetailsAccordion from "../../components/DishDetailsAccordion";
+import PeopleAlsoBought from "../../components/PeopleAlsoBought";
+import OfferBanner from "../../components/OfferBanner";
+import StickyBottomBar from "../../components/StickyBottomBar";
+import CustomizationBottomSheet from "../../components/CustomizationBottomSheet";
+import EmptyState from "../../components/EmptyState";
+import ErrorState from "../../components/ErrorState";
+
+// Services
+import foodService from "../../services/foodService";
+
+const { width, height } = Dimensions.get("window");
+
+const FoodDetailsScreen = ({ route, navigation }) => {
   const { foodId } = route.params;
   const [food, setFood] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [customiseVisible, setCustomiseVisible] = useState(false);
   const dispatch = useDispatch();
 
+  // Shimmer animation for skeleton
+  const shimmerValue = useRef(new Animated.Value(0.3)).current;
+
   useEffect(() => {
-    foodService.getFoodDetails(foodId).then((response) => {
-      setFood(response);
-      setLoading(false);
-    });
+    if (loading) {
+      const animation = Animated.loop(
+        Animated.sequence([
+          Animated.timing(shimmerValue, {
+            toValue: 1,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+          Animated.timing(shimmerValue, {
+            toValue: 0.3,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      animation.start();
+      return () => animation.stop();
+    }
+  }, [loading]);
+
+  const fetchFoodDetails = () => {
+    setLoading(true);
+    setError(null);
+    foodService.getFoodDetails(foodId)
+      .then((response) => {
+        if (!response) {
+          setError("No food details found");
+        } else {
+          setFood(response);
+        }
+        setLoading(false);
+      })
+      .catch((err) => {
+        setError(err.message || "Failed to load food details");
+        setLoading(false);
+      });
+  };
+
+  useEffect(() => {
+    fetchFoodDetails();
   }, [foodId]);
 
-  if (loading || !food) {
-    return <Text style={styles.loading}>Loading...</Text>;
+  const handleStickyAddPress = () => {
+    if (food.isCustomizable) {
+      setCustomiseVisible(true);
+    } else {
+      // Add directly to cart
+      dispatch(
+        addToCart({
+          id: food._id || food.id,
+          name: food.name,
+          price: food.price,
+          quantity: 1,
+          image: food.image,
+          restaurantName: food.restaurant?.name || "Krushna's Restaurant",
+          restaurantId: food.restaurant?._id || food.restaurant?.id || food.restaurant,
+        })
+      );
+    }
+  };
+
+  const handleCustomizationComplete = (customizationData) => {
+    // Generate unique ID in cart for this customized item
+    const customId = `${food._id || food.id}-${customizationData.size}-${customizationData.addons.join("-")}`;
+    const desc = `${customizationData.size} | ${customizationData.addons.join(", ") || "No extra toppings"}`;
+    
+    dispatch(
+      addToCart({
+        id: customId,
+        name: `${food.name} (${customizationData.size})`,
+        price: customizationData.price,
+        quantity: customizationData.quantity,
+        image: food.image,
+        restaurantName: food.restaurant?.name || "Krushna's Restaurant",
+        restaurantId: food.restaurant?._id || food.restaurant?.id || food.restaurant,
+        customisationText: desc,
+        instructions: customizationData.instructions,
+      })
+    );
+  };
+
+  if (loading) {
+    const animatedStyle = { opacity: shimmerValue };
+    return (
+      <View style={styles.skeletonContainer}>
+        {/* Hero image skeleton */}
+        <Animated.View style={[styles.skeletonHero, animatedStyle]} />
+        <View style={styles.skeletonPadding}>
+          {/* Title skeleton */}
+          <Animated.View style={[styles.skeletonTitle, animatedStyle]} />
+          <Animated.View style={[styles.skeletonTextLong, animatedStyle]} />
+          <Animated.View style={[styles.skeletonTextShort, animatedStyle]} />
+          {/* Price skeleton */}
+          <Animated.View style={[styles.skeletonPrice, animatedStyle]} />
+          {/* Accordion skeleton */}
+          <Animated.View style={[styles.skeletonAccordionHeader, animatedStyle]} />
+        </View>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.errorWrapper}>
+        <ErrorState 
+          title="Oops! Something went wrong" 
+          description={error} 
+          onRetry={fetchFoodDetails} 
+        />
+      </View>
+    );
+  }
+
+  if (!food) {
+    return (
+      <View style={styles.errorWrapper}>
+        <EmptyState 
+          title="Food Item Not Found" 
+          description="We couldn't retrieve details for this item." 
+          actionText="Go Back"
+          onAction={() => navigation.goBack()}
+        />
+      </View>
+    );
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <Card>
-        <Card.Cover source={{ uri: food.image }} />
-        <Card.Content>
-          <Text variant="headlineSmall">{food.name}</Text>
-          <Text>{food.description}</Text>
-          <Text variant="titleMedium" style={styles.price}>
-            ₹{food.price}
-          </Text>
-          <View style={styles.row}>
-            <Chip style={styles.chip}>{food.category?.name || "Category"}</Chip>
-            <Chip style={styles.chip}>
-              {food.restaurant?.name || "Restaurant"}
-            </Chip>
-          </View>
-        </Card.Content>
-      </Card>
-      <View style={styles.actions}>
-        <Button
-          mode="contained"
-          onPress={() =>
-            dispatch(
-              addToCart({
-                id: food._id,
-                name: food.name,
-                price: food.price,
-                quantity: 1,
-              }),
-            )
-          }
-        >
-          Add to Cart
-        </Button>
-        <Button
-          mode="outlined"
-          onPress={() =>
-            dispatch(
-              addToWishlist({
-                id: food._id,
-                name: food.name,
-                restaurant: food.restaurant?.name || "Restaurant",
-              }),
-            )
-          }
-        >
-          Wishlist
-        </Button>
+    <View style={styles.container}>
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent} 
+        showsVerticalScrollIndicator={false}
+      >
+        {/* 1. Hero Image */}
+        <FoodHeroImage food={food} />
+
+        {/* 2. Food Info */}
+        <FoodInfo food={food} />
+
+        {/* 3. Pricing */}
+        <PriceSection food={food} />
+
+        {/* 4. Accordion Details */}
+        <DishDetailsAccordion food={food} />
+
+        {/* 5. Recommended / People Also Bought */}
+        <PeopleAlsoBought recommendedFoods={food.recommendedFoods} />
+      </ScrollView>
+
+      {/* 6. Sticky Bottom Banner & Bar */}
+      <View style={styles.bottomStickyWrapper}>
+        <OfferBanner />
+        <StickyBottomBar food={food} onAddPress={handleStickyAddPress} />
       </View>
-    </ScrollView>
+
+      {/* 7. Customization Bottom Sheet */}
+      <CustomizationBottomSheet
+        visible={customiseVisible}
+        onClose={() => setCustomiseVisible(false)}
+        food={food}
+        onAddComplete={handleCustomizationComplete}
+      />
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "#FFFFFF",
   },
-  loading: {
-    marginTop: 32,
-    textAlign: "center",
+  scrollContent: {
+    paddingBottom: 180, // High enough padding to scroll past sticky bottoms
   },
-  price: {
-    marginTop: 12,
-    color: "#ff6b00",
+  bottomStickyWrapper: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "#FFFFFF",
+    zIndex: 100,
   },
-  row: {
-    flexDirection: "row",
-    marginTop: 12,
-    gap: 8,
+  errorWrapper: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+    justifyContent: "center",
+    alignItems: "center",
   },
-  chip: {
-    marginTop: 8,
+  // Skeleton Styles
+  skeletonContainer: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
   },
-  actions: {
+  skeletonHero: {
+    width: "100%",
+    height: 300,
+    backgroundColor: "#E4E7EC",
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+  },
+  skeletonPadding: {
     padding: 16,
-    gap: 12,
+  },
+  skeletonTitle: {
+    width: width * 0.6,
+    height: 24,
+    backgroundColor: "#F2F4F7",
+    borderRadius: 6,
+    marginBottom: 16,
+  },
+  skeletonTextLong: {
+    width: width * 0.9,
+    height: 14,
+    backgroundColor: "#F2F4F7",
+    borderRadius: 4,
+    marginBottom: 8,
+  },
+  skeletonTextShort: {
+    width: width * 0.45,
+    height: 14,
+    backgroundColor: "#F2F4F7",
+    borderRadius: 4,
+    marginBottom: 24,
+  },
+  skeletonPrice: {
+    width: 80,
+    height: 20,
+    backgroundColor: "#F2F4F7",
+    borderRadius: 4,
+    marginBottom: 24,
+  },
+  skeletonAccordionHeader: {
+    width: "100%",
+    height: 48,
+    backgroundColor: "#F2F4F7",
+    borderRadius: 8,
   },
 });
 

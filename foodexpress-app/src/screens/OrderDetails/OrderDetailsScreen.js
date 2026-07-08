@@ -48,7 +48,8 @@ const OrderDetailsScreen = ({ route, navigation }) => {
         setSnackbarVisible(true);
       })
       .catch((err) => {
-        Alert.alert("Error", err || "Could not cancel order.");
+        const errorMsg = typeof err === "string" ? err : (err?.message || "Could not cancel order.");
+        Alert.alert("Error", errorMsg);
       })
       .finally(() => {
         setCancelLoading(false);
@@ -116,7 +117,13 @@ const OrderDetailsScreen = ({ route, navigation }) => {
             />
             <View style={styles.restaurantDetails}>
               <Text style={styles.restaurantName}>{order.restaurant?.name || "Restaurant"}</Text>
-              <Text style={styles.restaurantAddress}>{order.restaurant?.cuisine?.join(", ") || "Multi Cuisine"}</Text>
+              <Text style={styles.restaurantAddress}>
+                {Array.isArray(order.restaurant?.cuisine)
+                  ? order.restaurant.cuisine.join(", ")
+                  : typeof order.restaurant?.cuisine === "string"
+                  ? order.restaurant.cuisine
+                  : "Multi Cuisine"}
+              </Text>
             </View>
           </View>
         </View>
@@ -199,6 +206,16 @@ const OrderDetailsScreen = ({ route, navigation }) => {
             <View style={styles.detailTextCol}>
               <Text style={styles.detailTextLabel}>Payment Method</Text>
               <Text style={styles.detailTextVal}>{order.paymentMethod || "Cash on Delivery"}</Text>
+            </View>
+          </View>
+          <Divider style={styles.detailDivider} />
+          <View style={styles.detailRow}>
+            <MaterialCommunityIcons name="credit-card-check-outline" size={18} color="#666" style={styles.detailIcon} />
+            <View style={styles.detailTextCol}>
+              <Text style={styles.detailTextLabel}>Payment Status</Text>
+              <Text style={[styles.detailTextVal, { color: order.paymentStatus === "Paid" ? "#0f8a5f" : "#ff6b00", fontWeight: "bold" }]}>
+                {order.paymentStatus || "Pending"}
+              </Text>
             </View>
           </View>
         </View>

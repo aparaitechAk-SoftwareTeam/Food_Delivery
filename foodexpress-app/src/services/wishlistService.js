@@ -6,11 +6,11 @@ const wishlistService = {
     return data;
   },
   addToWishlist: async (foodId) => {
-    const { data } = await api.post("/wishlist", { foodId });
+    const { data } = await api.post("/wishlist/add", { productId: foodId });
     return data;
   },
   removeFromWishlist: async (foodId) => {
-    const { data } = await api.delete(`/wishlist/${foodId}`);
+    const { data } = await api.delete(`/wishlist/remove/${foodId}`);
     return data;
   },
 };
