@@ -81,6 +81,10 @@ exports.updateDeliveryStatus = async (req, res) => {
       return res.status(450).json({ message: "Assigned order not found" });
     }
 
+    if (["Delivered", "Completed", "Cancelled"].includes(order.status) && status !== "Completed" && status !== "Cash Collected") {
+      return res.status(400).json({ message: "Cannot revert a finalized order (Delivered/Completed/Cancelled) to an active state." });
+    }
+
     if (status === "Completed" && order.paymentStatus !== "Paid") {
       return res.status(400).json({ message: "Order cannot be completed until payment is confirmed." });
     }

@@ -15,9 +15,14 @@ const Customers = () => {
   const loadData = async () => {
     setLoading(true);
     try {
+      const token = localStorage.getItem('admin_token');
       const [usersRes, ordersRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/admin/users`).then(res => res.json()).catch(() => []),
-        fetch(`${API_BASE_URL}/admin/orders`).then(res => res.json()).catch(() => [])
+        fetch(`${API_BASE_URL}/admin/users`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }).then(res => res.json()).catch(() => []),
+        fetch(`${API_BASE_URL}/admin/orders`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }).then(res => res.json()).catch(() => [])
       ]);
       setCustomers(Array.isArray(usersRes) ? usersRes.filter(u => u.role === 'customer') : []);
       setOrders(Array.isArray(ordersRes) ? ordersRes : []);
@@ -35,8 +40,10 @@ const Customers = () => {
   const handleToggleBlock = async (userId) => {
     setUpdatingId(userId);
     try {
+      const token = localStorage.getItem('admin_token');
       const response = await fetch(`${API_BASE_URL}/admin/users/${userId}/block`, {
         method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}` }
       });
       if (response.ok) {
         const updatedUser = await response.json();

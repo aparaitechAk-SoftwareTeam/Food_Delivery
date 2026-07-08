@@ -25,7 +25,12 @@ const DeliveryBoys = () => {
   const loadRiders = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/delivery-boys`);
+      const token = localStorage.getItem('admin_token');
+      const response = await fetch(`${API_BASE_URL}/admin/delivery-boys`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       const data = await response.json();
       setRiders(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -89,9 +94,13 @@ const DeliveryBoys = () => {
         ? `${API_BASE_URL}/admin/delivery-boys/${editingRider._id}`
         : `${API_BASE_URL}/admin/delivery-boys`;
 
+      const token = localStorage.getItem('admin_token');
       const response = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify(payload),
       });
 
@@ -113,8 +122,12 @@ const DeliveryBoys = () => {
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this delivery rider permanently?')) return;
     try {
+      const token = localStorage.getItem('admin_token');
       const response = await fetch(`${API_BASE_URL}/admin/delivery-boys/${id}`, {
         method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       });
       if (response.ok) {
         setRiders(prev => prev.filter(r => r._id !== id));
@@ -128,9 +141,13 @@ const DeliveryBoys = () => {
 
   const handleToggleBlock = async (rider) => {
     try {
+      const token = localStorage.getItem('admin_token');
       const response = await fetch(`${API_BASE_URL}/admin/delivery-boys/${rider._id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ isBlocked: !rider.isBlocked }),
       });
       if (response.ok) {

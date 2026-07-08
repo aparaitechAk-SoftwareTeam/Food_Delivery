@@ -625,6 +625,11 @@ exports.updateOrderStatus = async (req, res) => {
     const idx = orders.findIndex(o => o._id === id || o.id === id);
     if (idx !== -1) {
       const targetOrder = orders[idx];
+      
+      if (status && ["Delivered", "Completed", "Cancelled"].includes(targetOrder.status) && !["Delivered", "Completed", "Cancelled"].includes(status)) {
+        return res.status(400).json({ message: "Cannot revert a finalized order (Delivered/Completed/Cancelled) to an active state." });
+      }
+
       const targetStatus = status !== undefined ? status : targetOrder.status;
       const targetPaymentStatus = paymentStatus !== undefined ? paymentStatus : targetOrder.paymentStatus;
       
@@ -650,6 +655,10 @@ exports.updateOrderStatus = async (req, res) => {
   try {
     const order = await Order.findById(id);
     if (!order) return res.status(404).json({ message: "Order not found" });
+
+    if (status && ["Delivered", "Completed", "Cancelled"].includes(order.status) && !["Delivered", "Completed", "Cancelled"].includes(status)) {
+      return res.status(400).json({ message: "Cannot revert a finalized order (Delivered/Completed/Cancelled) to an active state." });
+    }
 
     const finalStatus = status !== undefined ? status : order.status;
     const finalPaymentStatus = paymentStatus !== undefined ? paymentStatus : order.paymentStatus;
@@ -763,6 +772,11 @@ exports.deleteReview = async (req, res) => {
 // ── Delivery Boy Management ───────────────────────────────────────────────────
 
 exports.getDeliveryBoys = async (req, res) => {
+  if (process.env.MOCK_DB === "true") {
+    const { users } = require("../config/mockDataStore");
+    const riders = users.filter(u => u.role === "delivery");
+    return res.json(riders);
+  }
   try {
     const riders = await User.find({ role: "delivery" }).select("-password");
     res.json(riders);
@@ -852,6 +866,28 @@ exports.deleteDeliveryBoy = async (req, res) => {
 exports.assignOrderToRider = async (req, res) => {
   const { riderId } = req.body;
   const orderId = req.params.id;
+
+  if (process.env.MOCK_DB === "true") {
+    const { orders, users } = require("../config/mockDataStore");
+    const idx = orders.findIndex(o => o._id === orderId || o.id === orderId);
+    if (idx === -1) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+    const rider = users.find(u => (u._id === riderId || u.id === riderId) && u.role === "delivery");
+    if (!rider) {
+      return res.status(400).json({ message: "Invalid delivery boy selected" });
+    }
+    
+    const targetOrder = orders[idx];
+    targetOrder.deliveryBoy = rider;
+    targetOrder.deliveryStatus = "Assigned";
+    targetOrder.riderStatus = "Assigned";
+    if (targetOrder.status === "Pending" || targetOrder.status === "Confirmed") {
+      targetOrder.status = "Confirmed";
+      targetOrder.orderStatus = "Confirmed";
+    }
+    return res.json({ message: "Order assigned to delivery rider", order: targetOrder });
+  }
 
   try {
     const order = await Order.findById(orderId);

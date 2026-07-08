@@ -11,6 +11,11 @@
     "android": {
       "package": "com.foodexpress.rider"
     },
-    "web": {}
+    "web": {},
+    "extra": {
+      "eas": {
+        "projectId": "1212c36b-05c7-4476-90cb-817839e98c30"
+      }
+    }
   }
 }

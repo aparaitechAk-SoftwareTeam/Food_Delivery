@@ -11,6 +11,28 @@ exports.generateQR = async (req, res) => {
       return res.status(400).json({ message: "Amount is required" });
     }
 
+    const razorpay = require("../config/razorpay");
+    // Amount must be in paise (e.g. 100 paise = 1 INR)
+    const amountInPaise = Math.round(parseFloat(amount) * 100);
+
+    let razorpayOrder;
+    try {
+      razorpayOrder = await razorpay.orders.create({
+        amount: amountInPaise,
+        currency: "INR",
+        receipt: orderId.toString().slice(0, 40),
+      });
+      console.log(`[Razorpay] Created order: ${razorpayOrder.id} for amount ${amount} INR`);
+    } catch (err) {
+      console.error("[Razorpay] Order creation failed:", err.message);
+      // Fallback dummy order for sandbox/local dev if Razorpay endpoint is offline
+      razorpayOrder = {
+        id: `rzp_order_${Date.now()}`,
+        amount: amountInPaise,
+        currency: "INR"
+      };
+    }
+
     // Dynamic scannable UPI Payment URI
     const upiUri = `upi://pay?pa=CloudKitchen@razorpay&pn=Krushnas%20Restaurant&tr=${orderId}&am=${amount}&cu=INR&tn=Order%20${orderId}`;
     
@@ -20,7 +42,7 @@ exports.generateQR = async (req, res) => {
     res.status(200).json({
       qr_code_url: qrCodeUrl,
       upi_uri: upiUri,
-      razorpay_order_id: `rzp_order_${Date.now()}`,
+      razorpay_order_id: razorpayOrder.id,
       merchant_name: "Krushna's Restaurant",
       amount: parseFloat(amount),
       orderId: orderId,
@@ -46,10 +68,26 @@ exports.verifyPayment = async (req, res) => {
       return res.status(400).json({ message: "Payment method is required" });
     }
 
+    // Prevent duplicate payment verification / order creation
+    if (paymentId && process.env.MOCK_DB !== "true") {
+      const existingOrder = await Order.findOne({ transactionId: paymentId });
+      if (existingOrder) {
+        console.log(`[paymentController] Order already verified for paymentId: "${paymentId}". Returning existing order.`);
+        return res.status(200).json(existingOrder);
+      }
+    } else if (paymentId && process.env.MOCK_DB === "true") {
+      const { orders } = require("../config/mockDataStore");
+      const existingOrder = orders.find(o => o.transactionId === paymentId);
+      if (existingOrder) {
+        console.log(`[paymentController] Mock Order already verified for paymentId: "${paymentId}". Returning existing order.`);
+        return res.status(200).json(existingOrder);
+      }
+    }
+
     let isVerified = false;
 
     // Secure Verification Check
-    if (paymentMethod === "Razorpay QR Code" || paymentMethod.startsWith("UPI")) {
+    if (paymentMethod === "Razorpay QR Code" || paymentMethod.startsWith("UPI") || paymentMethod === "Online Payment" || paymentMethod === "Razorpay Card") {
       if (!paymentId) {
         return res.status(400).json({ message: "Transaction / Payment ID is required for online payments" });
       }
@@ -97,16 +135,20 @@ exports.verifyPayment = async (req, res) => {
           _id: `ord-${orders.length + 1}`,
           id: `ord-${orders.length + 1}`,
           user: req.user,
+          customerName: req.user.name,
+          customerEmail: req.user.email,
+          customerPhone: req.user.phone || "",
           restaurant: restObj || { id: restaurant, name: "Krushna's Restaurant" },
           items: resolvedItems,
           address,
           paymentMethod,
           paymentStatus: paymentMethod === "Cash on Delivery" ? "Pending" : "Paid",
+          paidAt: paymentMethod === "Cash on Delivery" ? null : new Date(),
           discount: discount || 0,
           deliveryCharge: deliveryCharge !== undefined ? deliveryCharge : 40,
           tax: tax || 0,
           totalAmount: totalAmount || amount,
-          status: "Pending",
+          status: paymentMethod === "Cash on Delivery" ? "Pending" : "Confirmed",
           orderNumber,
           transactionId: paymentId || `TXT-${Date.now()}`,
           createdAt: new Date()
@@ -166,11 +208,16 @@ exports.verifyPayment = async (req, res) => {
 
       const order = await Order.create({
         user: req.user._id,
+        customerName: req.user.name,
+        customerEmail: req.user.email,
+        customerPhone: req.user.phone,
         restaurant: finalRestaurantId,
         items: resolvedItems,
         address,
         paymentMethod,
         paymentStatus: paymentMethod === "Cash on Delivery" ? "Pending" : "Paid",
+        status: paymentMethod === "Cash on Delivery" ? "Pending" : "Confirmed",
+        paidAt: paymentMethod === "Cash on Delivery" ? null : new Date(),
         discount: discount || 0,
         deliveryCharge: deliveryCharge !== undefined ? deliveryCharge : 40,
         tax: tax || 0,
