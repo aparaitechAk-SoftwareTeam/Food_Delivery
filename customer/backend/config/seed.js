@@ -13,9 +13,63 @@ const seedDatabase = async () => {
     console.log("Checking database state...");
     const categoryCount = await Category.countDocuments();
     
-    // Force seed if categories list is not fully populated to 100 categories
+    // Ensure default demo accounts exist even if full seeding is skipped
+    const adminExists = await User.findOne({ email: "admin@foodexpress.com" });
+    if (!adminExists) {
+      console.log("Admin account missing. Creating default admin...");
+      const demoAdminHash = bcrypt.hashSync("Admin@123", 10);
+      await User.create({
+        name: "System Admin",
+        email: "admin@foodexpress.com",
+        phone: "9876543201",
+        password: demoAdminHash,
+        role: "admin",
+        addresses: []
+      });
+      console.log("Default admin created successfully.");
+    }
+
+    const userExists = await User.findOne({ email: "user@foodexpress.com" });
+    if (!userExists) {
+      console.log("Demo user missing. Creating default demo user...");
+      const demoUserHash = bcrypt.hashSync("User@123", 10);
+      await User.create({
+        name: "Demo User",
+        email: "user@foodexpress.com",
+        phone: "9876543202",
+        password: demoUserHash,
+        role: "customer",
+        addresses: [
+          {
+            label: "Home",
+            line1: "Flat 101, Green Meadows",
+            line2: "Near City Park",
+            city: "Baramati",
+            state: "Maharashtra",
+            postalCode: "413102",
+            country: "India",
+            isDefault: true
+          }
+        ]
+      });
+    }
+
+    const riderExists = await User.findOne({ email: "delivery@foodexpress.com" });
+    if (!riderExists) {
+      console.log("Demo rider missing. Creating default demo rider...");
+      const demoRiderHash = bcrypt.hashSync("Delivery@123", 10);
+      await User.create({
+        name: "Delivery Rider",
+        email: "delivery@foodexpress.com",
+        phone: "9876543203",
+        password: demoRiderHash,
+        role: "delivery",
+        addresses: []
+      });
+    }
+
     if (categoryCount >= 100) {
-      console.log("Database already has seeded categories. Skipping seed...");
+      console.log("Database already has seeded categories. Skipping full seed...");
       return;
     }
 
