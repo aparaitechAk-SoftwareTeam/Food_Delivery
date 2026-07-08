@@ -4,6 +4,8 @@ require("express-async-errors");
 const express = require("express");
 const cors = require("cors");
 const morgan = require("morgan");
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
 
 // ── Route imports ──────────────────────────────────────────────────────────────
 const connectDB         = require("./config/db");
@@ -25,8 +27,19 @@ const deliveryRoutes    = require("./routes/deliveryRoutes");
 const errorHandler      = require("./middleware/errorHandler");
 const seedDatabase      = require("./config/seed");
 
+// Rate limiter: maximum 300 requests per 15 minutes per IP
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  message: { message: "Too many requests from this IP, please try again after 15 minutes." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // ── App ────────────────────────────────────────────────────────────────────────
 const app = express();
+app.use(helmet());
+app.use(limiter);
 app.use(cors());
 app.use(express.json());
 app.use(morgan("dev"));
@@ -60,6 +73,14 @@ if (!MONGO_URI) {
   console.error(
     "\n❌  Missing MONGO_URI in backend/.env\n" +
     "   Add: MONGO_URI=your_mongodb_connection_string\n"
+  );
+  process.exit(1);
+}
+
+if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+  console.error(
+    "\n❌  Missing RAZORPAY_KEY_ID or RAZORPAY_KEY_SECRET in backend/.env\n" +
+    "   Please add them to enable secure online payment integration.\n"
   );
   process.exit(1);
 }

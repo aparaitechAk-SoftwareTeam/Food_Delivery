@@ -129,9 +129,14 @@ const CheckoutScreen = ({ navigation }) => {
     // ─── 2. Credit/Debit Card (Existing Flow) ─────────────────────────────────
     if (paymentMethod === "Card") {
       setIsProcessing(true);
-      // Simulate quick card checkout directly
-      dispatch(placeOrder({ ...orderPayload, paymentMethod: "Card", paymentStatus: "Paid" }))
-        .unwrap()
+      paymentService.verifyPayment({
+        paymentId: `pay_card_${Date.now()}`,
+        signature: `sig_card_${Date.now()}`,
+        razorpayOrderId: `rzp_order_card_${Date.now()}`,
+        amount: bill.grandTotal,
+        paymentMethod: "Razorpay Card",
+        orderData: orderPayload
+      })
         .then((res) => {
           dispatch(clearCart());
           setIsProcessing(false);
@@ -139,7 +144,7 @@ const CheckoutScreen = ({ navigation }) => {
             orderId: res._id || res.id,
             orderNumber: res.orderNumber,
             totalAmount: res.totalAmount,
-            paymentMethod: res.paymentMethod || "Card",
+            paymentMethod: res.paymentMethod || "Razorpay Card",
             address: res.address || orderPayload.address,
           });
         })

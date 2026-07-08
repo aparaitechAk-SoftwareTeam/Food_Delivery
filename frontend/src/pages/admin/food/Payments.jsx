@@ -20,7 +20,12 @@ const Payments = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/orders`);
+      const token = localStorage.getItem('admin_token');
+      const response = await fetch(`${API_BASE_URL}/admin/orders`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       const data = await response.json();
       setOrders(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -41,9 +46,13 @@ const Payments = () => {
   const handleProcessRefund = async (orderId) => {
     if (!window.confirm('Process refund for this transaction?')) return;
     try {
+      const token = localStorage.getItem('admin_token');
       const response = await fetch(`${API_BASE_URL}/admin/orders/${orderId}/status`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ paymentStatus: 'Refunded' }),
       });
       if (response.ok) {

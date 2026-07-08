@@ -68,26 +68,26 @@ const OrderTrackingScreen = ({ route, navigation }) => {
   }
 
   // Get index of the current status
-  const statuses = ["Order Accepted", "Preparing", "Picked Up", "On The Way", "Arrived", "Delivered", "Completed"];
+  const statuses = ["Placed", "Accepted", "Preparing", "Ready for Pickup", "Rider Assigned", "Picked Up", "On The Way", "Delivered"];
   
   // Map backend status to our tracking status index
   let currentStatusIndex = 0;
   if (order.status === "Pending") currentStatusIndex = 0;
-  else if (order.status === "Confirmed") currentStatusIndex = 0;
+  else if (order.status === "Confirmed" || order.status === "Accepted") currentStatusIndex = 1;
   else if (order.status === "Preparing") {
     if (order.deliveryStatus === "Arrived At Restaurant") {
-      currentStatusIndex = 1;
-    } else if (order.deliveryStatus === "Accepted") {
-      currentStatusIndex = 0;
+      currentStatusIndex = 3;
+    } else if (order.deliveryStatus === "Accepted" || order.deliveryStatus === "Assigned") {
+      currentStatusIndex = 4;
     } else {
-      currentStatusIndex = 1;
+      currentStatusIndex = 2;
     }
-  } else if (order.status === "Out For Delivery" || order.deliveryStatus === "Picked Up") {
-    currentStatusIndex = 3;
-  } else if (order.status === "Delivered" || order.deliveryStatus === "Delivered") {
+  } else if (order.deliveryStatus === "Picked Up") {
     currentStatusIndex = 5;
-  } else if (order.status === "Completed") {
+  } else if (order.status === "Out For Delivery" || order.deliveryStatus === "On The Way" || order.deliveryStatus === "Arrived") {
     currentStatusIndex = 6;
+  } else if (order.status === "Delivered" || order.status === "Completed" || order.deliveryStatus === "Delivered" || order.deliveryStatus === "Completed") {
+    currentStatusIndex = 7;
   } else if (order.status === "Cancelled") {
     currentStatusIndex = -1;
   }
@@ -146,13 +146,14 @@ const OrderTrackingScreen = ({ route, navigation }) => {
   };
 
   const stepsData = [
-    { title: "Order Accepted", subtitle: "Restaurant has confirmed your order", icon: "check-decagram-outline" },
+    { title: "Placed", subtitle: "We have received your order", icon: "clipboard-text-outline" },
+    { title: "Accepted", subtitle: "Restaurant has confirmed your order", icon: "check-decagram-outline" },
     { title: "Preparing", subtitle: "Kitchen is preparing your delicious meal", icon: "fire" },
-    { title: "Picked Up", subtitle: "Rider has picked up your food package", icon: "account-check-outline" },
+    { title: "Ready for Pickup", subtitle: "Food package is ready for pickup", icon: "food-takeout-box-outline" },
+    { title: "Rider Assigned", subtitle: "Rider is assigned to deliver your order", icon: "account-check-outline" },
+    { title: "Picked Up", subtitle: "Rider has picked up your package", icon: "package-variant-closed" },
     { title: "On The Way", subtitle: "Rider is rushing to your address", icon: "moped" },
-    { title: "Arrived", subtitle: "Rider has arrived near your location", icon: "map-marker-radius" },
-    { title: "Delivered", subtitle: "Food has reached your door! Enjoy!", icon: "home-circle-outline" },
-    { title: "Completed", subtitle: "Order finalized and payment settled", icon: "clipboard-check-outline" },
+    { title: "Delivered", subtitle: "Order delivered successfully!", icon: "home-circle-outline" },
   ];
 
   const handleCallRider = () => {

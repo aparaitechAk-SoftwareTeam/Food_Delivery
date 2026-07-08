@@ -12,7 +12,12 @@ const Reviews = () => {
   const loadReviews = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/reviews`);
+      const token = localStorage.getItem('admin_token');
+      const response = await fetch(`${API_BASE_URL}/admin/reviews`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       const data = await response.json();
       setReviews(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -29,9 +34,13 @@ const Reviews = () => {
   const handleUpdateStatus = async (reviewId, newStatus) => {
     setUpdatingId(reviewId);
     try {
+      const token = localStorage.getItem('admin_token');
       const response = await fetch(`${API_BASE_URL}/admin/reviews/${reviewId}/status`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ status: newStatus }),
       });
       if (response.ok) {
@@ -49,8 +58,12 @@ const Reviews = () => {
   const handleDeleteReview = async (reviewId) => {
     if (!window.confirm('Delete this review permanently?')) return;
     try {
+      const token = localStorage.getItem('admin_token');
       const response = await fetch(`${API_BASE_URL}/admin/reviews/${reviewId}`, {
         method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       });
       if (response.ok) {
         setReviews(prev => prev.filter(r => r._id !== reviewId));

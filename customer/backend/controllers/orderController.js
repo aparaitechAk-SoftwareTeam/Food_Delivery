@@ -25,6 +25,9 @@ exports.createOrder = async (req, res) => {
         _id: `ord-${orders.length + 1}`,
         id: `ord-${orders.length + 1}`,
         user: req.user,
+        customerName: req.user.name,
+        customerEmail: req.user.email,
+        customerPhone: req.user.phone || "",
         restaurant: restObj || { id: restaurant, name: "Restaurant" },
         items: resolvedItems,
         address,
@@ -94,6 +97,9 @@ exports.createOrder = async (req, res) => {
 
     const order = await Order.create({
       user: req.user._id,
+      customerName: req.user.name,
+      customerEmail: req.user.email,
+      customerPhone: req.user.phone,
       restaurant: finalRestaurantId,
       items: resolvedItems,
       address,

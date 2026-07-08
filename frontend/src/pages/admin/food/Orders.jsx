@@ -16,7 +16,12 @@ const Orders = () => {
 
   const loadRiders = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/delivery-boys`);
+      const token = localStorage.getItem('admin_token');
+      const response = await fetch(`${API_BASE_URL}/admin/delivery-boys`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       const data = await response.json();
       setRiders(Array.isArray(data) ? data.filter(r => r.isOnline && !r.isBlocked) : []);
     } catch (e) {
@@ -27,7 +32,12 @@ const Orders = () => {
   const loadOrders = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/orders`);
+      const token = localStorage.getItem('admin_token');
+      const response = await fetch(`${API_BASE_URL}/admin/orders`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       const data = await response.json();
       setOrders(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -54,9 +64,13 @@ const Orders = () => {
       if (newStatus !== undefined && newStatus !== null) bodyObj.status = newStatus;
       if (newPaymentStatus !== undefined && newPaymentStatus !== null) bodyObj.paymentStatus = newPaymentStatus;
 
+      const token = localStorage.getItem('admin_token');
       const response = await fetch(`${API_BASE_URL}/admin/orders/${orderId}/status`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify(bodyObj),
       });
       if (response.ok) {
@@ -78,9 +92,13 @@ const Orders = () => {
   const handleAssignRider = async () => {
     if (!selectedRiderId || !selectedOrder) return;
     try {
+      const token = localStorage.getItem('admin_token');
       const response = await fetch(`${API_BASE_URL}/admin/orders/${selectedOrder._id}/assign`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ riderId: selectedRiderId })
       });
       if (response.ok) {
@@ -98,10 +116,12 @@ const Orders = () => {
 
   const getFilteredOrders = () => {
     return orders.filter(order => {
+      const customerName = order.customerName || order.user?.name || '';
+      const customerPhone = order.customerPhone || order.user?.phone || '';
       const matchesSearch = 
         (order.orderNumber || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (order.user?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (order.user?.phone || '').includes(searchTerm);
+        customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        customerPhone.includes(searchTerm);
       
       const matchesStatus = filterStatus === 'All' || order.status === filterStatus;
       return matchesSearch && matchesStatus;
@@ -212,8 +232,8 @@ const Orders = () => {
                       <tr key={order._id} className="hover:bg-slate-50/50 transition-colors">
                         <td className="py-3.5 font-bold text-slate-800">#{order.orderNumber || order._id.slice(-6).toUpperCase()}</td>
                         <td className="py-3.5">
-                          <span className="font-bold text-slate-700 block">{order.user?.name || 'Guest User'}</span>
-                          <span className="text-[10px] text-slate-450">{order.user?.phone || 'No phone'}</span>
+                          <span className="font-bold text-slate-700 block">{order.customerName || order.user?.name || 'Guest User'}</span>
+                          <span className="text-[10px] text-slate-450">{order.customerPhone || order.user?.phone || 'No phone'}</span>
                         </td>
                         <td className="py-3.5 text-center font-bold text-slate-800">₹{order.totalAmount}</td>
                         <td className="py-3.5 text-center">
@@ -313,7 +333,10 @@ const Orders = () => {
               <div className="text-xs border-b border-gray-100 pb-4 mb-4">
                 <h4 className="font-bold text-gray-900 uppercase tracking-wider text-[9px] mb-2 text-slate-400">Delivery Address</h4>
                 <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 font-semibold text-slate-700 space-y-1">
-                  <span className="block font-bold text-slate-800">{selectedOrder.user?.name || 'Guest User'}</span>
+                  <span className="block font-bold text-slate-800">{selectedOrder.customerName || selectedOrder.user?.name || 'Guest User'}</span>
+                  {(selectedOrder.customerPhone || selectedOrder.user?.phone) && (
+                    <span className="block text-[11px] text-slate-500 font-bold">Phone: {selectedOrder.customerPhone || selectedOrder.user.phone}</span>
+                  )}
                   <span className="block">{selectedOrder.address?.line1}</span>
                   {selectedOrder.address?.line2 && <span className="block">{selectedOrder.address?.line2}</span>}
                   <span className="block text-[11px] text-slate-500">
