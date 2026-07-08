@@ -41,7 +41,7 @@ const Categories = () => {
   const loadCategories = async () => {
     setLoading(true);
     try {
-      const response = await fetch('http://192.168.137.149:5000/api/admin/categories');
+      const response = await fetch(`${API_BASE_URL}/admin/categories`);
       const data = await response.json();
       
       // If DB is empty, offer seed option or auto-populate DEFAULT_CATEGORIES
@@ -85,7 +85,7 @@ const Categories = () => {
 
     setLoading(true);
     try {
-      let url = 'http://192.168.137.149:5000/api/admin/categories';
+      let url = `${API_BASE_URL}/admin/categories`;
       let method = 'POST';
 
       if (editingId) {
@@ -133,7 +133,7 @@ const Categories = () => {
     if (!window.confirm('Are you sure you want to delete this category?')) return;
     setLoading(true);
     try {
-      const response = await fetch(`http://192.168.137.149:5000/api/admin/categories/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/admin/categories/${id}`, {
         method: 'DELETE'
       });
       if (response.ok) {
@@ -153,7 +153,7 @@ const Categories = () => {
     const updatedVisible = !cat.isVisible;
     const catId = cat._id || cat.id;
     try {
-      const response = await fetch(`http://192.168.137.149:5000/api/admin/categories/${catId}`, {
+      const response = await fetch(`${API_BASE_URL}/admin/categories/${catId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isVisible: updatedVisible }),

@@ -78,8 +78,8 @@ const FoodItems = () => {
     setError(null);
     try {
       const [foodsRes, catsRes] = await Promise.all([
-        fetch('http://192.168.137.149:5000/api/admin/foods').then(res => res.json()).catch(() => []),
-        fetch('http://192.168.137.149:5000/api/admin/categories').then(res => res.json()).catch(() => [])
+        fetch(`${API_BASE_URL}/admin/foods`).then(res => res.json()).catch(() => []),
+        fetch(`${API_BASE_URL}/admin/categories`).then(res => res.json()).catch(() => [])
       ]);
       setFoods(foodsRes);
       setCategories(catsRes);
@@ -224,7 +224,7 @@ const FoodItems = () => {
     };
 
     try {
-      let url = 'http://192.168.137.149:5000/api/admin/foods';
+      let url = `${API_BASE_URL}/admin/foods`;
       let method = 'POST';
 
       if (editingId) {
@@ -272,7 +272,7 @@ const FoodItems = () => {
     if (!window.confirm('Delete this food item?')) return;
     setLoading(true);
     try {
-      const response = await fetch(`http://192.168.137.149:5000/api/admin/foods/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/admin/foods/${id}`, {
         method: 'DELETE'
       });
       if (response.ok) {
@@ -293,7 +293,7 @@ const FoodItems = () => {
 
     setLoading(true);
     try {
-      const response = await fetch('http://192.168.137.149:5000/api/admin/bulk-update', {
+      const response = await fetch(`${API_BASE_URL}/admin/bulk-update`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -408,7 +408,7 @@ const FoodItems = () => {
 
       setLoading(true);
       try {
-        const response = await fetch('http://192.168.137.149:5000/api/admin/bulk-upload', {
+        const response = await fetch(`${API_BASE_URL}/admin/bulk-upload`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ type: 'foods', items: parsedItems })

@@ -27,8 +27,8 @@ const FeaturedSections = () => {
     setLoading(true);
     try {
       const [secRes, foodsRes] = await Promise.all([
-        fetch('http://192.168.137.149:5000/api/admin/sections').then(res => res.json()).catch(() => []),
-        fetch('http://192.168.137.149:5000/api/admin/foods').then(res => res.json()).catch(() => [])
+        fetch(`${API_BASE_URL}/admin/sections`).then(res => res.json()).catch(() => []),
+        fetch(`${API_BASE_URL}/admin/foods`).then(res => res.json()).catch(() => [])
       ]);
       
       if (secRes.length === 0) {
@@ -83,7 +83,7 @@ const FeaturedSections = () => {
     const payload = { title, subtitle, maxItems, displayOrder, items: selectedItems, isVisible: true };
 
     try {
-      let url = 'http://192.168.137.149:5000/api/admin/sections';
+      let url = `${API_BASE_URL}/admin/sections`;
       let method = 'POST';
 
       if (editingId) {
@@ -127,7 +127,7 @@ const FeaturedSections = () => {
     if (!window.confirm('Delete this featured section?')) return;
     setLoading(true);
     try {
-      const response = await fetch(`http://192.168.137.149:5000/api/admin/sections/${id}`, { method: 'DELETE' });
+      const response = await fetch(`${API_BASE_URL}/admin/sections/${id}`, { method: 'DELETE' });
       if (response.ok) {
         setSections(prev => prev.filter(s => s._id !== id && s.id !== id));
       } else {
