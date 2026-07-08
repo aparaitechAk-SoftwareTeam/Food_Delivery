@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="NONE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="0909423a-b780-463d-9261-a122390f7b2e" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/backend/models/Combo.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/backend/models/FeaturedSection.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/.gitignore" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/.oxlintrc.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/README.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/index.html" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/package-lock.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/package.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/postcss.config.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/public/favicon.svg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/public/icons.svg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/src/App.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/src/App.jsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/src/assets/hero.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/src/assets/react.svg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/src/assets/vite.svg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/src/components/admin/Avatar.jsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/src/components/admin/ConfirmationModal.jsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/src/components/admin/FilterDropdown.jsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/src/components/admin/RestaurantDetailModal.jsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/src/components/admin/RestaurantRow.jsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/src/components/admin/RestaurantTable.jsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/src/components/admin/SearchBar.jsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/src/components/admin/Sidebar.jsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/src/components/admin/StatusBadge.jsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/src/components/admin/TopHeader.jsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/src/components/admin/VerificationBadge.jsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/src/index.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/src/main.jsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/src/pages/admin/food/BulkImport.jsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/src/pages/admin/food/Categories.jsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/src/pages/admin/food/ComboMeals.jsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/src/pages/admin/food/CuisineManager.jsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/src/pages/admin/food/FeaturedSections.jsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/src/pages/admin/food/FoodDashboard.jsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/src/pages/admin/food/FoodItems.jsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/src/pages/admin/food/Inventory.jsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/src/pages/admin/food/MenuOrdering.jsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/src/pages/admin/food/OffersBanners.jsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/src/pages/admin/food/Settings.jsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/src/pages/admin/food/Tags.jsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/tailwind.config.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/vite.config.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/config/mockDataStore.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/config/mockDataStore.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/controllers/adminController.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/controllers/adminController.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/controllers/foodController.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/controllers/foodController.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/models/Food.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/models/Food.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/routes/adminRoutes.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/routes/adminRoutes.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/routes/bannerRoutes.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/routes/bannerRoutes.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/foodexpress-app/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/foodexpress-app/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/foodexpress-app/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/foodexpress-app/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/foodexpress-app/src/components/RestaurantCard.js" beforeDir="false" afterPath="$PROJECT_DIR$/foodexpress-app/src/components/RestaurantCard.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/foodexpress-app/src/navigation/AppNavigator.js" beforeDir="false" afterPath="$PROJECT_DIR$/foodexpress-app/src/navigation/AppNavigator.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/foodexpress-app/src/screens/Home/HomeScreen.js" beforeDir="false" afterPath="$PROJECT_DIR$/foodexpress-app/src/screens/Home/HomeScreen.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/foodexpress-app/src/utils/api.js" beforeDir="false" afterPath="$PROJECT_DIR$/foodexpress-app/src/utils/api.js" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ClangdSettings">
+    <option name="formatViaClangd" value="false" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="ProjectColorInfo"><![CDATA[{
+  "associatedIndex": 5,
+  "fromUser": false
+}]]></component>
+  <component name="ProjectId" id="3Fvo3e0PeUiLVoxwcVFvqY7Ey2j" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.cidr.known.project.marker": "true",
+    "RunOnceActivity.readMode.enableVisualFormatting": "true",
+    "cf.first.check.clang-format": "false",
+    "cidr.known.project.marker": "true",
+    "git-widget-placeholder": "Merging krishna",
+    "kotlin-language-version-configured": "true",
+    "last_opened_file_path": "C:/Users/ratho/OneDrive/Desktop/Food_Delivery",
+    "settings.editor.selected.configurable": "AndroidSdkUpdater"
+  }
+}]]></component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="0909423a-b780-463d-9261-a122390f7b2e" name="Changes" comment="" />
+      <created>1782964708454</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1782964708454</updated>
+    </task>
+    <servers />
+  </component>
+</project>
