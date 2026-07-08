@@ -9,7 +9,7 @@ if (Platform.OS === "web") {
       typeof args[0] === "string" &&
       (args[0].includes("props.pointerEvents is deprecated") ||
         args[0].includes("Cannot record touch end without a touch start") ||
-        args[0].includes("shadow* style props are deprecated") ||
+        args[0].includes("style props are deprecated") ||
         args[0].includes("useNativeDriver is not supported"))
     ) {
       return;
