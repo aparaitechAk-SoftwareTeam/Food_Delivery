@@ -11,6 +11,10 @@ window.fetch = async function (url, options = {}) {
   if (typeof url === 'string') {
     if (url.startsWith('http://192.168.137.149:5000/api')) {
       newUrl = url.replace('http://192.168.137.149:5000/api', API_BASE_URL);
+    } else if (url.startsWith('http://localhost:5000/api')) {
+      newUrl = url.replace('http://localhost:5000/api', API_BASE_URL);
+    } else if (url.includes(':5000/api')) {
+      newUrl = url.replace(/^https?:\/\/[^/]+:5000\/api/, API_BASE_URL);
     }
   }
 

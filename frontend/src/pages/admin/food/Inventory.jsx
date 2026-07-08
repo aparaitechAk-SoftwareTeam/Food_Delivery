@@ -11,7 +11,7 @@ const Inventory = () => {
   const loadFoods = async () => {
     setLoading(true);
     try {
-      const response = await fetch('http://192.168.137.149:5000/api/admin/foods');
+      const response = await fetch(`${API_BASE_URL}/admin/foods`);
       const data = await response.json();
       setFoods(data);
     } catch (err) {
@@ -37,7 +37,7 @@ const Inventory = () => {
     setFoods(prev => prev.map(f => (f._id === foodId || f.id === foodId) ? { ...f, isAvailable: updatedState } : f));
 
     try {
-      await fetch(`http://192.168.137.149:5000/api/admin/foods/${foodId}`, {
+      await fetch(`${API_BASE_URL}/admin/foods/${foodId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isAvailable: updatedState })
@@ -51,7 +51,7 @@ const Inventory = () => {
     const foodId = food._id || food.id;
     setSavingId(foodId);
     try {
-      const response = await fetch(`http://192.168.137.149:5000/api/admin/foods/${foodId}`, {
+      const response = await fetch(`${API_BASE_URL}/admin/foods/${foodId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ stock: food.stock, isAvailable: food.stock > 0 ? food.isAvailable : false })

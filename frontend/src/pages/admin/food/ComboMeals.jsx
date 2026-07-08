@@ -21,8 +21,8 @@ const ComboMeals = () => {
     setLoading(true);
     try {
       const [combosRes, foodsRes] = await Promise.all([
-        fetch('http://192.168.137.149:5000/api/admin/combos').then(res => res.json()).catch(() => []),
-        fetch('http://192.168.137.149:5000/api/admin/foods').then(res => res.json()).catch(() => [])
+        fetch(`${API_BASE_URL}/admin/combos`).then(res => res.json()).catch(() => []),
+        fetch(`${API_BASE_URL}/admin/foods`).then(res => res.json()).catch(() => [])
       ]);
       setCombos(combosRes);
       setFoods(foodsRes);
@@ -87,7 +87,7 @@ const ComboMeals = () => {
     const payload = { name, description, price, originalPrice, image, items: selectedItems };
 
     try {
-      let url = 'http://192.168.137.149:5000/api/admin/combos';
+      let url = `${API_BASE_URL}/admin/combos`;
       let method = 'POST';
 
       if (editingId) {
@@ -132,7 +132,7 @@ const ComboMeals = () => {
     if (!window.confirm('Delete this combo?')) return;
     setLoading(true);
     try {
-      const response = await fetch(`http://192.168.137.149:5000/api/admin/combos/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/admin/combos/${id}`, {
         method: 'DELETE'
       });
       if (response.ok) {
