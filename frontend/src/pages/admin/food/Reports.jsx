@@ -13,9 +13,14 @@ const Reports = () => {
   const loadData = async () => {
     setLoading(true);
     try {
+      const token = localStorage.getItem('admin_token');
       const [ordersRes, foodsRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/admin/orders`).then(res => res.json()).catch(() => []),
-        fetch(`${API_BASE_URL}/admin/foods`).then(res => res.json()).catch(() => [])
+        fetch(`${API_BASE_URL}/admin/orders`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }).then(res => res.json()).catch(() => []),
+        fetch(`${API_BASE_URL}/admin/foods`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }).then(res => res.json()).catch(() => [])
       ]);
       setOrders(Array.isArray(ordersRes) ? ordersRes : []);
       setFoods(Array.isArray(foodsRes) ? foodsRes : []);
