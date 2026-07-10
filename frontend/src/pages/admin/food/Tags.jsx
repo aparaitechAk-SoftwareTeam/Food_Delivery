@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Tag, Plus, Trash2, Save, RefreshCw } from 'lucide-react';
 import Sidebar from '../../../components/admin/Sidebar';
 import TopHeader from '../../../components/admin/TopHeader';
+import { API_BASE_URL } from '../../../config';
 
 const DEFAULT_TAGS = ['New', 'Trending', 'Bestseller', 'Healthy', 'High Protein', 'Low Calorie', 'Sugar Free', 'Combo', 'Recommended', 'Chef Choice', 'Hot', 'Cold', 'Seasonal'];
 

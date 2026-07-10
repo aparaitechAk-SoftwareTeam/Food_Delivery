@@ -7,12 +7,6 @@ const getBaseURL = () => {
     const url = process.env.EXPO_PUBLIC_API_URL;
     return url.endsWith("/api") ? url : `${url}/api`;
   }
-  if (__DEV__) {
-    if (Platform.OS === "web") {
-      return "http://localhost:5000/api";
-    }
-    return "http://192.168.1.37:5000/api";
-  }
   return "https://food-delivery-gtq0.onrender.com/api";
 };
 
