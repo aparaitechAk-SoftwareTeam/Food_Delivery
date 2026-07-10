@@ -21,8 +21,10 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 // Redux Actions & Utilities
 import { fetchFoods } from "../../redux/slices/foodsSlice";
 import { fetchFavorites, fetchWishlist } from "../../redux/slices/wishlistSlice";
-import { fetchAddresses } from "../../redux/slices/authSlice";
+import { fetchAddresses, fetchUserProfile } from "../../redux/slices/authSlice";
 import api from "../../utils/api";
+import bannerService from "../../services/bannerService";
+import sectionService from "../../services/sectionService";
 
 // Time-of-day
 import { useTimeOfDay } from "../../hooks/useTimeOfDay";
@@ -96,6 +98,8 @@ const HomeScreen = ({ navigation }) => {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+  const [banners, setBanners] = useState([]);
+  const [featuredSections, setFeaturedSections] = useState([]);
 
   // Premium scrollable sections states
   const [bestsellers, setBestsellers] = useState([]);
@@ -186,25 +190,52 @@ const HomeScreen = ({ navigation }) => {
     }
   };
 
-  const loadData = () => {
+  const fetchBanners = async () => {
+    try {
+      const data = await bannerService.getBanners();
+      setBanners(data || []);
+    } catch (err) {
+      console.log("Error loading banners:", err.message);
+    }
+  };
+
+  const fetchFeaturedSections = async () => {
+    try {
+      const data = await sectionService.getSections();
+      setFeaturedSections(data || []);
+    } catch (err) {
+      console.log("Error loading featured sections:", err.message);
+    }
+  };
+
+  const loadData = (initial = false) => {
     dispatch(fetchFoods());
     fetchPremiumSections();
+    fetchBanners();
+    fetchFeaturedSections();
     if (token) {
+      if (initial) {
+        dispatch(fetchUserProfile());
+        dispatch(fetchAddresses());
+      }
       dispatch(fetchFavorites());
-      dispatch(fetchAddresses());
       dispatch(fetchWishlist());
     }
   };
 
   useEffect(() => {
-    loadData();
+    loadData(true);
+    const interval = setInterval(() => loadData(false), 10000); // Poll every 10 seconds
+    return () => clearInterval(interval);
   }, [dispatch, token]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
     await Promise.all([
       dispatch(fetchFoods()),
-      fetchPremiumSections()
+      fetchPremiumSections(),
+      fetchBanners(),
+      fetchFeaturedSections()
     ]);
     if (token) {
       await dispatch(fetchFavorites());
@@ -352,6 +383,7 @@ const HomeScreen = ({ navigation }) => {
           {!searchQuery && !selectedCategory ? (
             <>
               <BannerCarousel
+                banners={banners}
                 onBannerPress={(banner) => {
                   setSelectedCategory(banner.cta);
                 }}
@@ -396,101 +428,32 @@ const HomeScreen = ({ navigation }) => {
               ) : (
                 <>
 
-                  {/* Dynamic Section 1: 🔥 Bestsellers (deduped) */}
-                  {dedupedBestsellers.length > 0 && (
-                    <View style={styles.premiumSection}>
-                      <View style={styles.sectionHeaderRow}>
-                        <View>
-                          <Text style={styles.sectionTitle}>🔥 Bestsellers</Text>
-                          <Text style={styles.sectionSubtitle}>Most loved dishes near you</Text>
+                  {/* Dynamic Featured Sections from MongoDB */}
+                  {featuredSections.map((sec) => {
+                    const secId = sec._id || sec.id;
+                    const secItems = sec.items || [];
+                    if (secItems.length === 0) return null;
+                    return (
+                      <View key={secId} style={styles.premiumSection}>
+                        <View style={styles.sectionHeaderRow}>
+                          <View>
+                            <Text style={styles.sectionTitle}>{sec.title}</Text>
+                            <Text style={styles.sectionSubtitle}>{sec.subtitle || ""}</Text>
+                          </View>
                         </View>
-                        <TouchableOpacity onPress={handleViewAllBestsellers}>
-                          <Text style={styles.viewAllLink}>View All</Text>
-                        </TouchableOpacity>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
+                          {secItems.map((item) => (
+                            <FoodCard key={item._id || item.id} food={item} navigation={navigation} />
+                          ))}
+                        </ScrollView>
                       </View>
-                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
-                        {dedupedBestsellers.map((item) => (
-                          <FoodCard key={item.id || item._id} food={item} navigation={navigation} />
-                        ))}
-                      </ScrollView>
-                    </View>
-                  )}
-
-                  {/* Dynamic Section 2: 🌟 Fresh Arrivals */}
-                  {newArrivals.length > 0 && (
-                    <View style={styles.premiumSection}>
-                      <View style={styles.sectionHeaderRow}>
-                        <View>
-                          <Text style={styles.sectionTitle}>🌟 Fresh Arrivals</Text>
-                          <Text style={styles.sectionSubtitle}>Recently added dishes</Text>
-                        </View>
-                        <TouchableOpacity onPress={handleViewAllNewArrivals}>
-                          <Text style={styles.viewAllLink}>View All</Text>
-                        </TouchableOpacity>
-                      </View>
-                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
-                        {newArrivals.map((item) => (
-                          <FoodCard key={item.id || item._id} food={item} navigation={navigation} />
-                        ))}
-                      </ScrollView>
-                    </View>
-                  )}
+                    );
+                  })}
 
                   {/* Membership Card Banner */}
                   <MembershipCard
                     onPress={() => Alert.alert("Gold Program", "Join Gold Membership today for free deliveries!")}
                   />
-
-                  {/* Dynamic Section 3: 🥗 Wholesome Meals (With height animation collapse) */}
-                  {healthyMeals.length > 0 && (
-                    <View style={styles.premiumSection}>
-                      <View style={styles.sectionHeaderRow}>
-                        <View>
-                          <Text style={styles.sectionTitle}>🥗 Wholesome Meals</Text>
-                          <Text style={styles.sectionSubtitle}>Healthy, nutritious & balanced meals</Text>
-                        </View>
-                      </View>
-                      
-                      <View style={styles.gridContainer}>
-                        {(wholesomeExpanded ? healthyMeals : healthyMeals.slice(0, 6)).map((item) => (
-                          <View key={item.id || item._id} style={styles.gridHalfCol}>
-                            <FoodCard food={item} navigation={navigation} />
-                          </View>
-                        ))}
-                      </View>
-
-                      {healthyMeals.length > 6 && (
-                        <Button
-                          mode="outlined"
-                          onPress={handleToggleWholesome}
-                          style={styles.seeMoreBtn}
-                          textColor="#FF6F61"
-                        >
-                          {wholesomeExpanded ? "Show Less" : "See More"}
-                        </Button>
-                      )}
-                    </View>
-                  )}
-
-                  {/* Dynamic Section 4: 🍱 Curated Combos */}
-                  {combos.length > 0 && (
-                    <View style={styles.premiumSection}>
-                      <View style={styles.sectionHeaderRow}>
-                        <View>
-                          <Text style={styles.sectionTitle}>🍱 Curated Combos</Text>
-                          <Text style={styles.sectionSubtitle}>Perfect meal combinations</Text>
-                        </View>
-                        <TouchableOpacity onPress={handleViewAllCombos}>
-                          <Text style={styles.viewAllLink}>View All</Text>
-                        </TouchableOpacity>
-                      </View>
-                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
-                        {combos.map((item) => (
-                          <FoodCard key={item.id || item._id} food={item} navigation={navigation} />
-                        ))}
-                      </ScrollView>
-                    </View>
-                  )}
 
                   {/* Dynamic Category Independent Grids */}
                   {computedCategorizedMenu.map((group) => (

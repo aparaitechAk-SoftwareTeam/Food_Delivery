@@ -7,13 +7,7 @@ const getBaseURL = () => {
     const url = process.env.EXPO_PUBLIC_API_URL;
     return url.endsWith("/api") ? url : `${url}/api`;
   }
-  if (__DEV__) {
-    if (Platform.OS === "web") {
-      return "http://localhost:5000/api";
-    }
-    return "http://192.168.1.37:5000/api";
-  }
-  return "https://food-delivery-gtq.onrender.com/api";
+  return "https://food-delivery-gtq0.onrender.com/api";
 };
 
 const api = axios.create({
@@ -44,7 +38,9 @@ api.interceptors.response.use(
       url.includes("/auth/verify") ||
       url.includes("/auth/refresh");
 
-    if (status === 401 && isAuthEndpoint) {
+    const isBlocked = error.response?.data?.message?.toLowerCase().includes("blocked");
+
+    if (status === 401 && (isAuthEndpoint || isBlocked)) {
       await AsyncStorage.removeItem("foodexpress_token");
       await AsyncStorage.removeItem("foodexpress_user");
       await AsyncStorage.removeItem("foodexpress_active_address");

@@ -31,6 +31,8 @@ const OrderDetailsScreen = ({ route, navigation }) => {
 
   useEffect(() => {
     fetchOrderDetails();
+    const interval = setInterval(fetchOrderDetails, 3000); // Poll every 3 seconds
+    return () => clearInterval(interval);
   }, [orderId]);
 
   const handleUpdateStatus = async (newStatus) => {

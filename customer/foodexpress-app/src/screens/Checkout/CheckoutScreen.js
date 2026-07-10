@@ -23,6 +23,22 @@ const CheckoutScreen = ({ navigation }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [showUPIOverlay, setShowUPIOverlay] = useState(false);
   
+  // Detailed diagnostic error logging
+  const logAndGetError = (endpoint, payload, err) => {
+    const errorMsg = typeof err === "string" ? err : (err?.message || "Failed to place order");
+    const responseData = err?.response?.data || null;
+    const status = err?.response?.status || "Unknown Status";
+
+    console.error("=== CHECKOUT TRANSACTION ERROR ===");
+    console.error(`API Endpoint: POST ${endpoint}`);
+    console.error("Request Payload:", JSON.stringify(payload, null, 2));
+    console.error(`HTTP Status: ${status}`);
+    console.error("Response / Backend Error:", JSON.stringify(responseData || err, null, 2));
+    console.error("==================================");
+
+    return errorMsg;
+  };
+  
   // QR Code States
   const [qrData, setQrData] = useState(null);
   const [loadingQR, setLoadingQR] = useState(false);
@@ -117,10 +133,11 @@ const CheckoutScreen = ({ navigation }) => {
         })
         .catch((err) => {
           setIsProcessing(false);
+          const errorMsg = logAndGetError("/orders", { ...orderPayload, paymentMethod: "Cash on Delivery" }, err);
           if (Platform.OS === "web") {
-            alert(err?.message || "Failed to place order.");
+            alert(errorMsg);
           } else {
-            Alert.alert("Error", err?.message || "Failed to place order.");
+            Alert.alert("Error", errorMsg);
           }
         });
       return;
@@ -150,10 +167,18 @@ const CheckoutScreen = ({ navigation }) => {
         })
         .catch((err) => {
           setIsProcessing(false);
+          const errorMsg = logAndGetError("/payment/verify", {
+            paymentId: `pay_card_${Date.now()}`,
+            signature: `sig_card_${Date.now()}`,
+            razorpayOrderId: `rzp_order_card_${Date.now()}`,
+            amount: bill.grandTotal,
+            paymentMethod: "Razorpay Card",
+            orderData: orderPayload
+          }, err);
           if (Platform.OS === "web") {
-            alert(err?.message || "Card transaction declined.");
+            alert(errorMsg);
           } else {
-            Alert.alert("Payment Failed", err?.message || "Card transaction declined.");
+            Alert.alert("Payment Failed", errorMsg);
           }
         });
       return;
@@ -199,10 +224,18 @@ const CheckoutScreen = ({ navigation }) => {
         })
         .catch((err) => {
           setIsProcessing(false);
+          const errorMsg = logAndGetError("/payment/verify", {
+            paymentId: `pay_qr_${Date.now()}`,
+            signature: `sig_qr_${Date.now()}`,
+            razorpayOrderId: qrData.razorpay_order_id,
+            amount: bill.grandTotal,
+            paymentMethod: "Razorpay QR Code",
+            orderData: orderPayload
+          }, err);
           if (Platform.OS === "web") {
-            alert(err?.message || "Payment verification failed. Please try again.");
+            alert(errorMsg);
           } else {
-            Alert.alert("Verification Failed", err?.message || "Payment verification failed. Please try again.");
+            Alert.alert("Verification Failed", errorMsg);
           }
         });
     }
@@ -253,10 +286,18 @@ const CheckoutScreen = ({ navigation }) => {
       })
       .catch((err) => {
         setIsProcessing(false);
+        const errorMsg = logAndGetError("/payment/verify", {
+          paymentId: `pay_upi_${Date.now()}`,
+          signature: `sig_upi_${Date.now()}`,
+          razorpayOrderId: `rzp_order_upi_${Date.now()}`,
+          amount: bill.grandTotal,
+          paymentMethod: `UPI - ${selectedUPI}`,
+          orderData: orderPayload
+        }, err);
         if (Platform.OS === "web") {
-          alert(err?.message || "UPI transaction was not verified.");
+          alert(errorMsg);
         } else {
-          Alert.alert("Payment Failed", err?.message || "UPI transaction was not verified.");
+          Alert.alert("Payment Failed", errorMsg);
         }
       });
   };

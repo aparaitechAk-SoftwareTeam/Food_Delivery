@@ -24,6 +24,8 @@ const searchRoutes      = require("./routes/searchRoutes");
 const adminRoutes       = require("./routes/adminRoutes");
 const paymentRoutes     = require("./routes/paymentRoutes");
 const deliveryRoutes    = require("./routes/deliveryRoutes");
+const notificationRoutes = require("./routes/notificationRoutes");
+const sectionRoutes      = require("./routes/sectionRoutes");
 const errorHandler      = require("./middleware/errorHandler");
 const seedDatabase      = require("./config/seed");
 
@@ -40,16 +42,28 @@ const app = express();
 app.use(helmet());
 app.use(limiter);
 
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  process.env.ADMIN_URL,
+  "https://food-delivery-rouge-one.vercel.app",
+  "https://cloudkitchen.aparaitech.org",
+  "http://localhost:5173",
+  "http://localhost:8081",
+  "http://localhost:8082",
+  "https://cloudkitchen.aparaitech.org/"
+].filter(Boolean);
+
 app.use(
   cors({
-    origin: [
-      "https://food-delivery-rouge-one.vercel.app",
-      "https://cloudkitchen.aparaitech.org",
-      "http://localhost:5173",
-      "http://localhost:8081",
-      "http://localhost:8082",
-      "https://cloudkitchen.aparaitech.org/"
-    ],
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps, curl, postman)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      console.warn(`Origin ${origin} blocked by CORS`);
+      return callback(new Error("Not allowed by CORS"));
+    },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"]
@@ -75,6 +89,18 @@ app.use("/api/search",      searchRoutes);
 app.use("/api/payment",     paymentRoutes);
 app.use("/api/admin",       adminRoutes);
 app.use("/api/delivery",    deliveryRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/sections",      sectionRoutes);
+
+// Health check endpoint
+app.get("/api/health", async (req, res) => {
+  const mongoose = require("mongoose");
+  res.json({
+    status: "UP",
+    timestamp: new Date(),
+    mongoDB: mongoose.connection.readyState === 1 ? "CONNECTED" : "DISCONNECTED"
+  });
+});
 
 // ── Global error handler (must be last) ────────────────────────────────────────
 app.use(errorHandler);

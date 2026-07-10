@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { Plus, Edit2, Trash2, Search, Filter, RefreshCw, Upload, Download, Eye, Check, X, ShieldAlert, ArrowUpDown, ChevronLeft, ChevronRight, Save } from 'lucide-react';
 import Sidebar from '../../../components/admin/Sidebar';
 import TopHeader from '../../../components/admin/TopHeader';
+import { API_BASE_URL } from '../../../config';
 
 const CUISINES = ['Italian', 'North Indian', 'South Indian', 'Chinese', 'Continental', 'Mexican', 'Fast Food', 'Desserts'];
 const SPICE_LEVELS = ['None', 'Mild', 'Medium', 'Spicy', 'Extra Hot'];

@@ -10,34 +10,7 @@ const BannerCarousel = ({ banners = [], onBannerPress }) => {
   const flatListRef = useRef(null);
   const autoPlayTimerRef = useRef(null);
 
-  const defaultBanners = [
-    {
-      id: "b1",
-      title: "Flat 50% OFF",
-      description: "On your first order",
-      image: "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=600&q=80",
-      cta: "Burger",
-      color: "#FF6F61",
-    },
-    {
-      id: "b2",
-      title: "Buy 1 Get 1 Free",
-      description: "On selected pizzas",
-      image: "https://images.unsplash.com/photo-1603133872871-7a2acf087d74?auto=format&fit=crop&w=600&q=80",
-      cta: "Pizza",
-      color: "#4CAF50",
-    },
-    {
-      id: "b3",
-      title: "Free Delivery",
-      description: "On orders above ₹199",
-      image: "https://images.unsplash.com/photo-1551782450-a2132b4ba21d?auto=format&fit=crop&w=600&q=80",
-      cta: "Biryani",
-      color: "#FF9F43",
-    },
-  ];
-
-  const data = banners.length > 0 ? banners : defaultBanners;
+  const data = banners;
 
   useEffect(() => {
     startAutoPlay();
