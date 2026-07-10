@@ -50,11 +50,6 @@ const Orders = () => {
   useEffect(() => {
     loadOrders();
     loadRiders();
-    const interval = setInterval(() => {
-      loadOrders();
-      loadRiders();
-    }, 3000);
-    return () => clearInterval(interval);
   }, []);
 
   const handleUpdateStatus = async (orderId, newStatus, newPaymentStatus) => {
