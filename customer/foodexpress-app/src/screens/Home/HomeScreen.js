@@ -57,6 +57,29 @@ if (Platform.OS === "android") {
   }
 }
 
+const categoryImageMap = {
+  "pizza": "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=200&q=80",
+  "burger": "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=200&q=80",
+  "biryani": "https://images.unsplash.com/photo-1563379091339-03b21ab4a4d8?auto=format&fit=crop&w=200&q=80",
+  "chinese": "https://images.unsplash.com/photo-1585032226651-759b368d7246?auto=format&fit=crop&w=200&q=80",
+  "south indian": "https://images.unsplash.com/photo-1668236543090-82eba5ee5976?auto=format&fit=crop&w=200&q=80",
+  "desserts": "https://images.unsplash.com/photo-1551024601-bec78aea704b?auto=format&fit=crop&w=200&q=80",
+  "beverages": "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=200&q=80",
+  "breakfast": "https://images.unsplash.com/photo-1496042399014-dc73c4f2bde1?auto=format&fit=crop&w=200&q=80",
+  "snacks": "https://images.unsplash.com/photo-1599490659213-e2b9527bb087?auto=format&fit=crop&w=200&q=80",
+  "combos": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=200&q=80",
+};
+
+const getCategoryImage = (item) => {
+  if (!item) return { uri: "https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=200&q=80" };
+  if (item.image) return { uri: item.image };
+  const lowerName = (item.name || "").toLowerCase();
+  if (categoryImageMap[lowerName]) {
+    return { uri: categoryImageMap[lowerName] };
+  }
+  return { uri: "https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=200&q=80" };
+};
+
 const HomeScreen = ({ navigation }) => {
   // ── Time-of-day ────────────────────────────────────────────────────────────
   const timeInfo = useTimeOfDay();
@@ -99,6 +122,29 @@ const HomeScreen = ({ navigation }) => {
     () => bestsellers.filter((f) => !timeMealIdSet.has((f._id || f.id)?.toString())),
     [bestsellers, timeMealIdSet]
   );
+
+  const computedCategorizedMenu = useMemo(() => {
+    const cats = categories && categories.length > 0 ? categories : [];
+    const allFoods = foods && foods.length > 0 ? foods : [];
+
+    if (cats.length === 0) return [];
+
+    return cats.map(cat => {
+      const catFoods = allFoods.filter(f => {
+        if (!f.category) return false;
+        if (typeof f.category === "object") {
+          return f.category._id === cat._id || f.category.id === cat.id || f.category.name?.toLowerCase() === cat.name?.toLowerCase();
+        }
+        return f.category === cat._id || f.category === cat.id || f.category?.toLowerCase() === cat.name?.toLowerCase();
+      });
+
+      return {
+        category: cat,
+        totalCount: catFoods.length,
+        foods: catFoods.slice(0, 4)
+      };
+    }).filter(group => group.totalCount > 0);
+  }, [categories, foods]);
 
   // Animation values
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -349,18 +395,6 @@ const HomeScreen = ({ navigation }) => {
                 </>
               ) : (
                 <>
-                  {/* ── Time-Based Meal Section (above Bestsellers) ── */}
-                  <TimeMealSection
-                    period={timeInfo.period}
-                    greeting={timeInfo.greeting}
-                    emoji={timeInfo.emoji}
-                    subtitle={timeInfo.subtitle}
-                    accentColor={timeInfo.accentColor}
-                    gradientColors={timeInfo.gradientColors}
-                    timeLabel={timeInfo.timeLabel}
-                    foods={timeMealFoods}
-                    navigation={navigation}
-                  />
 
                   {/* Dynamic Section 1: 🔥 Bestsellers (deduped) */}
                   {dedupedBestsellers.length > 0 && (
@@ -458,13 +492,13 @@ const HomeScreen = ({ navigation }) => {
                     </View>
                   )}
 
-                  {/* Dynamic Category Independent Grids (10 sections for home preview) */}
-                  {categorizedMenu.slice(0, 10).map((group) => (
+                  {/* Dynamic Category Independent Grids */}
+                  {computedCategorizedMenu.map((group) => (
                     <View key={group.category._id || group.category.id} style={styles.categorizedSection}>
                       <View style={styles.sectionHeaderRow}>
                         <View style={styles.catHeaderLeft}>
                           <Image
-                            source={{ uri: group.category.image || "https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=200&q=80" }}
+                            source={getCategoryImage(group.category)}
                             style={styles.catImage}
                             resizeMode="cover"
                           />

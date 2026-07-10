@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "FoodExpress",
-    "slug": "foodexpress-app",
+    "slug": "food-express",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
@@ -27,8 +27,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "896e1dba-b8ea-4206-9a01-d82912f63fce"
+        "projectId": "6af3a9dc-5d39-4fe1-8a7d-664512636fe2"
       }
-    }
+    },
+    "owner": "atharvatole4s-team"
   }
 }

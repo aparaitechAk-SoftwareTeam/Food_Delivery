@@ -68,7 +68,7 @@ const seedDatabase = async () => {
       });
     }
 
-    if (categoryCount >= 100) {
+    if (categoryCount >= 100 && process.env.FORCE_SEED !== "true") {
       console.log("Database already has seeded categories. Skipping full seed...");
       return;
     }
@@ -133,14 +133,49 @@ const seedDatabase = async () => {
       "Desserts": "https://images.unsplash.com/photo-1551024601-bec78aea704b?auto=format&fit=crop&w=200&q=80",
       "Beverages": "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=200&q=80",
       "Fast Food": "https://images.unsplash.com/photo-1561758033-d89a9ad46330?auto=format&fit=crop&w=200&q=80",
-      "Snacks": "https://images.unsplash.com/photo-1599490659213-e2b9527bb087?auto=format&fit=crop&w=200&q=80"
+      "Snacks": "https://images.unsplash.com/photo-1599490659213-e2b9527bb087?auto=format&fit=crop&w=200&q=80",
+      "Tea": "https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&w=200&q=80",
+      "Ice Cream": "https://images.unsplash.com/photo-1501443762994-82bd5dace89a?auto=format&fit=crop&w=200&q=80",
+      "Pasta": "https://images.unsplash.com/photo-1563379971899-660589a01ec3?auto=format&fit=crop&w=200&q=80",
+      "Continental": "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=200&q=80",
+      "Naan": "https://images.unsplash.com/photo-1601050690597-df056fb4ce78?auto=format&fit=crop&w=200&q=80",
+      "Khandvi": "https://images.unsplash.com/photo-1601050690597-df056fb4ce78?auto=format&fit=crop&w=200&q=80",
+      "North Indian": "https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=200&q=80",
+      "Chicken Tikka": "https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?auto=format&fit=crop&w=200&q=80",
+      "French Fries": "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?auto=format&fit=crop&w=200&q=80",
+      "Spring Rolls": "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=200&q=80",
+      "Pasta Alfredo": "https://images.unsplash.com/photo-1645112411341-6c4fd023714a?auto=format&fit=crop&w=200&q=80",
+      "Kulfi": "https://images.unsplash.com/photo-1501443762994-82bd5dace89a?auto=format&fit=crop&w=200&q=80",
+      "Vada": "https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=200&q=80",
+      "Butter Chicken": "https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?auto=format&fit=crop&w=200&q=80",
+      "Donuts": "https://images.unsplash.com/photo-1551024601-bec78aea704b?auto=format&fit=crop&w=200&q=80",
+      "Cupcakes": "https://images.unsplash.com/photo-1576618148400-f54bed99fcfd?auto=format&fit=crop&w=200&q=80",
+      "Mocktails": "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=200&q=80",
+      "Dal Bati": "https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=200&q=80",
+      "Mughlai": "https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?auto=format&fit=crop&w=200&q=80",
+      "Coffee": "https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=200&q=80",
+      "Breakfast": "https://images.unsplash.com/photo-1496042399014-dc73c4f2bde1?auto=format&fit=crop&w=200&q=80",
+      "Lunch": "https://images.unsplash.com/photo-1563379091339-03b21ab4a4d8?auto=format&fit=crop&w=200&q=80",
+      "Dinner": "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=200&q=80",
+      "Juices": "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=200&q=80",
+      "Healthy": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=200&q=80",
+      "Rolls": "https://images.unsplash.com/photo-1601050690597-df056fb4ce78?auto=format&fit=crop&w=200&q=80",
+      "Sandwiches": "https://images.unsplash.com/photo-1509722747041-616f39b57569?auto=format&fit=crop&w=200&q=80",
+      "Wraps": "https://images.unsplash.com/photo-1601050690597-df056fb4ce78?auto=format&fit=crop&w=200&q=80",
+      "Street Food": "https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=200&q=80",
+      "Waffles": "https://images.unsplash.com/photo-1562376502-6f769499c886?auto=format&fit=crop&w=200&q=80",
+      "Cakes": "https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=200&q=80",
+      "Momos": "https://images.unsplash.com/photo-1563245372-f21724e3856d?auto=format&fit=crop&w=200&q=80",
+      "Noodles": "https://images.unsplash.com/photo-1585032226651-759b368d7246?auto=format&fit=crop&w=200&q=80"
     };
 
     const categoriesData = categoryNames.map((name) => {
       const img = categoryImages[name] || "https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=200&q=80";
+      const icon = emojis[name] || "🍽️";
       return {
         name,
-        image: img
+        image: img,
+        icon: icon
       };
     });
     const seededCategories = await Category.insertMany(categoriesData);
@@ -385,7 +420,7 @@ const seedDatabase = async () => {
           discountPercentage: discountPercentage,
           category: catObj._id,
           restaurant: rest._id,
-          image: rest.image,
+          image: catObj.image || rest.image,
           rating: parseFloat((4.0 + Math.random() * 0.9).toFixed(1)),
           isFeatured: Math.random() > 0.8,
           isPopular: Math.random() > 0.8,

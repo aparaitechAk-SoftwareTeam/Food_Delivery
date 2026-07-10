@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
+import { View, StyleSheet, ScrollView, TouchableOpacity, BackHandler } from "react-native";
 import { Text, Snackbar, Portal, Dialog, TextInput, Checkbox } from "react-native-paper";
 import { useDispatch, useSelector } from "react-redux";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -11,6 +11,28 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 const LoginScreen = ({ navigation, route }) => {
   const dispatch = useDispatch();
   const auth = useSelector((state) => state.auth);
+
+  const handleBackPress = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate("Main");
+    }
+  };
+
+  useEffect(() => {
+    const backAction = () => {
+      handleBackPress();
+      return true;
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      backAction
+    );
+
+    return () => backHandler.remove();
+  }, []);
   
   const [emailOrPhone, setEmailOrPhone] = useState("");
   const [password, setPassword] = useState("");
@@ -124,6 +146,9 @@ const LoginScreen = ({ navigation, route }) => {
 
   return (
     <Portal.Host>
+      <TouchableOpacity style={styles.backButton} onPress={handleBackPress} activeOpacity={0.8}>
+        <MaterialCommunityIcons name="arrow-left" size={24} color="#ff6b00" />
+      </TouchableOpacity>
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.headerContainer}>
           <Text style={styles.brandText}>FoodExpress</Text>
@@ -426,6 +451,23 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: 8,
     fontWeight: "500",
+  },
+  backButton: {
+    position: "absolute",
+    top: 48,
+    left: 20,
+    zIndex: 100,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
   },
 });
 
