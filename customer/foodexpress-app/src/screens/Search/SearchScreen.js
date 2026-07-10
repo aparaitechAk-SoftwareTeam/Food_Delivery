@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { Searchbar, Text, Card, ActivityIndicator, Chip } from "react-native-paper";
 import searchService from "../../services/searchService";
-import mockData from "../../mockData/data";
+import { useSelector } from "react-redux";
 
 const SearchScreen = ({ navigation }) => {
   const [query, setQuery] = useState("");
@@ -19,6 +19,8 @@ const SearchScreen = ({ navigation }) => {
     foods: [],
     categories: [],
   });
+  
+  const categories = useSelector((state) => state.foods.categories) || [];
 
   // Debounced search trigger
   useEffect(() => {
@@ -33,20 +35,8 @@ const SearchScreen = ({ navigation }) => {
         const data = await searchService.searchAll(query);
         setResults(data);
       } catch (error) {
-        // Local fallback search on error (e.g. when backend is offline)
-        const regex = new RegExp(query, "i");
-        
-        const localRest = mockData.restaurants.filter(r => regex.test(r.name));
-        const localFoods = mockData.foods.filter(
-          f => regex.test(f.name) || regex.test(f.description)
-        );
-        const localCats = mockData.categories.filter(c => regex.test(c.name));
-
-        setResults({
-          restaurants: localRest,
-          foods: localFoods,
-          categories: localCats,
-        });
+        console.error("Search failed:", error);
+        setResults({ restaurants: [], foods: [], categories: [] });
       } finally {
         setLoading(false);
       }
@@ -130,30 +120,21 @@ const SearchScreen = ({ navigation }) => {
         <ScrollView style={styles.suggestionContainer}>
           <Text style={styles.sectionTitle}>Popular Cuisines</Text>
           <View style={styles.categoriesGrid}>
-            {mockData.categories.map((cat) => (
-              <TouchableOpacity
-                key={cat.id}
-                style={styles.cuisineItem}
-                onPress={() => handleCategoryPress(cat.name)}
-              >
-                <Text style={styles.cuisineIcon}>
-                  {cat.name === "Pizza"
-                    ? "🍕"
-                    : cat.name === "Burger"
-                    ? "🍔"
-                    : cat.name === "Biryani"
-                    ? "🍛"
-                    : cat.name === "Chinese"
-                    ? "🍜"
-                    : cat.name === "South Indian"
-                    ? "🥞"
-                    : cat.name === "Desserts"
-                    ? "🍰"
-                    : "🥤"}
-                </Text>
-                <Text style={styles.cuisineName}>{cat.name}</Text>
-              </TouchableOpacity>
-            ))}
+            {categories.map((cat) => {
+              const catId = cat._id || cat.id;
+              return (
+                <TouchableOpacity
+                  key={catId}
+                  style={styles.cuisineItem}
+                  onPress={() => handleCategoryPress(cat.name)}
+                >
+                  <Text style={styles.cuisineIcon}>
+                    {cat.icon || "🍽️"}
+                  </Text>
+                  <Text style={styles.cuisineName}>{cat.name}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </ScrollView>
       ) : !hasResults ? (

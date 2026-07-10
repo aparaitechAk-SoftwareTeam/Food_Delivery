@@ -13,7 +13,7 @@ const getBaseURL = () => {
     }
     return "http://192.168.1.37:5000/api";
   }
-  return "https://food-delivery-gtq.onrender.com/api";
+  return "https://food-delivery-gtq0.onrender.com/api";
 };
 
 const api = axios.create({

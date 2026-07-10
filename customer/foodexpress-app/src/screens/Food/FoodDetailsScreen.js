@@ -63,26 +63,32 @@ const FoodDetailsScreen = ({ route, navigation }) => {
     }
   }, [loading]);
 
-  const fetchFoodDetails = () => {
-    setLoading(true);
-    setError(null);
+  const fetchFoodDetails = (initial = false) => {
+    if (initial) {
+      setLoading(true);
+      setError(null);
+    }
     foodService.getFoodDetails(foodId)
       .then((response) => {
         if (!response) {
-          setError("No food details found");
+          if (initial) setError("No food details found");
         } else {
           setFood(response);
         }
-        setLoading(false);
+        if (initial) setLoading(false);
       })
       .catch((err) => {
-        setError(err.message || "Failed to load food details");
-        setLoading(false);
+        if (initial) {
+          setError(err.message || "Failed to load food details");
+          setLoading(false);
+        }
       });
   };
 
   useEffect(() => {
-    fetchFoodDetails();
+    fetchFoodDetails(true);
+    const interval = setInterval(() => fetchFoodDetails(false), 5000); // Poll every 5 seconds
+    return () => clearInterval(interval);
   }, [foodId]);
 
   const handleStickyAddPress = () => {

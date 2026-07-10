@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Eye, EyeOff, FolderHeart, Save, X, RefreshCw, ArrowUp, ArrowDown } from 'lucide-react';
 import Sidebar from '../../../components/admin/Sidebar';
 import TopHeader from '../../../components/admin/TopHeader';
+import { API_BASE_URL } from '../../../config';
 
 const DEFAULT_CATEGORIES = [
   { name: 'Breakfast', icon: '🍳', priority: 1, isVisible: true },
@@ -88,7 +89,9 @@ const Categories = () => {
       let url = `${API_BASE_URL}/admin/categories`;
       let method = 'POST';
 
-      if (editingId) {
+      const isMockId = editingId && editingId.startsWith('c-');
+
+      if (editingId && !isMockId) {
         url = `${url}/${editingId}`;
         method = 'PUT';
       }
@@ -131,6 +134,10 @@ const Categories = () => {
 
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this category?')) return;
+    if (id && id.startsWith('c-')) {
+      setCategories(prev => prev.filter(c => c._id !== id && c.id !== id));
+      return;
+    }
     setLoading(true);
     try {
       const response = await fetch(`${API_BASE_URL}/admin/categories/${id}`, {

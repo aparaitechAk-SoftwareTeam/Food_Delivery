@@ -20,21 +20,23 @@ const OrderDetailsScreen = ({ route, navigation }) => {
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMsg, setSnackbarMsg] = useState("");
 
-  const fetchDetails = async () => {
+  const fetchDetails = async (initial = false) => {
     try {
-      setLoading(true);
+      if (initial) setLoading(true);
       const data = await orderService.getOrderDetails(orderId);
       setOrder(data);
     } catch (err) {
       console.log("Error loading order details:", err);
-      Alert.alert("Error", "Could not load order details.");
+      if (initial) Alert.alert("Error", "Could not load order details.");
     } finally {
-      setLoading(false);
+      if (initial) setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchDetails();
+    fetchDetails(true);
+    const interval = setInterval(() => fetchDetails(false), 3000); // Poll every 3 seconds
+    return () => clearInterval(interval);
   }, [orderId]);
 
   const handleCancelOrder = () => {

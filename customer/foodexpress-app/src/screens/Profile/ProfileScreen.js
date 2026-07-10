@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   StyleSheet,
@@ -20,6 +20,7 @@ import {
 import { useDispatch, useSelector } from "react-redux";
 import {
   logout,
+  fetchUserProfile,
   updateUserProfile,
   selectDefaultAddress,
   saveAddress,
@@ -32,6 +33,13 @@ const ProfileScreen = ({ navigation }) => {
   const dispatch = useDispatch();
   const { userProfile, addresses } = useSelector((state) => state.auth);
   const { items: wishlistFoods } = useSelector((state) => state.wishlist);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("focus", () => {
+      dispatch(fetchUserProfile());
+    });
+    return unsubscribe;
+  }, [navigation, dispatch]);
 
   // Edit Profile States
   const [editModalVisible, setEditModalVisible] = useState(false);

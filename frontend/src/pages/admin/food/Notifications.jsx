@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Bell, Send, RefreshCw, Trash2, CheckCircle, Info, ShieldAlert } from 'lucide-react';
 import Sidebar from '../../../components/admin/Sidebar';
 import TopHeader from '../../../components/admin/TopHeader';
+import { API_BASE_URL } from '../../../config';
 
 const Notifications = () => {
   const [title, setTitle] = useState('');
@@ -10,54 +11,59 @@ const Notifications = () => {
   const [audience, setAudience] = useState('All Users'); // All Users, Premium Gold, Selected Users
   const [sending, setSending] = useState(false);
   const [success, setSuccess] = useState(false);
-  
-  const [logs, setLogs] = useState([
-    { id: '1', title: '50% Weekend Blowout!', body: 'Use coupon WEEKEND50 at checkout to slash prices by half on all biryanis and desserts!', type: 'Offers', audience: 'All Users', sentAt: '2026-07-04T10:15:00.000Z' },
-    { id: '2', title: 'Monsoon Delivery Advisory', body: 'Heavy rains near Baramati MIDC may delay deliveries by 10-15 minutes. Thank you for your patience.', type: 'System Notice', audience: 'All Users', sentAt: '2026-07-03T18:30:00.000Z' },
-  ]);
+  const [loading, setLoading] = useState(false);
+  const [logs, setLogs] = useState([]);
+
+  const loadNotifications = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/notifications`);
+      const data = await response.json();
+      setLogs(data);
+    } catch (err) {
+      console.error("Failed to load notifications:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const localLogs = localStorage.getItem('broadcast_notification_logs');
-    if (localLogs) {
-      try {
-        setLogs(JSON.parse(localLogs));
-      } catch (e) {}
-    }
+    loadNotifications();
   }, []);
 
-  const handleBroadcast = (e) => {
+  const handleBroadcast = async (e) => {
     e.preventDefault();
     if (!title.trim() || !message.trim()) return;
 
     setSending(true);
     setSuccess(false);
 
-    setTimeout(() => {
-      const newLog = {
-        id: `noti-${Date.now()}`,
-        title,
-        body: message,
-        type,
-        audience,
-        sentAt: new Date().toISOString(),
-      };
-      
-      const updatedLogs = [newLog, ...logs];
-      setLogs(updatedLogs);
-      localStorage.setItem('broadcast_notification_logs', JSON.stringify(updatedLogs));
+    try {
+      const response = await fetch(`${API_BASE_URL}/notifications`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, message, type, audience })
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to dispatch notification");
+      }
 
       setTitle('');
       setMessage('');
-      setSending(false);
       setSuccess(true);
       setTimeout(() => setSuccess(false), 2500);
-    }, 1500);
+      loadNotifications();
+    } catch (err) {
+      console.error(err);
+      alert(err.message || "Failed to broadcast notification.");
+    } finally {
+      setSending(false);
+    }
   };
 
   const handleDeleteLog = (logId) => {
-    const updated = logs.filter(l => l.id !== logId);
-    setLogs(updated);
-    localStorage.setItem('broadcast_notification_logs', JSON.stringify(updated));
+    setLogs(prev => prev.filter(l => (l._id || l.id) !== logId));
   };
 
   return (
@@ -151,21 +157,24 @@ const Notifications = () => {
             <h3 className="text-sm font-bold text-gray-900 border-b border-gray-100 pb-3 mb-4">Broadcast History</h3>
             
             <div className="space-y-4">
-              {logs.map((log) => (
-                <div key={log.id} className="p-3 border border-gray-150 rounded-xl bg-slate-50 relative flex flex-col">
-                  <button
-                    onClick={() => handleDeleteLog(log.id)}
-                    className="absolute top-2 right-2 text-gray-400 hover:text-rose-600 rounded-lg p-0.5"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </button>
+              {logs.map((log) => {
+                const logId = log._id || log.id;
+                return (
+                  <div key={logId} className="p-3 border border-gray-150 rounded-xl bg-slate-50 relative flex flex-col">
+                    <button
+                      onClick={() => handleDeleteLog(logId)}
+                      className="absolute top-2 right-2 text-gray-400 hover:text-rose-600 rounded-lg p-0.5"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
 
-                  <span className="text-[10px] font-bold text-slate-800 pr-5">{log.title}</span>
-                  <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider mt-1">{log.type} • {log.audience}</span>
-                  <p className="text-[9px] text-slate-500 font-medium mt-1.5 leading-relaxed">{log.body}</p>
-                  <span className="text-[8px] text-gray-400 font-bold self-end mt-2">{new Date(log.sentAt).toLocaleString()}</span>
-                </div>
-              ))}
+                    <span className="text-[10px] font-bold text-slate-800 pr-5">{log.title}</span>
+                    <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider mt-1">{log.type} • {log.audience}</span>
+                    <p className="text-[9px] text-slate-500 font-medium mt-1.5 leading-relaxed">{log.description || log.body}</p>
+                    <span className="text-[8px] text-gray-400 font-bold self-end mt-2">{new Date(log.createdAt || log.sentAt).toLocaleString()}</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </main>

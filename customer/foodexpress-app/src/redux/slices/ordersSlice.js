@@ -1,6 +1,5 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import orderService from "../../services/orderService";
-import mockData from "../../mockData/data";
 import { logout } from "./authSlice";
 
 const initialState = {
@@ -16,7 +15,7 @@ export const fetchOrders = createAsyncThunk(
     try {
       return await orderService.getOrders();
     } catch (error) {
-      return { current: mockData.orders, history: [] };
+      return thunkAPI.rejectWithValue(error.message || "Failed to fetch orders");
     }
   },
 );
