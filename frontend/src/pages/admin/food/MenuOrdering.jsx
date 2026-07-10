@@ -12,8 +12,8 @@ const MenuOrdering = () => {
     setLoading(true);
     try {
       const [catsRes, secRes] = await Promise.all([
-        fetch('http://192.168.137.149:5000/api/admin/categories').then(res => res.json()).catch(() => []),
-        fetch('http://192.168.137.149:5000/api/admin/sections').then(res => res.json()).catch(() => [])
+        fetch(`${API_BASE_URL}/admin/categories`).then(res => res.json()).catch(() => []),
+        fetch(`${API_BASE_URL}/admin/sections`).then(res => res.json()).catch(() => [])
       ]);
       setCategories(catsRes.sort((a,b) => (a.priority || 0) - (b.priority || 0)));
       setSections(secRes.sort((a,b) => (a.displayOrder || 0) - (b.displayOrder || 0)));
@@ -52,7 +52,7 @@ const MenuOrdering = () => {
       // Save categories priorities
       await Promise.all(
         categories.map(cat => 
-          fetch(`http://192.168.137.149:5000/api/admin/categories/${cat._id || cat.id}`, {
+          fetch(`${API_BASE_URL}/admin/categories/${cat._id || cat.id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ priority: cat.priority })
@@ -63,7 +63,7 @@ const MenuOrdering = () => {
       // Save sections priorities
       await Promise.all(
         sections.map(sec => 
-          fetch(`http://192.168.137.149:5000/api/admin/sections/${sec._id || sec.id}`, {
+          fetch(`${API_BASE_URL}/admin/sections/${sec._id || sec.id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ displayOrder: sec.displayOrder })

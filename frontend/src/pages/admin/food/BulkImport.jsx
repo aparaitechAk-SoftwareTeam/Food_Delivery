@@ -20,7 +20,7 @@ const BulkImport = () => {
   const loadFoods = async () => {
     setLoading(true);
     try {
-      const response = await fetch('http://192.168.137.149:5000/api/admin/foods');
+      const response = await fetch(`${API_BASE_URL}/admin/foods`);
       const data = await response.json();
       setFoods(data);
     } catch (err) {
@@ -77,7 +77,7 @@ const BulkImport = () => {
 
     setLoading(true);
     try {
-      const response = await fetch('http://192.168.137.149:5000/api/admin/bulk-upload', {
+      const response = await fetch(`${API_BASE_URL}/admin/bulk-upload`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: 'foods', items: fileData })
@@ -110,7 +110,7 @@ const BulkImport = () => {
 
     setLoading(true);
     try {
-      const response = await fetch('http://192.168.137.149:5000/api/admin/bulk-update', {
+      const response = await fetch(`${API_BASE_URL}/admin/bulk-update`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ids: selectedIds, action, value: actionValue })

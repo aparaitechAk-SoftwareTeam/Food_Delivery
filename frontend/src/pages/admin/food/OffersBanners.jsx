@@ -23,7 +23,7 @@ const OffersBanners = () => {
   const loadBanners = async () => {
     setLoading(true);
     try {
-      const response = await fetch('http://192.168.137.149:5000/api/admin/banners');
+      const response = await fetch(`${API_BASE_URL}/admin/banners`);
       const data = await response.json();
       if (data.length === 0) {
         setBanners(DEFAULT_BANNERS.map((b, idx) => ({ ...b, _id: `b-${idx+1}`, id: `b-${idx+1}` })));
@@ -68,7 +68,7 @@ const OffersBanners = () => {
     const payload = { title, description, image, cta, isActive };
 
     try {
-      let url = 'http://192.168.137.149:5000/api/admin/banners';
+      let url = `${API_BASE_URL}/admin/banners`;
       let method = 'POST';
 
       if (editingId) {
@@ -110,7 +110,7 @@ const OffersBanners = () => {
     if (!window.confirm('Delete this banner?')) return;
     setLoading(true);
     try {
-      const response = await fetch(`http://192.168.137.149:5000/api/admin/banners/${id}`, { method: 'DELETE' });
+      const response = await fetch(`${API_BASE_URL}/admin/banners/${id}`, { method: 'DELETE' });
       if (response.ok) {
         setBanners(prev => prev.filter(b => b._id !== id && b.id !== id));
       } else {
@@ -127,7 +127,7 @@ const OffersBanners = () => {
     const updatedState = !banner.isActive;
     const bannerId = banner._id || banner.id;
     try {
-      const response = await fetch(`http://192.168.137.149:5000/api/admin/banners/${bannerId}`, {
+      const response = await fetch(`${API_BASE_URL}/admin/banners/${bannerId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isActive: updatedState })

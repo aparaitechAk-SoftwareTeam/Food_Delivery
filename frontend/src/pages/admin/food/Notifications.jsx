@@ -138,7 +138,7 @@ const Notifications = () => {
               <button
                 type="submit"
                 disabled={sending}
-                className="w-full py-3 bg-indigo-650 hover:bg-indigo-655 text-white rounded-xl font-bold flex items-center justify-center gap-2 cursor-pointer transition-colors shadow-md shadow-indigo-650/10 disabled:opacity-50"
+                className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold flex items-center justify-center gap-2 cursor-pointer transition-colors shadow-md shadow-indigo-500/10 disabled:opacity-50"
               >
                 <Send className="w-3.5 h-3.5" />
                 <span>{sending ? 'Dispatching Broadcast...' : 'Broadcast FCM Alert'}</span>

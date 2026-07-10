@@ -1,5 +1,5 @@
 import React from "react";
-import { View, StyleSheet, FlatList, TouchableOpacity, Animated } from "react-native";
+import { View, StyleSheet, FlatList, TouchableOpacity, Image } from "react-native";
 import { Text } from "react-native-paper";
 
 const CategorySlider = ({
@@ -17,7 +17,15 @@ const CategorySlider = ({
         activeOpacity={0.8}
       >
         <View style={[styles.iconWrapper, isSelected && styles.selectedIconWrapper]}>
-          <Text style={styles.emojiText}>{item.icon}</Text>
+          {item.image ? (
+            <Image 
+              source={{ uri: item.image }} 
+              style={styles.categoryImage} 
+              resizeMode="cover"
+            />
+          ) : (
+            <Text style={styles.emojiText}>{item.icon || "🍽️"}</Text>
+          )}
         </View>
         <Text style={[styles.label, isSelected && styles.selectedLabel]} numberOfLines={1}>
           {item.name}
@@ -77,6 +85,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.03,
     shadowRadius: 3,
+    overflow: "hidden",
   },
   selectedIconWrapper: {
     backgroundColor: "#FF6F61",
@@ -85,6 +94,11 @@ const styles = StyleSheet.create({
     shadowColor: "#FF6F61",
     shadowOpacity: 0.3,
     shadowRadius: 5,
+  },
+  categoryImage: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 29,
   },
   emojiText: {
     fontSize: 26,
@@ -98,7 +112,7 @@ const styles = StyleSheet.create({
   },
   selectedLabel: {
     color: "#FF6F61",
-    fontWeight: "bold",
+    fontWeight: "700",
   },
 });
 

@@ -23,9 +23,9 @@ const FoodDashboard = () => {
     setLoading(true);
     try {
       const [foodsRes, catsRes, combosRes] = await Promise.all([
-        fetch('http://192.168.137.149:5000/api/admin/foods').then(res => res.json()).catch(() => []),
-        fetch('http://192.168.137.149:5000/api/admin/categories').then(res => res.json()).catch(() => []),
-        fetch('http://192.168.137.149:5000/api/admin/combos').then(res => res.json()).catch(() => [])
+        fetch(`${API_BASE_URL}/admin/foods`).then(res => res.json()).catch(() => []),
+        fetch(`${API_BASE_URL}/admin/categories`).then(res => res.json()).catch(() => []),
+        fetch(`${API_BASE_URL}/admin/combos`).then(res => res.json()).catch(() => [])
       ]);
 
       const totalFoods = foodsRes.length;

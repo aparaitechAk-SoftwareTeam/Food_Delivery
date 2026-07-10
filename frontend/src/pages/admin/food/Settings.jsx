@@ -39,7 +39,7 @@ const Settings = () => {
     // Fetch single restaurant details from public endpoint
     const fetchRestaurant = async () => {
       try {
-        const res = await fetch('http://192.168.137.149:5000/api/restaurants');
+        const res = await fetch(`${API_BASE_URL}/restaurants`);
         const data = await res.json();
         if (data && data.length > 0) {
           const rest = data[0];
@@ -85,7 +85,7 @@ const Settings = () => {
     };
 
     try {
-      await fetch('http://192.168.137.149:5000/api/admin/restaurant', {
+      await fetch(`${API_BASE_URL}/admin/restaurant`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)

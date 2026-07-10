@@ -14,7 +14,7 @@ const CuisineManager = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const response = await fetch('http://192.168.137.149:5000/api/admin/foods');
+      const response = await fetch(`${API_BASE_URL}/admin/foods`);
       const data = await response.json();
       setFoods(data);
 

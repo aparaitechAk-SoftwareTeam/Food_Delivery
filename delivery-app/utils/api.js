@@ -3,15 +3,17 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 
 const getBaseURL = () => {
-  // Use development machine IP or fallback
+  if (process.env.EXPO_PUBLIC_API_URL) {
+    const url = process.env.EXPO_PUBLIC_API_URL;
+    return url.endsWith("/api") ? url : `${url}/api`;
+  }
   if (__DEV__) {
     if (Platform.OS === "web") {
       return "http://localhost:5000/api";
     }
-    // Hardcoded current developer IP matching customer app config
-    return "http://10.84.254.127:5000/api";
+    return "http://192.168.1.37:5000/api";
   }
-  return "https://api.foodexpress.example.com/api";
+  return "https://food-delivery-gtq.onrender.com/api";
 };
 
 const api = axios.create({
