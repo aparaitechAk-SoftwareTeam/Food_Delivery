@@ -11,6 +11,7 @@ import {
 import { Searchbar, Text, Card, ActivityIndicator, Chip } from "react-native-paper";
 import searchService from "../../services/searchService";
 import { useSelector } from "react-redux";
+import CustomScreenHeader from "../../components/CustomScreenHeader";
 
 const SearchScreen = ({ navigation }) => {
   const [query, setQuery] = useState("");
