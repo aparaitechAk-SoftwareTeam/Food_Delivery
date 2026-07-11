@@ -23,6 +23,8 @@ import Payments from './pages/admin/food/Payments';
 import Reviews from './pages/admin/food/Reviews';
 import Reports from './pages/admin/food/Reports';
 import Notifications from './pages/admin/food/Notifications';
+import Rewards from './pages/admin/food/Rewards';
+import CampaignsManager from './pages/admin/food/CampaignsManager';
 
 function App() {
   return (
@@ -56,6 +58,8 @@ function App() {
         <Route path="/admin/food-management/reviews" element={<ProtectedRoute><Reviews /></ProtectedRoute>} />
         <Route path="/admin/food-management/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
         <Route path="/admin/food-management/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
+        <Route path="/admin/food-management/rewards" element={<ProtectedRoute><Rewards /></ProtectedRoute>} />
+        <Route path="/admin/food-management/campaigns" element={<ProtectedRoute><CampaignsManager /></ProtectedRoute>} />
         
         {/* Fallback route */}
         <Route path="*" element={<Navigate to="/admin/food-management" replace />} />

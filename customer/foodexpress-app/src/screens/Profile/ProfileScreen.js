@@ -7,6 +7,7 @@ import {
   Modal,
   TextInput,
   Alert,
+  SafeAreaView,
 } from "react-native";
 import {
   Text,
@@ -18,6 +19,7 @@ import {
   Switch,
 } from "react-native-paper";
 import { useDispatch, useSelector } from "react-redux";
+import CustomScreenHeader from "../../components/CustomScreenHeader";
 import {
   logout,
   fetchUserProfile,
@@ -158,7 +160,9 @@ const ProfileScreen = ({ navigation }) => {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#ffffff" }}>
+      <CustomScreenHeader title="My Account" navigation={navigation} redirectToHome={true} />
+      <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       {/* User Header Profile */}
       <View style={styles.profileHeader}>
         <Avatar.Image
@@ -169,7 +173,12 @@ const ProfileScreen = ({ navigation }) => {
           style={styles.avatar}
         />
         <View style={styles.profileInfo}>
-          <Text style={styles.profileName}>{userProfile?.name || "Foodie Guest"}</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap" }}>
+            <Text style={styles.profileName}>{userProfile?.name || "Foodie Guest"}</Text>
+            {userProfile?.isGoldMember && userProfile?.goldExpiry && new Date(userProfile.goldExpiry) > new Date() && (
+              <MaterialCommunityIcons name="crown" size={18} color="#D4AF37" style={{ marginLeft: 6 }} />
+            )}
+          </View>
           <Text style={styles.profileEmail}>{userProfile?.email || "guest@foodexpress.com"}</Text>
           <Text style={styles.profilePhone}>
             {userProfile?.phone ? `+91 ${userProfile.phone}` : "Add Mobile Number"}
@@ -496,6 +505,7 @@ const ProfileScreen = ({ navigation }) => {
         </View>
       </Modal>
     </ScrollView>
+    </SafeAreaView>
   );
 };
 

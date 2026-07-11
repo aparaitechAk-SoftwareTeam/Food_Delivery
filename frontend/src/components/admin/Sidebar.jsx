@@ -19,7 +19,9 @@ import {
   Star,
   BarChart3,
   Bell,
-  LogOut
+  LogOut,
+  Gift,
+  Percent
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -37,6 +39,8 @@ const Sidebar = () => {
     { name: 'Inventory', icon: <Database className="w-4 h-4" />, path: '/admin/food-management/inventory' },
     { name: 'Customers', icon: <Users className="w-4 h-4" />, path: '/admin/food-management/customers' },
     { name: 'Delivery Boys', icon: <Users className="w-4 h-4" />, path: '/admin/food-management/delivery-boys' },
+    { name: 'Reward Manager', icon: <Gift className="w-4 h-4" />, path: '/admin/food-management/rewards' },
+    { name: 'Cashback Deals', icon: <Percent className="w-4 h-4" />, path: '/admin/food-management/campaigns' },
     { name: 'Payments & QR', icon: <CreditCard className="w-4 h-4" />, path: '/admin/food-management/payments' },
     { name: 'Reviews Manager', icon: <Star className="w-4 h-4" />, path: '/admin/food-management/reviews' },
     { name: 'Push Notifications', icon: <Bell className="w-4 h-4" />, path: '/admin/food-management/notifications' },

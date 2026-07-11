@@ -29,6 +29,9 @@ import OrderDetailsScreen from "../screens/OrderDetails/OrderDetailsScreen";
 import RestaurantDetailsScreen from "../screens/Home/RestaurantDetailsScreen";
 import OrderTrackingScreen from "../screens/OrderTracking/OrderTrackingScreen";
 import OrderSuccessScreen from "../screens/Checkout/OrderSuccessScreen";
+import GoldMembershipScreen from "../screens/Gold/GoldMembershipScreen";
+import ReferralScreen from "../screens/Referral/ReferralScreen";
+import CashbackDealsScreen from "../screens/Cashback/CashbackDealsScreen";
 
 
 
@@ -257,6 +260,36 @@ const AppNavigator = () => {
           options={{
             headerShown: true,
             title: "Restaurant Details",
+            headerTintColor: "#ff6b00",
+            headerTitleStyle: { fontWeight: "bold" },
+          }}
+        />
+        <Stack.Screen
+          name="GoldMembership"
+          component={GoldMembershipScreen}
+          options={{
+            headerShown: true,
+            title: "Gold Membership",
+            headerTintColor: "#ff6b00",
+            headerTitleStyle: { fontWeight: "bold" },
+          }}
+        />
+        <Stack.Screen
+          name="Referral"
+          component={ReferralScreen}
+          options={{
+            headerShown: true,
+            title: "Invite Friends",
+            headerTintColor: "#ff6b00",
+            headerTitleStyle: { fontWeight: "bold" },
+          }}
+        />
+        <Stack.Screen
+          name="CashbackDeals"
+          component={CashbackDealsScreen}
+          options={{
+            headerShown: true,
+            title: "Cashback Deals",
             headerTintColor: "#ff6b00",
             headerTitleStyle: { fontWeight: "bold" },
           }}

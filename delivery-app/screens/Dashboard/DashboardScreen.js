@@ -4,6 +4,7 @@ import { Text, Switch, ActivityIndicator, Card, Button } from "react-native-pape
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import api from "../../utils/api";
+import { getSocket } from "../../utils/socket";
 
 const DashboardScreen = ({ navigation }) => {
   const [isOnline, setIsOnline] = useState(false);
@@ -39,17 +40,32 @@ const DashboardScreen = ({ navigation }) => {
       try {
         const statsRes = await api.get("/delivery/earnings");
         // We assume profile endpoint or earnings returns stats
-        // Check online status via a profile check if available
       } catch (e) {}
     };
     loadStatus();
 
-    // Poll active orders every 8 seconds
+    // Listen to real-time events via Socket.IO
+    const socket = getSocket();
+    socket.emit("join-role", "delivery");
+
+    socket.on("order-status-updated", (updatedOrder) => {
+      console.log("[Socket] Received status update in delivery dashboard:", updatedOrder);
+      fetchDashboardData();
+    });
+
+    socket.on("delivery-assigned", (updatedOrder) => {
+      console.log("[Socket] Received new delivery assignment:", updatedOrder);
+      fetchDashboardData();
+    });
+
+    // Fallback poll active orders every 8 seconds
     orderPollInterval.current = setInterval(fetchDashboardData, 8000);
 
     return () => {
       clearInterval(orderPollInterval.current);
       if (locationInterval.current) clearInterval(locationInterval.current);
+      socket.off("order-status-updated");
+      socket.off("delivery-assigned");
     };
   }, []);
 
@@ -84,8 +100,8 @@ const DashboardScreen = ({ navigation }) => {
     // Immediately send current location
     sendLocationUpdate();
 
-    // Setup periodic updates every 15 seconds
-    locationInterval.current = setInterval(sendLocationUpdate, 15000);
+    // Setup periodic updates every 5 seconds
+    locationInterval.current = setInterval(sendLocationUpdate, 5000);
   };
 
   const stopLocationTracking = () => {
@@ -98,11 +114,35 @@ const DashboardScreen = ({ navigation }) => {
   const sendLocationUpdate = async () => {
     try {
       const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      
+      // Determine if there is an active order
+      const activeOrder = orders.find(o => ["Accepted", "Arrived At Restaurant", "Picked Up", "Out For Delivery"].includes(o.deliveryStatus || o.status));
+      const activeOrderId = activeOrder ? activeOrder._id : null;
+
       await api.put("/delivery/location", {
         latitude: loc.coords.latitude,
-        longitude: loc.coords.longitude
+        longitude: loc.coords.longitude,
+        orderId: activeOrderId,
+        heading: loc.coords.heading || 0,
+        speed: loc.coords.speed || 0,
       });
+
       console.log("Rider GPS coordinates synced:", loc.coords.latitude, loc.coords.longitude);
+
+      // Emit low latency real-time socket event
+      if (activeOrderId) {
+        const socket = getSocket();
+        if (socket) {
+          socket.emit("update-location", {
+            orderId: activeOrderId,
+            latitude: loc.coords.latitude,
+            longitude: loc.coords.longitude,
+            heading: loc.coords.heading || 0,
+            speed: loc.coords.speed || 0,
+            timestamp: new Date().toISOString(),
+          });
+        }
+      }
     } catch (err) {
       console.log("GPS Location update failed:", err.message);
     }

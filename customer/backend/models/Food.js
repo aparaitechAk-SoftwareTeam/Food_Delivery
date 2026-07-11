@@ -39,4 +39,7 @@ const foodSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
+foodSchema.index({ name: 1 });
+foodSchema.index({ description: 1 });
+
 module.exports = mongoose.model("Food", foodSchema);

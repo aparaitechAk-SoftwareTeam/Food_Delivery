@@ -72,16 +72,27 @@ const BulkImport = () => {
     reader.readAsText(selectedFile);
   };
 
+
+
   const handleUploadExecute = async () => {
     if (fileData.length === 0) return;
 
     setLoading(true);
+    const url = `${API_BASE_URL}/admin/bulk-upload`;
+    const method = 'POST';
+    const payload = { type: 'foods', items: fileData };
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/bulk-upload`, {
-        method: 'POST',
+      const response = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'foods', items: fileData })
+        body: JSON.stringify(payload)
       });
+
+      const responseText = await response.text();
+      let responseData = {};
+      try {
+        responseData = JSON.parse(responseText);
+      } catch (parseErr) {}
 
       if (response.ok) {
         setImportStatus(`Successfully imported ${fileData.length} food items!`);
@@ -89,17 +100,25 @@ const BulkImport = () => {
         setFileData([]);
         await loadFoods();
       } else {
-        // Mock import fallback
-        setFoods(prev => [
-          ...prev,
-          ...fileData.map((item, idx) => ({ ...item, _id: `bulk-${prev.length + idx + 1}`, id: `bulk-${prev.length + idx + 1}` }))
-        ]);
-        setImportStatus(`Mock imported ${fileData.length} food items!`);
-        setFile(null);
-        setFileData([]);
+        const errorMsg = responseData.message || responseText || "Unknown backend error";
+        console.error("Bulk upload API failed:", {
+          requestUrl: url,
+          method,
+          payload,
+          statusCode: response.status,
+          response: responseText,
+          error: errorMsg
+        });
+        alert(`Failed to import food items:\nStatus: ${response.status}\nError: ${errorMsg}`);
       }
     } catch (err) {
-      console.error(err);
+      console.error("Bulk upload network exception:", {
+        requestUrl: url,
+        method,
+        payload,
+        error: err.message
+      });
+      alert(`Network error importing food items:\n${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -109,12 +128,21 @@ const BulkImport = () => {
     if (selectedIds.length === 0 || !action) return;
 
     setLoading(true);
+    const url = `${API_BASE_URL}/admin/bulk-update`;
+    const method = 'POST';
+    const payload = { ids: selectedIds, action, value: actionValue };
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/bulk-update`, {
-        method: 'POST',
+      const response = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids: selectedIds, action, value: actionValue })
+        body: JSON.stringify(payload)
       });
+
+      const responseText = await response.text();
+      let responseData = {};
+      try {
+        responseData = JSON.parse(responseText);
+      } catch (parseErr) {}
 
       if (response.ok) {
         await loadFoods();
@@ -122,29 +150,25 @@ const BulkImport = () => {
         setAction('');
         setActionValue('');
       } else {
-        // Mock fallback
-        setFoods(prev => {
-          let list = [...prev];
-          if (action === 'delete') {
-            list = list.filter(f => !selectedIds.includes(f._id || f.id));
-          } else {
-            list = list.map(f => {
-              if (selectedIds.includes(f._id || f.id)) {
-                if (action === 'disable') return { ...f, isAvailable: false };
-                if (action === 'enable') return { ...f, isAvailable: true };
-                if (action === 'change_price') return { ...f, price: parseFloat(actionValue) || f.price };
-              }
-              return f;
-            });
-          }
-          return list;
+        const errorMsg = responseData.message || responseText || "Unknown backend error";
+        console.error("Bulk update API failed:", {
+          requestUrl: url,
+          method,
+          payload,
+          statusCode: response.status,
+          response: responseText,
+          error: errorMsg
         });
-        setSelectedIds([]);
-        setAction('');
-        setActionValue('');
+        alert(`Failed bulk update:\nStatus: ${response.status}\nError: ${errorMsg}`);
       }
     } catch (err) {
-      console.error(err);
+      console.error("Bulk update network exception:", {
+        requestUrl: url,
+        method,
+        payload,
+        error: err.message
+      });
+      alert(`Network error executing bulk update:\n${err.message}`);
     } finally {
       setLoading(false);
     }

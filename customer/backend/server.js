@@ -26,6 +26,12 @@ const paymentRoutes     = require("./routes/paymentRoutes");
 const deliveryRoutes    = require("./routes/deliveryRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
 const sectionRoutes      = require("./routes/sectionRoutes");
+const couponRoutes       = require("./routes/couponRoutes");
+const rewardRoutes       = require("./routes/rewardRoutes");
+const walletRoutes       = require("./routes/walletRoutes");
+const membershipRoutes   = require("./routes/membershipRoutes");
+const referralRoutes     = require("./routes/referralRoutes");
+const campaignRoutes     = require("./routes/campaignRoutes");
 const errorHandler      = require("./middleware/errorHandler");
 const seedDatabase      = require("./config/seed");
 
@@ -91,6 +97,12 @@ app.use("/api/admin",       adminRoutes);
 app.use("/api/delivery",    deliveryRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/sections",      sectionRoutes);
+app.use("/api/coupons",       couponRoutes);
+app.use("/api/rewards",       rewardRoutes);
+app.use("/api/wallet",        walletRoutes);
+app.use("/api/memberships",   membershipRoutes);
+app.use("/api/referrals",     referralRoutes);
+app.use("/api/campaigns",     campaignRoutes);
 
 // Health check endpoint
 app.get("/api/health", async (req, res) => {
@@ -131,17 +143,16 @@ if (require.main === module) {
   connectDB(MONGO_URI)
     .then(() => {
       // Seed / mock data
-      if (process.env.MOCK_DB === "true") {
-        const { initializeMockData } = require("./config/mockDataStore");
-        initializeMockData();
-      } else {
-        seedDatabase();
-      }
+      seedDatabase();
 
       // Start the HTTP server — only once, only after DB is ready
       const server = app.listen(PORT, () => {
         console.log(`\n✅  Server running on port ${PORT}\n`);
       });
+
+      // Initialize Socket.IO
+      const { initSocket } = require("./config/socket");
+      initSocket(server);
 
       // ── Graceful EADDRINUSE handler ─────────────────────────────────────────
       // process.exit(1) stops nodemon from restarting (nodemon exits on code 1

@@ -1,11 +1,6 @@
 const mongoose = require("mongoose");
 
 const connectDB = async (uri) => {
-  if (process.env.MOCK_DB === "true") {
-    console.log("Mock In-Memory Database Mode forced by environment variable.");
-    return;
-  }
-
   if (!uri || typeof uri !== "string") {
     throw new Error("Invalid or missing MongoDB URI. Cannot connect to database.");
   }

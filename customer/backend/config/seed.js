@@ -29,6 +29,60 @@ const seedDatabase = async () => {
       console.log("Default admin created successfully.");
     }
 
+    // Seed default membership plans if they don't exist
+    const MembershipPlan = require("../models/MembershipPlan");
+    const planCount = await MembershipPlan.countDocuments();
+    if (planCount === 0) {
+      console.log("Seeding default Gold membership plans...");
+      await MembershipPlan.create([
+        { name: "Gold Monthly", price: 99, durationDays: 30, description: "Get free delivery on all orders + flat 10% discount on cart subtotal." },
+        { name: "Gold Quarterly", price: 249, durationDays: 90, description: "Save more with our 3-month plan. Includes free delivery + flat 10% discount." },
+        { name: "Gold Annual", price: 799, durationDays: 365, description: "Best Value! 1 year of unlimited free delivery + flat 10% discount." }
+      ]);
+    }
+
+    // Seed default cashback campaign if it doesn't exist
+    const CashbackCampaign = require("../models/CashbackCampaign");
+    const campaignCount = await CashbackCampaign.countDocuments();
+    if (campaignCount === 0) {
+      console.log("Seeding default cashback campaigns...");
+      await CashbackCampaign.create([
+        {
+          title: "Weekend Dessert Feast",
+          category: "Dessert",
+          cashbackPercentage: 20,
+          cashbackCap: 50,
+          expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+          isActive: true
+        },
+        {
+          title: "Super Saver Beverages",
+          category: "Beverages",
+          cashbackPercentage: 15,
+          cashbackCap: 30,
+          expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+          isActive: true
+        }
+      ]);
+    }
+
+    // Ensure all existing users have a referralCode
+    const usersWithoutRef = await User.find({ referralCode: { $exists: false } });
+    if (usersWithoutRef.length > 0) {
+      console.log(`Generating referral codes for ${usersWithoutRef.length} existing users...`);
+      for (const u of usersWithoutRef) {
+        let refCode;
+        let exists = true;
+        while (exists) {
+          refCode = "REF" + Math.random().toString(36).substring(2, 6).toUpperCase();
+          const existingCodeUser = await User.findOne({ referralCode: refCode });
+          if (!existingCodeUser) exists = false;
+        }
+        u.referralCode = refCode;
+        await u.save();
+      }
+    }
+
     const userExists = await User.findOne({ email: "user@foodexpress.com" });
     if (!userExists) {
       console.log("Demo user missing. Creating default demo user...");
@@ -549,14 +603,7 @@ const seedDatabase = async () => {
     console.log("Database successfully seeded in MongoDB mode!");
   } catch (error) {
     console.error("Error seeding database:", error.message);
-    console.warn("Falling back to Mock In-Memory Database Mode...");
-    process.env.MOCK_DB = "true";
-    try {
-      const { initializeMockData } = require("./mockDataStore");
-      initializeMockData();
-    } catch (e) {
-      console.error("Failed to initialize mock data:", e.message);
-    }
+    throw error;
   }
 };
 

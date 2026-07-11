@@ -1,17 +1,34 @@
 import React, { useEffect, useState } from "react";
-import { View, StyleSheet, TouchableOpacity, Image, ScrollView, Alert, Linking } from "react-native";
-import { Text, ActivityIndicator } from "react-native-paper";
+import { View, StyleSheet, TouchableOpacity, Image, ScrollView, Alert, Linking, SafeAreaView } from "react-native";
+import { Text, ActivityIndicator, Card, Button, TextInput } from "react-native-paper";
 import orderService from "../../services/orderService";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { getSocket } from "../../utils/socket";
+import CustomScreenHeader from "../../components/CustomScreenHeader";
+import { Platform } from "react-native";
+
+let MapView, Marker, Polyline;
+if (Platform.OS !== "web") {
+  try {
+    const Maps = require("react-native-maps");
+    MapView = Maps.default;
+    Marker = Maps.Marker;
+    Polyline = Maps.Polyline;
+  } catch (e) {
+    console.log("react-native-maps loading failed:", e);
+  }
+}
 
 const OrderTrackingScreen = ({ route, navigation }) => {
   const { orderId } = route.params;
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showCancelInput, setShowCancelInput] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
 
   const fetchDetails = async () => {
     try {
-      const data = await orderService.getOrderDetails(orderId);
+      const data = await orderService.getOrderTracking(orderId);
       setOrder(data);
     } catch (err) {
       console.log("Error fetching order in tracking:", err);
@@ -44,10 +61,38 @@ const OrderTrackingScreen = ({ route, navigation }) => {
 
   useEffect(() => {
     fetchDetails();
-    
-    // Poll every 3 seconds for real-time order state updates
-    const interval = setInterval(fetchDetails, 3000);
-    return () => clearInterval(interval);
+
+    const socket = getSocket();
+    socket.emit("join-order", orderId);
+
+    socket.on("order-status-updated", (updatedData) => {
+      console.log("[Socket] Order status updated:", updatedData.status);
+      setOrder(updatedData);
+    });
+
+    socket.on("delivery-location", (locData) => {
+      console.log("[Socket] Live location received:", locData);
+      setOrder((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          currentLocation: locData,
+          mapCoordinates: {
+            ...prev.mapCoordinates,
+            deliveryBoy: locData,
+          },
+        };
+      });
+    });
+
+    // Fallback poll every 6 seconds
+    const interval = setInterval(fetchDetails, 6000);
+
+    return () => {
+      clearInterval(interval);
+      socket.off("order-status-updated");
+      socket.off("delivery-location");
+    };
   }, [orderId]);
 
   if (loading) {
@@ -160,8 +205,121 @@ const OrderTrackingScreen = ({ route, navigation }) => {
     Linking.openURL("tel:+919876543210");
   };
 
+  const renderMap = () => {
+    const restCoords = order.mapCoordinates?.restaurant || { latitude: 18.1560, longitude: 74.5775 };
+    const custCoords = order.mapCoordinates?.customer || { latitude: 18.1510, longitude: 74.5780 };
+    const riderCoords = order.currentLocation || order.mapCoordinates?.deliveryBoy;
+
+    const hasRider = !!riderCoords && Number(riderCoords.latitude) !== 0;
+
+    if (Platform.OS === "web" || !MapView) {
+      return (
+        <View style={styles.webMapCard}>
+          <Text style={styles.mapTitle}>Live Delivery Route GPS Tracker</Text>
+          <View style={styles.webMapBackground}>
+            <View style={styles.svgContainer}>
+              {/* Restaurant */}
+              <View style={[styles.mapWebMarker, { left: "15%", top: "30%" }]}>
+                <MaterialCommunityIcons name="store" size={28} color="#ff6b00" />
+                <Text style={styles.webMarkerLabel}>Store</Text>
+              </View>
+
+              {/* Rider */}
+              {hasRider && (
+                <View style={[styles.mapWebMarker, { left: "45%", top: "50%" }]}>
+                  <MaterialCommunityIcons name="moped" size={28} color="#0288d1" />
+                  <Text style={[styles.webMarkerLabel, { color: "#0288d1", fontWeight: "bold" }]}>
+                    Rider ({order.timeline?.status || "On The Way"})
+                  </Text>
+                </View>
+              )}
+
+              {/* Home */}
+              <View style={[styles.mapWebMarker, { left: "80%", top: "70%" }]}>
+                <MaterialCommunityIcons name="home-map-marker" size={28} color="#2e7d32" />
+                <Text style={[styles.webMarkerLabel, { color: "#2e7d32" }]}>Home</Text>
+              </View>
+            </View>
+          </View>
+          <View style={styles.mapDetailsRow}>
+            <Text style={styles.mapDetailsText}>Distance: {order.eta?.distance || "~1.8 km"}</Text>
+            <Text style={styles.mapDetailsText}>Estimated Time: {order.eta?.duration || "~12 mins"}</Text>
+          </View>
+        </View>
+      );
+    }
+
+    const initialRegion = {
+      latitude: (Number(restCoords.latitude) + Number(custCoords.latitude)) / 2,
+      longitude: (Number(restCoords.longitude) + Number(custCoords.longitude)) / 2,
+      latitudeDelta: Math.max(Math.abs(Number(restCoords.latitude) - Number(custCoords.latitude)) * 2, 0.01) || 0.02,
+      longitudeDelta: Math.max(Math.abs(Number(restCoords.longitude) - Number(custCoords.longitude)) * 2, 0.01) || 0.02,
+    };
+
+    return (
+      <View style={styles.webMapCard}>
+        <MapView style={styles.nativeMap} initialRegion={initialRegion}>
+          {/* Restaurant Marker */}
+          <Marker
+            coordinate={{ latitude: Number(restCoords.latitude), longitude: Number(restCoords.longitude) }}
+            title={order.restaurant?.name || "Restaurant"}
+            description="Pick up point"
+          >
+            <View style={styles.nativeMarkerContainer}>
+              <MaterialCommunityIcons name="store" size={26} color="#ff6b00" />
+            </View>
+          </Marker>
+
+          {/* Customer Marker */}
+          <Marker
+            coordinate={{ latitude: Number(custCoords.latitude), longitude: Number(custCoords.longitude) }}
+            title="Your Address"
+            description="Drop off point"
+          >
+            <View style={styles.nativeMarkerContainer}>
+              <MaterialCommunityIcons name="home-map-marker" size={26} color="#2e7d32" />
+            </View>
+          </Marker>
+
+          {/* Rider Marker */}
+          {hasRider && (
+            <Marker
+              coordinate={{ latitude: Number(riderCoords.latitude), longitude: Number(riderCoords.longitude) }}
+              title={typeof order.deliveryBoy === "object" ? order.deliveryBoy.name : "Rider"}
+              description="Delivery executive"
+            >
+              <View style={[styles.nativeMarkerContainer, { backgroundColor: "#e0f2fe" }]}>
+                <MaterialCommunityIcons name="moped" size={26} color="#0288d1" />
+              </View>
+            </Marker>
+          )}
+
+          {/* Polyline Route */}
+          <Polyline
+            coordinates={
+              hasRider
+                ? [
+                    { latitude: Number(restCoords.latitude), longitude: Number(restCoords.longitude) },
+                    { latitude: Number(riderCoords.latitude), longitude: Number(riderCoords.longitude) },
+                    { latitude: Number(custCoords.latitude), longitude: Number(custCoords.longitude) },
+                  ]
+                : [
+                    { latitude: Number(restCoords.latitude), longitude: Number(restCoords.longitude) },
+                    { latitude: Number(custCoords.latitude), longitude: Number(custCoords.longitude) },
+                  ]
+            }
+            strokeColor="#ff6b00"
+            strokeWidth={4}
+          />
+        </MapView>
+      </View>
+    );
+  };
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#f8f9fa" }}>
+      <CustomScreenHeader title="Track Order" navigation={navigation} />
+      <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       {/* ETA Banner */}
       <View style={styles.etaCard}>
         {order.status === "Cancelled" ? (
@@ -190,6 +348,77 @@ const OrderTrackingScreen = ({ route, navigation }) => {
         )}
       </View>
 
+      {/* Cancel Order Card/Button */}
+      {((order.status === "Pending" || order.status === "Confirmed" || order.status === "Placed") && 
+        (!order.deliveryBoy || order.deliveryStatus === "None" || order.deliveryStatus === "Assigned")) && (
+        <View style={{ marginBottom: 16 }}>
+          {showCancelInput ? (
+            <Card style={{ backgroundColor: "#fef2f2", borderStyle: "dashed", borderWidth: 1, borderColor: "#ef4444", padding: 12, borderRadius: 12 }}>
+              <Text style={{ fontWeight: "bold", color: "#ef4444", marginBottom: 6, fontSize: 13 }}>
+                Reason for Cancellation:
+              </Text>
+              <TextInput
+                mode="outlined"
+                placeholder="e.g. Changed my mind / ordered wrong items"
+                value={cancelReason}
+                onChangeText={setCancelReason}
+                style={{ height: 40, backgroundColor: "#fff", marginBottom: 12 }}
+              />
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                <Button
+                  mode="contained"
+                  buttonColor="#ef4444"
+                  textColor="#fff"
+                  style={{ flex: 1 }}
+                  labelStyle={{ fontSize: 12 }}
+                  onPress={async () => {
+                    if (!cancelReason.trim()) {
+                      Alert.alert("Reason Required", "Please enter a reason for cancellation.");
+                      return;
+                    }
+                    try {
+                      setLoading(true);
+                      const updatedOrder = await orderService.cancelOrder(orderId, cancelReason);
+                      setOrder(prev => ({ ...prev, ...updatedOrder, status: "Cancelled" }));
+                      setShowCancelInput(false);
+                      Alert.alert("Order Cancelled", "Your order has been successfully cancelled.");
+                    } catch (err) {
+                      Alert.alert("Failed to Cancel", err.message);
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                >
+                  Confirm Cancel
+                </Button>
+                <Button
+                  mode="outlined"
+                  textColor="#666"
+                  style={{ borderColor: "#ccc" }}
+                  labelStyle={{ fontSize: 12 }}
+                  onPress={() => setShowCancelInput(false)}
+                >
+                  Keep Order
+                </Button>
+              </View>
+            </Card>
+          ) : (
+            <Button
+              mode="contained"
+              buttonColor="#ef4444"
+              textColor="#fff"
+              style={{ borderRadius: 12 }}
+              onPress={() => {
+                setCancelReason("");
+                setShowCancelInput(true);
+              }}
+            >
+              Cancel Order
+            </Button>
+          )}
+        </View>
+      )}
+
       {/* Payment Information Card */}
       <View style={styles.paymentInfoCard}>
         <View style={styles.paymentRow}>
@@ -211,27 +440,7 @@ const OrderTrackingScreen = ({ route, navigation }) => {
         </View>
       </View>
 
-      {/* Map Mock representation */}
-      <View style={styles.mapMockCard}>
-        <View style={styles.mapBackground}>
-          <MaterialCommunityIcons name="map" size={54} color="#ddd" />
-          <Text style={styles.mapText}>Live GPS Tracking Map</Text>
-          <View style={styles.mapPinsRow}>
-            <View style={styles.mapPin}>
-              <MaterialCommunityIcons name="store" size={24} color="#ff6b00" />
-              <Text style={styles.pinLabel}>Shop</Text>
-            </View>
-            <View style={[styles.mapPin, { marginHorizontal: 32 }]}>
-              <MaterialCommunityIcons name="moped" size={28} color="#0288d1" />
-              <Text style={[styles.pinLabel, { color: "#0288d1" }]}>Rider</Text>
-            </View>
-            <View style={styles.mapPin}>
-              <MaterialCommunityIcons name="home-map-marker" size={24} color="#2e7d32" />
-              <Text style={[styles.pinLabel, { color: "#2e7d32" }]}>Home</Text>
-            </View>
-          </View>
-        </View>
-      </View>
+      {renderMap()}
 
       {/* Rider Info Card */}
       {order.status !== "Cancelled" && (
@@ -275,12 +484,27 @@ const OrderTrackingScreen = ({ route, navigation }) => {
         )
       )}
 
+      {/* Verification OTP display */}
+      {order.status !== "Cancelled" && order.status !== "Delivered" && order.status !== "Completed" && order.orderDetails?.otp && (
+        <View style={styles.otpCard}>
+          <MaterialCommunityIcons name="shield-lock-outline" size={24} color="#ff6b00" />
+          <View style={styles.otpInfo}>
+            <Text style={styles.otpTitle}>Delivery OTP Code</Text>
+            <Text style={styles.otpSubtitle}>Share this OTP with the rider when they arrive to confirm delivery.</Text>
+          </View>
+          <View style={styles.otpCodeContainer}>
+            <Text style={styles.otpCodeText}>{order.orderDetails.otp}</Text>
+          </View>
+        </View>
+      )}
+
       {/* Status Timeline */}
       <Text style={styles.sectionTitle}>Delivery Status</Text>
       <View style={styles.timelineCard}>
         {stepsData.map((step, index) => renderTimelineStep(step.title, step.subtitle, index, step.icon))}
       </View>
     </ScrollView>
+    </SafeAreaView>
   );
 };
 
@@ -536,6 +760,113 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: "#eee",
     marginVertical: 12,
+  },
+  otpCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#eee",
+  },
+  otpInfo: {
+    flex: 1,
+    marginLeft: 12,
+    marginRight: 8,
+  },
+  otpTitle: {
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#222",
+  },
+  otpSubtitle: {
+    fontSize: 11,
+    color: "#666",
+    marginTop: 2,
+    lineHeight: 14,
+  },
+  otpCodeContainer: {
+    backgroundColor: "#fff3e0",
+    borderWidth: 1,
+    borderColor: "#ffe0b2",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  otpCodeText: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#ff6b00",
+    letterSpacing: 1,
+  },
+  webMapCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#eee",
+  },
+  mapTitle: {
+    fontSize: 13,
+    fontWeight: "bold",
+    color: "#667085",
+    marginBottom: 12,
+  },
+  webMapBackground: {
+    height: 180,
+    backgroundColor: "#f0fdf4",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#dcfce7",
+    position: "relative",
+    overflow: "hidden",
+  },
+  svgContainer: {
+    flex: 1,
+    position: "relative",
+  },
+  mapWebMarker: {
+    position: "absolute",
+    alignItems: "center",
+  },
+  webMarkerLabel: {
+    fontSize: 10,
+    color: "#ff6b00",
+    fontWeight: "600",
+    marginTop: 2,
+    backgroundColor: "rgba(255, 255, 255, 0.8)",
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  mapDetailsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 12,
+  },
+  mapDetailsText: {
+    fontSize: 12,
+    color: "#475569",
+    fontWeight: "500",
+  },
+  nativeMap: {
+    height: 200,
+    borderRadius: 12,
+  },
+  nativeMarkerContainer: {
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    padding: 6,
+    borderWidth: 1.5,
+    borderColor: "#eee",
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 1 },
   },
 });
 

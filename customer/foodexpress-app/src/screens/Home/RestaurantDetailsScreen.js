@@ -14,6 +14,7 @@ import {
 import { Text } from "react-native-paper";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useDispatch, useSelector } from "react-redux";
+import CustomScreenHeader from "../../components/CustomScreenHeader";
 import { addToCart, increaseQuantity, decreaseQuantity } from "../../redux/slices/cartSlice";
 import CustomizationBottomSheet from "../../components/CustomizationBottomSheet";
 import api from "../../utils/api";
@@ -214,25 +215,20 @@ const RestaurantDetailsScreen = ({ route, navigation }) => {
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
-    <View style={styles.container}>
-      {/* Hero Banner */}
-      <View style={styles.heroBanner}>
-        {restaurant.image ? (
-          <Image source={{ uri: restaurant.image || undefined }} style={styles.heroImage} resizeMode="cover" />
-        ) : (
-          <View style={[styles.heroImage, styles.heroPlaceholder]}>
-            <MaterialCommunityIcons name="silverware-fork-knife" size={60} color="#EAECF0" />
-          </View>
-        )}
-        {/* Gradient overlay */}
-        <View style={styles.heroOverlay} />
-
-        {/* Back button */}
-        <SafeAreaView style={styles.heroHeader}>
-          <TouchableOpacity style={styles.heroBackBtn} onPress={() => navigation.goBack()}>
-            <MaterialCommunityIcons name="arrow-left" size={22} color="#FFFFFF" />
-          </TouchableOpacity>
-        </SafeAreaView>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#ffffff" }}>
+      <CustomScreenHeader title={restaurant?.name || "Restaurant Details"} navigation={navigation} />
+      <View style={styles.container}>
+        {/* Hero Banner */}
+        <View style={styles.heroBanner}>
+          {restaurant.image ? (
+            <Image source={{ uri: restaurant.image || undefined }} style={styles.heroImage} resizeMode="cover" />
+          ) : (
+            <View style={[styles.heroImage, styles.heroPlaceholder]}>
+              <MaterialCommunityIcons name="silverware-fork-knife" size={60} color="#EAECF0" />
+            </View>
+          )}
+          {/* Gradient overlay */}
+          <View style={styles.heroOverlay} />
 
         {/* Hero info */}
         <View style={styles.heroInfo}>
@@ -324,7 +320,8 @@ const RestaurantDetailsScreen = ({ route, navigation }) => {
         food={selectedFood}
         onAddComplete={handleCustomizationComplete}
       />
-    </View>
+      </View>
+    </SafeAreaView>
   );
 };
 

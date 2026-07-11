@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Image,
   ScrollView,
+  SafeAreaView,
 } from "react-native";
 import { Searchbar, Text, Card, ActivityIndicator, Chip } from "react-native-paper";
 import searchService from "../../services/searchService";
@@ -40,7 +41,7 @@ const SearchScreen = ({ navigation }) => {
       } finally {
         setLoading(false);
       }
-    }, 500);
+    }, 200);
 
     return () => clearTimeout(delayDebounceFn);
   }, [query]);
@@ -102,8 +103,10 @@ const SearchScreen = ({ navigation }) => {
     results.foods.length > 0;
 
   return (
-    <View style={styles.container}>
-      <Searchbar
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#ffffff" }}>
+      <CustomScreenHeader title="Search" navigation={navigation} redirectToHome={true} />
+      <View style={styles.container}>
+        <Searchbar
         placeholder="Search for food, cuisines, categories..."
         onChangeText={setQuery}
         value={query}
@@ -185,7 +188,8 @@ const SearchScreen = ({ navigation }) => {
           )}
         </ScrollView>
       )}
-    </View>
+      </View>
+    </SafeAreaView>
   );
 };
 

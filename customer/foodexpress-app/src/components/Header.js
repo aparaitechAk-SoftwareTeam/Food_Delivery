@@ -9,7 +9,10 @@ const Header = ({
   onNotificationPress,
   onProfilePress,
   onWalletPress,
+  onCouponsPress,
   user,
+  walletBalance = 150.00,
+  activeCouponsCount = 12,
 }) => {
   const getInitials = (name) => {
     if (!name) return "FE";
@@ -87,7 +90,7 @@ const Header = ({
           <MaterialCommunityIcons name="wallet-outline" size={20} color="#FF6F61" />
           <View style={styles.quickCardTextWrapper}>
             <Text style={styles.quickCardTitle}>FE Wallet</Text>
-            <Text style={styles.quickCardValue}>₹150.00</Text>
+            <Text style={styles.quickCardValue}>₹{walletBalance.toFixed(2)}</Text>
           </View>
         </TouchableOpacity>
 
@@ -95,13 +98,13 @@ const Header = ({
 
         <TouchableOpacity
           style={styles.quickCardItem}
-          onPress={onWalletPress} // Go to offers/coupons
+          onPress={onCouponsPress}
           activeOpacity={0.7}
         >
           <MaterialCommunityIcons name="ticket-percent-outline" size={20} color="#FF9F43" />
           <View style={styles.quickCardTextWrapper}>
             <Text style={styles.quickCardTitle}>Coupons</Text>
-            <Text style={styles.quickCardValue}>12 Active</Text>
+            <Text style={styles.quickCardValue}>{activeCouponsCount} Active</Text>
           </View>
         </TouchableOpacity>
       </View>

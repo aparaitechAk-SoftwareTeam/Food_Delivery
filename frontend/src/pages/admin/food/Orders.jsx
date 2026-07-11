@@ -3,6 +3,7 @@ import { ClipboardList, Search, Eye, Check, X, CheckCircle2, AlertTriangle, Refr
 import Sidebar from '../../../components/admin/Sidebar';
 import TopHeader from '../../../components/admin/TopHeader';
 import { API_BASE_URL } from '../../../config';
+import { getSocket } from '../../../utils/socket';
 
 const Orders = () => {
   const [orders, setOrders] = useState([]);
@@ -50,6 +51,35 @@ const Orders = () => {
   useEffect(() => {
     loadOrders();
     loadRiders();
+
+    const socket = getSocket();
+    socket.emit("join-role", "admin");
+
+    socket.on("new-order", (newOrder) => {
+      console.log("[Socket] Received new order in admin panel:", newOrder);
+      setOrders((prev) => {
+        if (prev.some((o) => o._id === newOrder._id)) return prev;
+        return [newOrder, ...prev];
+      });
+    });
+
+    socket.on("order-status-updated", (updatedOrder) => {
+      console.log("[Socket] Received order update in admin panel:", updatedOrder);
+      setOrders((prev) => prev.map((o) => (o._id === updatedOrder._id ? updatedOrder : o)));
+      setSelectedOrder((prev) => (prev && prev._id === updatedOrder._id ? updatedOrder : prev));
+    });
+
+    socket.on("delivery-assigned", (updatedOrder) => {
+      console.log("[Socket] Received delivery-assigned event in admin panel:", updatedOrder);
+      setOrders((prev) => prev.map((o) => (o._id === updatedOrder._id ? updatedOrder : o)));
+      setSelectedOrder((prev) => (prev && prev._id === updatedOrder._id ? updatedOrder : prev));
+    });
+
+    return () => {
+      socket.off("new-order");
+      socket.off("order-status-updated");
+      socket.off("delivery-assigned");
+    };
   }, []);
 
   const handleUpdateStatus = async (orderId, newStatus, newPaymentStatus) => {

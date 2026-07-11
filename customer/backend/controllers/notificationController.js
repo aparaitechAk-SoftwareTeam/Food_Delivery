@@ -3,7 +3,8 @@ const Notification = require("../models/Notification");
 // Get all notifications sorted by newest
 exports.getNotifications = async (req, res) => {
   try {
-    const list = await Notification.find().sort({ createdAt: -1 });
+    const query = req.user ? { $or: [{ userId: req.user._id }, { userId: null }] } : {};
+    const list = await Notification.find(query).sort({ createdAt: -1 });
     res.json(list);
   } catch (error) {
     res.status(500).json({ message: "Failed to retrieve notifications: " + error.message });
