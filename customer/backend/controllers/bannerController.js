@@ -1,9 +1,13 @@
 const Banner = require("../models/Banner");
+const mongoose = require("mongoose");
+
+const shouldUseMockData = () => process.env.MOCK_DB === "true" || mongoose.connection.readyState !== 1;
 
 // Get all active promotional banners
 exports.getBanners = async (req, res) => {
-  if (process.env.MOCK_DB === "true") {
-    const { banners } = require("../config/mockDataStore");
+  if (shouldUseMockData()) {
+    const { banners, initializeMockData } = require("../config/mockDataStore");
+    initializeMockData();
     return res.json(banners);
   }
   const banners = await Banner.find({ isActive: true });

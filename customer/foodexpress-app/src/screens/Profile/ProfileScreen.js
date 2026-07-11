@@ -28,6 +28,7 @@ import {
   deleteAddress,
 } from "../../redux/slices/authSlice";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { openWhatsAppSupport } from "../../utils/whatsappHelper";
 
 const ProfileScreen = ({ navigation }) => {
   const dispatch = useDispatch();
@@ -298,6 +299,23 @@ const ProfileScreen = ({ navigation }) => {
           <View style={styles.menuItemLeft}>
             <MaterialCommunityIcons name="google" size={20} color="#4285f4" style={{ marginRight: 2 }} />
             <Text style={styles.menuItemText}>Google Pay / UPI</Text>
+          </View>
+          <MaterialCommunityIcons name="chevron-right" size={20} color="#bbb" />
+        </TouchableOpacity>
+      </Card>
+
+      {/* Help & Support Section */}
+      <Card style={styles.menuCard}>
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => openWhatsAppSupport(userProfile)}
+        >
+          <View style={styles.menuItemLeft}>
+            <MaterialCommunityIcons name="headset" size={22} color="#ff6b00" />
+            <View style={{ marginLeft: 12 }}>
+              <Text style={styles.menuItemTitleText}>Help & Support</Text>
+              <Text style={styles.menuItemSubtitle}>Chat with our support team on WhatsApp</Text>
+            </View>
           </View>
           <MaterialCommunityIcons name="chevron-right" size={20} color="#bbb" />
         </TouchableOpacity>
@@ -764,6 +782,16 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#444",
     fontWeight: "600",
+  },
+  menuItemTitleText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#333",
+  },
+  menuItemSubtitle: {
+    fontSize: 11,
+    color: "#666",
+    marginTop: 2,
   },
 });
 

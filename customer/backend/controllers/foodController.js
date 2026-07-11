@@ -1,6 +1,14 @@
 const Food = require("../models/Food");
 const Category = require("../models/Category");
 const Restaurant = require("../models/Restaurant");
+const mongoose = require("mongoose");
+
+const shouldUseMockData = () => process.env.MOCK_DB === "true" || mongoose.connection.readyState !== 1;
+const getMockDataStore = () => {
+  const store = require("../config/mockDataStore");
+  store.initializeMockData();
+  return store;
+};
 
 exports.getFoods = async (req, res) => {
   const {
@@ -18,8 +26,8 @@ exports.getFoods = async (req, res) => {
     limit = 20,
   } = req.query;
 
-  if (process.env.MOCK_DB === "true") {
-    const { queryMockFoods, categories, foods, restaurants, offers } = require("../config/mockDataStore");
+  if (shouldUseMockData()) {
+    const { queryMockFoods, categories, foods, restaurants, offers } = getMockDataStore();
     const result = queryMockFoods(req.query);
     const featured = foods.filter(f => f.isFeatured).slice(0, 10);
     const popular = foods.filter(f => f.isPopular).slice(0, 10);

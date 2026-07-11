@@ -22,13 +22,8 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { fetchFoods } from "../../redux/slices/foodsSlice";
 import { fetchFavorites, fetchWishlist } from "../../redux/slices/wishlistSlice";
 import { fetchAddresses, fetchUserProfile } from "../../redux/slices/authSlice";
-import api from "../../utils/api";
 import bannerService from "../../services/bannerService";
 import sectionService from "../../services/sectionService";
-
-// Time-of-day
-import { useTimeOfDay } from "../../hooks/useTimeOfDay";
-import { filterFoodsByPeriod } from "../../utils/timeOfDay";
 
 // Components
 import ScreenContainer from "../../components/ScreenContainer";
@@ -48,7 +43,6 @@ import MembershipCard from "../../components/MembershipCard";
 import LoadingSkeleton from "../../components/LoadingSkeleton";
 import EmptyState from "../../components/EmptyState";
 import ErrorState from "../../components/ErrorState";
-import TimeMealSection from "../../components/TimeMealSection";
 
 const { width } = Dimensions.get("window");
 
@@ -83,8 +77,6 @@ const getCategoryImage = (item) => {
 };
 
 const HomeScreen = ({ navigation }) => {
-  // ── Time-of-day ────────────────────────────────────────────────────────────
-  const timeInfo = useTimeOfDay();
   const dispatch = useDispatch();
 
   // Redux Selectors
@@ -101,31 +93,7 @@ const HomeScreen = ({ navigation }) => {
   const [banners, setBanners] = useState([]);
   const [featuredSections, setFeaturedSections] = useState([]);
 
-  // Premium scrollable sections states
-  const [bestsellers, setBestsellers] = useState([]);
-  const [newArrivals, setNewArrivals] = useState([]);
-  const [healthyMeals, setHealthyMeals] = useState([]);
-  const [combos, setCombos] = useState([]);
-  const [categorizedMenu, setCategorizedMenu] = useState([]);
-  const [loadingSections, setLoadingSections] = useState(false);
   const [wholesomeExpanded, setWholesomeExpanded] = useState(false);
-
-  // ── Meal-time foods (memoised, re-derived when foods list or time period changes) ──
-  const timeMealFoods = useMemo(() => {
-    const allFoods = foods && foods.length > 0 ? foods : [];
-    return filterFoodsByPeriod(allFoods, timeInfo.period).slice(0, 10);
-  }, [foods, timeInfo.period]);
-
-  // IDs already shown in the time section — used to avoid duplication in Bestsellers
-  const timeMealIdSet = useMemo(
-    () => new Set(timeMealFoods.map((f) => (f._id || f.id)?.toString())),
-    [timeMealFoods]
-  );
-
-  const dedupedBestsellers = useMemo(
-    () => bestsellers.filter((f) => !timeMealIdSet.has((f._id || f.id)?.toString())),
-    [bestsellers, timeMealIdSet]
-  );
 
   const computedCategorizedMenu = useMemo(() => {
     const cats = categories && categories.length > 0 ? categories : [];
@@ -153,43 +121,6 @@ const HomeScreen = ({ navigation }) => {
   // Animation values
   const scrollY = useRef(new Animated.Value(0)).current;
 
-  // Load premium sections from backend
-  const fetchPremiumSections = async () => {
-    setLoadingSections(true);
-    try {
-      const results = await Promise.allSettled([
-        api.get("/products/bestsellers"),
-        api.get("/products/new-arrivals"),
-        api.get("/products/healthy"),
-        api.get("/products/combos"),
-        api.get("/products/categorized")
-      ]);
-
-      const bestsellersData = results[0].status === "fulfilled" ? (results[0].value.data.foods || []) : [];
-      const newArrivalsData = results[1].status === "fulfilled" ? (results[1].value.data.foods || []) : [];
-      const healthyMealsData = results[2].status === "fulfilled" ? (results[2].value.data.foods || []) : [];
-      const combosData = results[3].status === "fulfilled" ? (results[3].value.data.foods || []) : [];
-      const categorizedMenuData = results[4].status === "fulfilled" ? (results[4].value.data || []) : [];
-
-      setBestsellers(bestsellersData);
-      setNewArrivals(newArrivalsData);
-      setHealthyMeals(healthyMealsData);
-      setCombos(combosData);
-      setCategorizedMenu(categorizedMenuData);
-
-      // Log failures for debugging
-      results.forEach((res, index) => {
-        if (res.status === "rejected") {
-          console.warn(`Premium API endpoint index ${index} failed:`, res.reason?.message);
-        }
-      });
-    } catch (err) {
-      console.log("Error loading premium sections:", err.message);
-    } finally {
-      setLoadingSections(false);
-    }
-  };
-
   const fetchBanners = async () => {
     try {
       const data = await bannerService.getBanners();
@@ -210,7 +141,6 @@ const HomeScreen = ({ navigation }) => {
 
   const loadData = (initial = false) => {
     dispatch(fetchFoods());
-    fetchPremiumSections();
     fetchBanners();
     fetchFeaturedSections();
     if (token) {
@@ -233,7 +163,6 @@ const HomeScreen = ({ navigation }) => {
     setRefreshing(true);
     await Promise.all([
       dispatch(fetchFoods()),
-      fetchPremiumSections(),
       fetchBanners(),
       fetchFeaturedSections()
     ]);

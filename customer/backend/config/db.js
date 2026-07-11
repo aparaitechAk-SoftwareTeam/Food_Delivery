@@ -7,7 +7,9 @@ const connectDB = async (uri) => {
   }
 
   if (!uri || typeof uri !== "string") {
-    throw new Error("Invalid or missing MongoDB URI. Cannot connect to database.");
+    console.warn("Invalid or missing MongoDB URI. Falling back to Mock In-Memory Database.");
+    process.env.MOCK_DB = "true";
+    return;
   }
 
   try {
@@ -17,8 +19,9 @@ const connectDB = async (uri) => {
     console.log("MongoDB connected successfully");
     process.env.MOCK_DB = "false";
   } catch (error) {
-    console.error("MongoDB connection failed:", error.message);
-    throw error;
+    console.warn("MongoDB connection failed:", error.message);
+    console.warn("Falling back to Mock In-Memory Database Mode.");
+    process.env.MOCK_DB = "true";
   }
 };
 

@@ -58,9 +58,13 @@ app.use(
     origin: (origin, callback) => {
       // Allow requests with no origin (like mobile apps, curl, postman)
       if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) {
+      
+      // Allow local development origins dynamically
+      const isLocal = /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+)(:\d+)?$/.test(origin);
+      if (isLocal || allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
+      
       console.warn(`Origin ${origin} blocked by CORS`);
       return callback(new Error("Not allowed by CORS"));
     },
