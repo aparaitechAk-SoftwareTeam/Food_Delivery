@@ -69,20 +69,14 @@ exports.verifyPayment = async (req, res) => {
     }
 
     // Prevent duplicate payment verification / order creation
-    if (paymentId && process.env.MOCK_DB !== "true") {
+    if (paymentId) {
       const existingOrder = await Order.findOne({ transactionId: paymentId });
       if (existingOrder) {
         console.log(`[paymentController] Order already verified for paymentId: "${paymentId}". Returning existing order.`);
         return res.status(200).json(existingOrder);
       }
-    } else if (paymentId && process.env.MOCK_DB === "true") {
-      const { orders } = require("../config/mockDataStore");
-      const existingOrder = orders.find(o => o.transactionId === paymentId);
-      if (existingOrder) {
-        console.log(`[paymentController] Mock Order already verified for paymentId: "${paymentId}". Returning existing order.`);
-        return res.status(200).json(existingOrder);
-      }
     }
+    
 
     let isVerified = false;
 
@@ -118,45 +112,7 @@ exports.verifyPayment = async (req, res) => {
       
       const orderNumber = `ORD-${Date.now()}`;
       
-      if (process.env.MOCK_DB === "true") {
-        const { orders, restaurants, foods } = require("../config/mockDataStore");
-        const restObj = restaurants.find(r => r.id === restaurant || r._id === restaurant);
-        
-        const resolvedItems = items.map(item => {
-          const foodItem = foods.find(f => f.id === item.food || f._id === item.food);
-          return {
-            food: foodItem || { id: item.food, name: "Food Item" },
-            quantity: item.quantity,
-            price: item.price
-          };
-        });
-
-        const newOrder = {
-          _id: `ord-${orders.length + 1}`,
-          id: `ord-${orders.length + 1}`,
-          user: req.user,
-          customerName: req.user.name,
-          customerEmail: req.user.email,
-          customerPhone: req.user.phone || "",
-          restaurant: restObj || { id: restaurant, name: "Krushna's Restaurant" },
-          items: resolvedItems,
-          address,
-          paymentMethod,
-          paymentStatus: paymentMethod === "Cash on Delivery" ? "Pending" : "Paid",
-          paidAt: paymentMethod === "Cash on Delivery" ? null : new Date(),
-          discount: discount || 0,
-          deliveryCharge: deliveryCharge !== undefined ? deliveryCharge : 40,
-          tax: tax || 0,
-          totalAmount: totalAmount || amount,
-          status: paymentMethod === "Cash on Delivery" ? "Pending" : "Confirmed",
-          orderNumber,
-          transactionId: paymentId || `TXT-${Date.now()}`,
-          createdAt: new Date()
-        };
-        
-        orders.unshift(newOrder);
-        return res.status(201).json(newOrder);
-      }
+      
 
       // MongoDB mode: create verified order and update inventory
       let finalRestaurantId = restaurant;

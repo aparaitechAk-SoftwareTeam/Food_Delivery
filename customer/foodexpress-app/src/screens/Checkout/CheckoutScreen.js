@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { View, StyleSheet, ScrollView, Alert, TouchableOpacity, Image, Dimensions, Platform } from "react-native";
+import { View, StyleSheet, ScrollView, Alert, TouchableOpacity, Image, Dimensions, Platform, SafeAreaView } from "react-native";
 import { Text, Card, RadioButton, Divider, ActivityIndicator, Portal, Dialog } from "react-native-paper";
 import { useSelector, useDispatch } from "react-redux";
+import CustomScreenHeader from "../../components/CustomScreenHeader";
 import AppButton from "../../components/AppButton";
 import { placeOrder } from "../../redux/slices/ordersSlice";
 import { clearCart, selectCartBillDetails } from "../../redux/slices/cartSlice";
@@ -23,7 +24,6 @@ const CheckoutScreen = ({ navigation }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [showUPIOverlay, setShowUPIOverlay] = useState(false);
   
-  // Detailed diagnostic error logging
   const logAndGetError = (endpoint, payload, err) => {
     const errorMsg = typeof err === "string" ? err : (err?.message || "Failed to place order");
     const responseData = err?.response?.data || null;
@@ -36,9 +36,14 @@ const CheckoutScreen = ({ navigation }) => {
     console.error("Response / Backend Error:", JSON.stringify(responseData || err, null, 2));
     console.error("==================================");
 
+    if (errorMsg.includes("Token is not valid") || errorMsg.includes("Not authorized") || status === 401) {
+      setTimeout(() => {
+        navigation.navigate("Login");
+      }, 1000);
+    }
+
     return errorMsg;
   };
-  
   // QR Code States
   const [qrData, setQrData] = useState(null);
   const [loadingQR, setLoadingQR] = useState(false);
@@ -118,6 +123,7 @@ const CheckoutScreen = ({ navigation }) => {
     // ─── 1. Cash on Delivery (Existing Flow) ──────────────────────────────────
     if (paymentMethod === "Cash on Delivery") {
       setIsProcessing(true);
+      console.log("[DEBUG] Dispatching placeOrder. Payload:", JSON.stringify({ ...orderPayload, paymentMethod: "Cash on Delivery" }, null, 2));
       dispatch(placeOrder({ ...orderPayload, paymentMethod: "Cash on Delivery" }))
         .unwrap()
         .then((res) => {
@@ -335,10 +341,9 @@ const CheckoutScreen = ({ navigation }) => {
 
   return (
     <Portal.Host>
-      <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 48 }} showsVerticalScrollIndicator={false}>
-        <Text variant="headlineMedium" style={styles.title}>
-          Checkout
-        </Text>
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#f8f9fa" }}>
+        <CustomScreenHeader title="Checkout" navigation={navigation} />
+        <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 48 }} showsVerticalScrollIndicator={false}>
         
         {/* Delivery Address Section */}
         <Card style={styles.section}>
@@ -540,6 +545,7 @@ const CheckoutScreen = ({ navigation }) => {
           </Dialog.Actions>
         </Dialog>
       </Portal>
+      </SafeAreaView>
     </Portal.Host>
   );
 };

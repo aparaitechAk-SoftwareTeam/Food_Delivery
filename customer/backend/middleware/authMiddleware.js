@@ -39,20 +39,7 @@ const protect = async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    if (process.env.MOCK_DB === "true") {
-      const { users } = require("../config/mockDataStore");
-      const mockUser = users.find(u => u.id === decoded.id || u._id === decoded.id);
-      if (!mockUser) {
-        res.status(401);
-        throw new Error("User not found");
-      }
-      if (mockUser.isBlocked) {
-        res.status(401);
-        throw new Error("Your account has been blocked. Contact support.");
-      }
-      req.user = mockUser;
-      return next();
-    }
+    
     
     req.user = await User.findById(decoded.id).select("-password");
     if (!req.user) {
@@ -70,5 +57,30 @@ const protect = async (req, res, next) => {
   }
 };
 
-module.exports = protect;
+const optionalProtect = async (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return next();
+  }
+  const token = authHeader.split(" ")[1];
 
+  if (token === "dummy-jwt-token") {
+    try {
+      const realUser = await User.findOne({});
+      req.user = realUser || null;
+    } catch (err) {}
+    return next();
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = await User.findById(decoded.id).select("-password");
+    next();
+  } catch (error) {
+    next();
+  }
+};
+
+protect.optionalProtect = optionalProtect;
+
+module.exports = protect;

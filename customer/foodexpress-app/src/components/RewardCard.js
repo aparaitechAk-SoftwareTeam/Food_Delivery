@@ -3,34 +3,48 @@ import { View, StyleSheet, Animated, TouchableOpacity } from "react-native";
 import { Text } from "react-native-paper";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
-const RewardCard = ({ onClaim }) => {
-  const [timeLeft, setTimeLeft] = useState(7200); // 2 hours in seconds
-  const [claimed, setClaimed] = useState(false);
+const RewardCard = ({ reward, onClaim }) => {
+  const {
+    completedOrders = 0,
+    totalRequiredOrders = 4,
+    cashbackAmount = 150,
+    expiryDate,
+    status = "Pending",
+  } = reward || {};
+
+  const [timeLeft, setTimeLeft] = useState(0);
   const progressAnim = useRef(new Animated.Value(0)).current;
 
   // Countdown timer logic
   useEffect(() => {
-    if (claimed) return;
-    const interval = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [claimed]);
+    if (!expiryDate || status === "Claimed") return;
 
-  // Animate progress bar on mount
+    const calculateTimeLeft = () => {
+      const diff = Math.max(0, Math.floor((new Date(expiryDate) - new Date()) / 1000));
+      setTimeLeft(diff);
+      return diff;
+    };
+
+    calculateTimeLeft();
+    const interval = setInterval(() => {
+      const remaining = calculateTimeLeft();
+      if (remaining <= 0) {
+        clearInterval(interval);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [expiryDate, status]);
+
+  // Animate progress bar on completedOrders or totalRequiredOrders update
   useEffect(() => {
+    const progressPercent = totalRequiredOrders > 0 ? completedOrders / totalRequiredOrders : 0;
     Animated.timing(progressAnim, {
-      toValue: 0.75, // 75% complete
-      duration: 1500,
+      toValue: progressPercent,
+      duration: 1000,
       useNativeDriver: false,
     }).start();
-  }, [progressAnim]);
+  }, [completedOrders, totalRequiredOrders, progressAnim]);
 
   const formatTime = (secs) => {
     const h = Math.floor(secs / 3600);
@@ -39,21 +53,56 @@ const RewardCard = ({ onClaim }) => {
     return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 
-  const handleClaim = () => {
-    setClaimed(true);
-    if (onClaim) onClaim();
-  };
+  const isExpired = status === "Expired" || (timeLeft <= 0 && status !== "Claimed" && status !== "Eligible");
+  const isClaimed = status === "Claimed";
+  const isEligible = status === "Eligible" && !isExpired && !isClaimed;
+  const isPending = status === "Pending" && !isExpired;
+
+  // Determine dynamic copy
+  let cardTitle = `Unlock ₹${cashbackAmount} Cashback`;
+  let cardSubtitle = "";
+  
+  if (isPending) {
+    const remaining = totalRequiredOrders - completedOrders;
+    cardSubtitle = `Place ${remaining} more order${remaining > 1 ? "s" : ""} to claim your reward`;
+  } else if (isEligible) {
+    cardSubtitle = "Congratulations! Your ₹150 cashback is ready.";
+  } else if (isClaimed) {
+    cardSubtitle = `₹${cashbackAmount} Cashback Claimed`;
+  } else if (isExpired) {
+    cardSubtitle = "Offer Expired";
+  }
+
+  // Determine claim button styles & label
+  let buttonLabel = "CLAIM NOW";
+  let buttonDisabled = true;
+
+  if (isEligible) {
+    buttonLabel = "CLAIM NOW";
+    buttonDisabled = false;
+  } else if (isClaimed) {
+    buttonLabel = "CLAIMED";
+    buttonDisabled = true;
+  } else if (isExpired) {
+    buttonLabel = "EXPIRED";
+    buttonDisabled = true;
+  } else if (isPending) {
+    buttonLabel = "CLAIM NOW";
+    buttonDisabled = true;
+  }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, (isExpired || isClaimed) && styles.containerDisabled]}>
       <View style={styles.contentRow}>
         <View style={styles.leftContent}>
-          <View style={styles.badge}>
+          <View style={[styles.badge, (isExpired || isClaimed) && styles.badgeDisabled]}>
             <MaterialCommunityIcons name="star" size={12} color="#FFFFFF" />
             <Text style={styles.badgeText}>NEW USER GIFT</Text>
           </View>
-          <Text style={styles.title}>Unlock ₹150 Cashback</Text>
-          <Text style={styles.subtitle}>Place 1 more order to claim your reward</Text>
+          <Text style={styles.title}>{cardTitle}</Text>
+          <Text style={[styles.subtitle, isEligible && styles.subtitleEligible, isExpired && styles.subtitleExpired]}>
+            {cardSubtitle}
+          </Text>
         </View>
         <View style={styles.giftIconWrapper}>
           <Text style={styles.giftEmoji}>🎁</Text>
@@ -66,6 +115,7 @@ const RewardCard = ({ onClaim }) => {
           <Animated.View
             style={[
               styles.progressBarFill,
+              (isExpired || isClaimed) && styles.progressBarFillDisabled,
               {
                 width: progressAnim.interpolate({
                   inputRange: [0, 1],
@@ -75,23 +125,45 @@ const RewardCard = ({ onClaim }) => {
             ]}
           />
         </View>
-        <Text style={styles.progressText}>3 of 4 orders completed</Text>
+        <Text style={styles.progressText}>
+          {completedOrders} of {totalRequiredOrders} orders completed
+        </Text>
       </View>
 
       {/* Footer Countdown & CTA */}
       <View style={styles.footerRow}>
         <View style={styles.timerWrapper}>
-          <MaterialCommunityIcons name="clock-fast" size={16} color="#B42318" />
-          <Text style={styles.timerText}>Expires in {formatTime(timeLeft)}</Text>
+          {isClaimed ? (
+            <>
+              <MaterialCommunityIcons name="check-circle" size={16} color="#2E7D32" />
+              <Text style={[styles.timerText, { color: "#2E7D32" }]}>Claimed successfully</Text>
+            </>
+          ) : isExpired ? (
+            <>
+              <MaterialCommunityIcons name="clock-alert" size={16} color="#667085" />
+              <Text style={[styles.timerText, { color: "#667085" }]}>Offer expired</Text>
+            </>
+          ) : (
+            <>
+              <MaterialCommunityIcons name="clock-fast" size={16} color="#B42318" />
+              <Text style={styles.timerText}>Expires in {formatTime(timeLeft)}</Text>
+            </>
+          )}
         </View>
 
         <TouchableOpacity
-          style={[styles.claimButton, claimed && styles.claimedButton]}
-          onPress={handleClaim}
-          disabled={claimed}
+          style={[
+            styles.claimButton,
+            buttonDisabled && styles.claimButtonDisabled,
+            isClaimed && styles.claimButtonClaimed,
+          ]}
+          onPress={onClaim}
+          disabled={buttonDisabled}
           activeOpacity={0.8}
         >
-          <Text style={styles.claimButtonText}>{claimed ? "CLAIMED" : "CLAIM NOW"}</Text>
+          <Text style={[styles.claimButtonText, buttonDisabled && !isEligible && styles.claimButtonTextDisabled]}>
+            {buttonLabel}
+          </Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -113,6 +185,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 10,
   },
+  containerDisabled: {
+    backgroundColor: "#F8F9FA",
+    borderColor: "#E4E7EC",
+    shadowColor: "#000000",
+    shadowOpacity: 0.02,
+  },
   contentRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -131,6 +209,9 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 8,
   },
+  badgeDisabled: {
+    backgroundColor: "#98A2B3",
+  },
   badgeText: {
     fontSize: 9,
     fontWeight: "bold",
@@ -146,6 +227,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#475467",
     marginTop: 2,
+  },
+  subtitleEligible: {
+    color: "#2E7D32",
+    fontWeight: "bold",
+  },
+  subtitleExpired: {
+    color: "#B42318",
   },
   giftIconWrapper: {
     width: 52,
@@ -172,6 +260,9 @@ const styles = StyleSheet.create({
     height: "100%",
     backgroundColor: "#FF6F61",
     borderRadius: 4,
+  },
+  progressBarFillDisabled: {
+    backgroundColor: "#D0D5DD",
   },
   progressText: {
     fontSize: 11,
@@ -205,13 +296,20 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     elevation: 1,
   },
-  claimedButton: {
-    backgroundColor: "#98A2B3",
+  claimButtonDisabled: {
+    backgroundColor: "#F2F4F7",
+    elevation: 0,
+  },
+  claimButtonClaimed: {
+    backgroundColor: "#D0D5DD",
   },
   claimButtonText: {
     fontSize: 11,
     fontWeight: "bold",
     color: "#FFFFFF",
+  },
+  claimButtonTextDisabled: {
+    color: "#98A2B3",
   },
 });
 

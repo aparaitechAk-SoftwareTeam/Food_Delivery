@@ -1,7 +1,8 @@
 import React, { useEffect } from "react";
-import { View, StyleSheet, FlatList, TouchableOpacity, Image, Alert } from "react-native";
+import { View, StyleSheet, FlatList, TouchableOpacity, Image, Alert, SafeAreaView } from "react-native";
 import { Text, IconButton, Snackbar } from "react-native-paper";
 import { useDispatch, useSelector } from "react-redux";
+import CustomScreenHeader from "../../components/CustomScreenHeader";
 import { fetchWishlist, removeFoodFromWishlist } from "../../redux/slices/wishlistSlice";
 import { addToCart } from "../../redux/slices/cartSlice";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -116,11 +117,9 @@ const WishlistScreen = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Wishlist</Text>
-        <Text style={styles.headerSubtitle}>{items.length} items saved</Text>
-      </View>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#ffffff" }}>
+      <CustomScreenHeader title="My Wishlist" navigation={navigation} redirectToHome={true} />
+      <View style={styles.container}>
 
       <FlatList
         data={items}
@@ -159,7 +158,8 @@ const WishlistScreen = ({ navigation }) => {
       >
         {snackbarMsg}
       </Snackbar>
-    </View>
+      </View>
+    </SafeAreaView>
   );
 };
 

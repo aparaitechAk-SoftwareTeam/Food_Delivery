@@ -7,11 +7,13 @@ import {
   Animated, 
   Dimensions, 
   Platform,
-  TouchableOpacity
+  TouchableOpacity,
+  SafeAreaView
 } from "react-native";
 import { Text, Button } from "react-native-paper";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useDispatch, useSelector } from "react-redux";
+import CustomScreenHeader from "../../components/CustomScreenHeader";
 import { addToCart } from "../../redux/slices/cartSlice";
 
 // Components
@@ -176,8 +178,10 @@ const FoodDetailsScreen = ({ route, navigation }) => {
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#ffffff" }}>
+      <CustomScreenHeader title={food?.name || "Food Details"} navigation={navigation} />
       <ScrollView 
+        style={styles.container}
         contentContainerStyle={styles.scrollContent} 
         showsVerticalScrollIndicator={false}
       >
@@ -210,7 +214,7 @@ const FoodDetailsScreen = ({ route, navigation }) => {
         food={food}
         onAddComplete={handleCustomizationComplete}
       />
-    </View>
+    </SafeAreaView>
   );
 };
 

@@ -38,6 +38,13 @@ const {
   updateDeliveryBoy,
   deleteDeliveryBoy,
   assignOrderToRider,
+  getRewardsList,
+  getCampaigns,
+  createCampaign,
+  deleteCampaign,
+  getPlansList,
+  createPlan,
+  deletePlan,
 } = require("../controllers/adminController");
 const protect = require("../middleware/authMiddleware");
 const router = express.Router();
@@ -111,5 +118,16 @@ router.post("/delivery-boys", createDeliveryBoy);
 router.put("/delivery-boys/:id", updateDeliveryBoy);
 router.delete("/delivery-boys/:id", deleteDeliveryBoy);
 router.put("/orders/:id/assign", assignOrderToRider);
+router.get("/rewards", getRewardsList);
+
+// Cashback campaigns
+router.get("/campaigns", getCampaigns);
+router.post("/campaigns", createCampaign);
+router.delete("/campaigns/:id", deleteCampaign);
+
+// Membership plans
+router.get("/plans", getPlansList);
+router.post("/plans", createPlan);
+router.delete("/plans/:id", deletePlan);
 
 module.exports = router;

@@ -87,43 +87,44 @@ const ComboMeals = () => {
     setLoading(true);
     const payload = { name, description, price, originalPrice, image, items: selectedItems };
 
+    const url = editingId ? `${API_BASE_URL}/admin/combos/${editingId}` : `${API_BASE_URL}/admin/combos`;
+    const method = editingId ? 'PUT' : 'POST';
     try {
-      let url = `${API_BASE_URL}/admin/combos`;
-      let method = 'POST';
-
-      if (editingId) {
-        url = `${url}/${editingId}`;
-        method = 'PUT';
-      }
-
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
 
+      const responseText = await response.text();
+      let responseData = {};
+      try {
+        responseData = JSON.parse(responseText);
+      } catch (parseErr) {}
+
       if (response.ok) {
         await loadData();
         handleReset();
       } else {
-        // Fallback mock append
-        const mockPopulatedItems = selectedItems.map(id => foods.find(f => f._id === id || f.id === id)).filter(Boolean);
-        const mockCombo = {
-          _id: editingId || `combo-${combos.length + 1}`,
-          id: editingId || `combo-${combos.length + 1}`,
-          ...payload,
-          items: mockPopulatedItems,
-          isActive: true
-        };
-        if (editingId) {
-          setCombos(prev => prev.map(c => (c._id === editingId || c.id === editingId) ? mockCombo : c));
-        } else {
-          setCombos(prev => [...prev, mockCombo]);
-        }
-        handleReset();
+        const errorMsg = responseData.message || responseText || "Unknown backend error";
+        console.error("Save combo API failed:", {
+          requestUrl: url,
+          method,
+          payload,
+          statusCode: response.status,
+          response: responseText,
+          error: errorMsg
+        });
+        alert(`Failed to save combo:\nStatus: ${response.status}\nError: ${errorMsg}`);
       }
     } catch (err) {
-      console.error(err);
+      console.error("Save combo network exception:", {
+        requestUrl: url,
+        method,
+        payload,
+        error: err.message
+      });
+      alert(`Network error saving combo:\n${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -132,17 +133,35 @@ const ComboMeals = () => {
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this combo?')) return;
     setLoading(true);
+    const url = `${API_BASE_URL}/admin/combos/${id}`;
+    const method = 'DELETE';
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/combos/${id}`, {
-        method: 'DELETE'
-      });
+      const response = await fetch(url, { method });
       if (response.ok) {
         setCombos(prev => prev.filter(c => c._id !== id && c.id !== id));
       } else {
-        setCombos(prev => prev.filter(c => c._id !== id && c.id !== id));
+        const responseText = await response.text();
+        let responseData = {};
+        try {
+          responseData = JSON.parse(responseText);
+        } catch (parseErr) {}
+        const errorMsg = responseData.message || responseText || "Unknown backend error";
+        console.error("Delete combo API failed:", {
+          requestUrl: url,
+          method,
+          statusCode: response.status,
+          response: responseText,
+          error: errorMsg
+        });
+        alert(`Failed to delete combo:\nStatus: ${response.status}\nError: ${errorMsg}`);
       }
     } catch (err) {
-      console.error(err);
+      console.error("Delete combo network exception:", {
+        requestUrl: url,
+        method,
+        error: err.message
+      });
+      alert(`Network error deleting combo:\n${err.message}`);
     } finally {
       setLoading(false);
     }

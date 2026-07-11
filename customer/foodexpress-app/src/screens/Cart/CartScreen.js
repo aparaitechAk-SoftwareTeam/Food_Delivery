@@ -16,6 +16,7 @@ import {
 import { Text } from "react-native-paper";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useDispatch, useSelector } from "react-redux";
+import CustomScreenHeader from "../../components/CustomScreenHeader";
 import {
   addToCart,
   removeFromCart,
@@ -176,18 +177,7 @@ const CartScreen = ({ navigation }) => {
         setCouponError(data.message || "Invalid coupon code");
       }
     } catch (err) {
-      // Fallback: try predefined demo coupons
-      const DEMO_COUPONS = {
-        FIRST10: { code: "FIRST10", discountType: "percentage", value: 10, maxDiscount: 50 },
-        FLAT30: { code: "FLAT30", discountType: "fixed", value: 30 },
-        SAVE50: { code: "SAVE50", discountType: "fixed", value: 50 },
-      };
-      if (DEMO_COUPONS[code]) {
-        dispatch(applyCoupon(DEMO_COUPONS[code]));
-        setCouponInput("");
-      } else {
-        setCouponError("Invalid coupon code. Try FIRST10, FLAT30 or SAVE50");
-      }
+      setCouponError(err.message || "Failed to validate coupon");
     } finally {
       setCouponLoading(false);
     }
@@ -257,21 +247,20 @@ const CartScreen = ({ navigation }) => {
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      {/* Header */}
-      <SafeAreaView style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <MaterialCommunityIcons name="arrow-left" size={22} color="#1D2939" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Your Cart</Text>
-        <TouchableOpacity onPress={() => {
-          Alert.alert("Clear Cart", "Remove all items?", [
-            { text: "Cancel", style: "cancel" },
-            { text: "Clear", style: "destructive", onPress: () => dispatch(clearCart()) },
-          ]);
-        }}>
-          <Text style={styles.clearText}>Clear</Text>
-        </TouchableOpacity>
-      </SafeAreaView>
+      <CustomScreenHeader
+        title="Your Cart"
+        navigation={navigation}
+        rightAction={
+          <TouchableOpacity onPress={() => {
+            Alert.alert("Clear Cart", "Remove all items?", [
+              { text: "Cancel", style: "cancel" },
+              { text: "Clear", style: "destructive", onPress: () => dispatch(clearCart()) },
+            ]);
+          }}>
+            <Text style={styles.clearText}>Clear</Text>
+          </TouchableOpacity>
+        }
+      />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         {/* ── Cart Items ── */}
