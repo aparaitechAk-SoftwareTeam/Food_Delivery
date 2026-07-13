@@ -89,8 +89,6 @@ const FoodDetailsScreen = ({ route, navigation }) => {
 
   useEffect(() => {
     fetchFoodDetails(true);
-    const interval = setInterval(() => fetchFoodDetails(false), 5000); // Poll every 5 seconds
-    return () => clearInterval(interval);
   }, [foodId]);
 
   const handleStickyAddPress = () => {

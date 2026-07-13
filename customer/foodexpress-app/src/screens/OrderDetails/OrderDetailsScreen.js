@@ -36,9 +36,17 @@ const OrderDetailsScreen = ({ route, navigation }) => {
 
   useEffect(() => {
     fetchDetails(true);
-    const interval = setInterval(() => fetchDetails(false), 3000); // Poll every 3 seconds
-    return () => clearInterval(interval);
-  }, [orderId]);
+    
+    // Only set up a polling interval if the order is active
+    let interval;
+    if (!order || (order.status !== "Delivered" && order.status !== "Cancelled")) {
+      interval = setInterval(() => fetchDetails(false), 5000); // Poll every 5 seconds
+    }
+    
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [orderId, order?.status]);
 
   const handleCancelOrder = () => {
     setCancelLoading(true);

@@ -85,15 +85,18 @@ const OrderTrackingScreen = ({ route, navigation }) => {
       });
     });
 
-    // Fallback poll every 6 seconds
-    const interval = setInterval(fetchDetails, 6000);
+    // Fallback poll every 10 seconds only if active
+    let interval;
+    if (!order || (order.status !== "Delivered" && order.status !== "Cancelled")) {
+      interval = setInterval(fetchDetails, 10000);
+    }
 
     return () => {
-      clearInterval(interval);
+      if (interval) clearInterval(interval);
       socket.off("order-status-updated");
       socket.off("delivery-location");
     };
-  }, [orderId]);
+  }, [orderId, order?.status]);
 
   if (loading) {
     return (

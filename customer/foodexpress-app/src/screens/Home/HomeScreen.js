@@ -332,8 +332,6 @@ const HomeScreen = ({ navigation }) => {
 
   useEffect(() => {
     loadData(true);
-    const interval = setInterval(() => loadData(false), 10000); // Poll every 10 seconds
-    return () => clearInterval(interval);
   }, [dispatch, token]);
 
   const handleRefresh = async () => {
