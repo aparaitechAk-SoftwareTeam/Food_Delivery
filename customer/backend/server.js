@@ -166,8 +166,8 @@ if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
 if (require.main === module) {
   connectDB(MONGO_URI)
     .then(() => {
-      // Seed / mock data
-      seedDatabase();
+      // Seed / mock data (Disabled)
+      // seedDatabase();
 
       // Start the HTTP server — only once, only after DB is ready
       const server = app.listen(PORT, () => {
