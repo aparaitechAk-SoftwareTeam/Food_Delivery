@@ -35,10 +35,10 @@ const campaignRoutes     = require("./routes/campaignRoutes");
 const errorHandler      = require("./middleware/errorHandler");
 const seedDatabase      = require("./config/seed");
 
-// Rate limiter: maximum 1000 requests per 15 minutes per IP
+// Rate limiter: maximum 300 requests per 15 minutes per IP
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 1000,
+  max: 300,
   message: { message: "Too many requests from this IP, please try again after 15 minutes." },
   standardHeaders: true,
   legacyHeaders: false,
@@ -51,28 +51,49 @@ app.use(limiter);
 const allowedOrigins = [
   process.env.FRONTEND_URL,
   process.env.ADMIN_URL,
+  // Vercel deployments (admin panel)
   "https://food-delivery-rouge-one.vercel.app",
   "https://cloudkitchen.aparaitech.org",
+  "https://cloudkitchen.aparaitech.org/",
+  // Local development
+  "http://localhost:3000",
   "http://localhost:5173",
   "http://localhost:8081",
   "http://localhost:8082",
-  "https://cloudkitchen.aparaitech.org/"
+  "http://localhost:19000",
+  "http://localhost:19006",
+  // Expo Go & Expo Web
+  "http://127.0.0.1:8081",
+  "http://127.0.0.1:19000",
+  "http://127.0.0.1:19006",
 ].filter(Boolean);
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps, curl, postman)
+      // Allow requests with no origin (mobile apps, curl, Postman, React Native)
       if (!origin) return callback(null, true);
+      // Allow any vercel.app subdomain (for preview deployments)
+      if (origin.endsWith(".vercel.app")) return callback(null, true);
+      // Allow any render.com subdomain (service-to-service)
+      if (origin.endsWith(".onrender.com")) return callback(null, true);
+      // Allow any localhost or 192.168.x.x (development)
+      if (
+        origin.startsWith("http://localhost") ||
+        origin.startsWith("http://127.0.0.1") ||
+        /^http:\/\/192\.168\.\d+\.\d+/.test(origin)
+      ) {
+        return callback(null, true);
+      }
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
-      console.warn(`Origin ${origin} blocked by CORS`);
+      console.warn(`[CORS] Origin blocked: ${origin}`);
       return callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"]
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"]
   })
 );
 app.use(express.json());
@@ -107,10 +128,13 @@ app.use("/api/campaigns",     campaignRoutes);
 // Health check endpoint
 app.get("/api/health", async (req, res) => {
   const mongoose = require("mongoose");
+  const dbState = mongoose.connection.readyState;
   res.json({
-    status: "UP",
-    timestamp: new Date(),
-    mongoDB: mongoose.connection.readyState === 1 ? "CONNECTED" : "DISCONNECTED"
+    success: true,
+    status: "running",
+    uptime: Math.floor(process.uptime()),
+    timestamp: new Date().toISOString(),
+    mongoDB: dbState === 1 ? "CONNECTED" : dbState === 2 ? "CONNECTING" : "DISCONNECTED"
   });
 });
 
@@ -142,8 +166,8 @@ if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
 if (require.main === module) {
   connectDB(MONGO_URI)
     .then(() => {
-      // Seed / mock data (Disabled)
-      // seedDatabase();
+      // Seed / mock data
+      seedDatabase();
 
       // Start the HTTP server — only once, only after DB is ready
       const server = app.listen(PORT, () => {

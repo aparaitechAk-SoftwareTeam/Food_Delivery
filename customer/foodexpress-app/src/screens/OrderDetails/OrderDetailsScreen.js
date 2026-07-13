@@ -36,17 +36,9 @@ const OrderDetailsScreen = ({ route, navigation }) => {
 
   useEffect(() => {
     fetchDetails(true);
-    
-    // Only set up a polling interval if the order is active
-    let interval;
-    if (!order || (order.status !== "Delivered" && order.status !== "Cancelled")) {
-      interval = setInterval(() => fetchDetails(false), 5000); // Poll every 5 seconds
-    }
-    
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [orderId, order?.status]);
+    const interval = setInterval(() => fetchDetails(false), 3000); // Poll every 3 seconds
+    return () => clearInterval(interval);
+  }, [orderId]);
 
   const handleCancelOrder = () => {
     setCancelLoading(true);
@@ -231,6 +223,18 @@ const OrderDetailsScreen = ({ route, navigation }) => {
               </Text>
             </View>
           </View>
+          {order.transactionId && (
+            <>
+              <Divider style={styles.detailDivider} />
+              <View style={styles.detailRow}>
+                <MaterialCommunityIcons name="receipt" size={18} color="#666" style={styles.detailIcon} />
+                <View style={styles.detailTextCol}>
+                  <Text style={styles.detailTextLabel}>Transaction / Payment ID</Text>
+                  <Text style={styles.detailTextVal}>{order.transactionId}</Text>
+                </View>
+              </View>
+            </>
+          )}
         </View>
 
         {/* Actions bottom */}
