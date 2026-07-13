@@ -82,43 +82,52 @@ const FeaturedSections = () => {
 
     setLoading(true);
     const payload = { title, subtitle, maxItems, displayOrder, items: selectedItems, isVisible: true };
+    let url = `${API_BASE_URL}/admin/sections`;
+    let method = 'POST';
+
+    const isMockId = editingId && editingId.startsWith('sec-');
+
+    if (editingId && !isMockId) {
+      url = `${url}/${editingId}`;
+      method = 'PUT';
+    }
 
     try {
-      let url = `${API_BASE_URL}/admin/sections`;
-      let method = 'POST';
-
-      if (editingId) {
-        url = `${url}/${editingId}`;
-        method = 'PUT';
-      }
-
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
 
+      const responseText = await response.text();
+      let responseData = {};
+      try {
+        responseData = JSON.parse(responseText);
+      } catch (parseErr) {}
+
       if (response.ok) {
         await loadData();
         handleReset();
       } else {
-        // Fallback mock
-        const mockPopulatedItems = selectedItems.map(id => foods.find(f => f._id === id || f.id === id)).filter(Boolean);
-        const mockSec = {
-          _id: editingId || `sec-${sections.length + 1}`,
-          id: editingId || `sec-${sections.length + 1}`,
-          ...payload,
-          items: mockPopulatedItems,
-        };
-        if (editingId) {
-          setSections(prev => prev.map(s => (s._id === editingId || s.id === editingId) ? mockSec : s));
-        } else {
-          setSections(prev => [...prev, mockSec]);
-        }
-        handleReset();
+        const errorMsg = responseData.message || responseText || "Unknown backend error";
+        console.error("Save featured row API failed:", {
+          requestUrl: url,
+          method,
+          payload,
+          statusCode: response.status,
+          response: responseText,
+          error: errorMsg
+        });
+        alert(`Failed to save featured row:\nStatus: ${response.status}\nError: ${errorMsg}`);
       }
     } catch (err) {
-      console.error(err);
+      console.error("Save featured row network exception:", {
+        requestUrl: url,
+        method,
+        payload,
+        error: err.message
+      });
+      alert(`Network error saving featured row:\n${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -126,16 +135,38 @@ const FeaturedSections = () => {
 
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this featured section?')) return;
+    if (id && id.startsWith('sec-')) {
+      setSections(prev => prev.filter(s => s._id !== id && s.id !== id));
+      return;
+    }
     setLoading(true);
+    let url = `${API_BASE_URL}/admin/sections/${id}`;
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/sections/${id}`, { method: 'DELETE' });
+      const response = await fetch(url, { method: 'DELETE' });
+      const responseText = await response.text();
+      let responseData = {};
+      try {
+        responseData = JSON.parse(responseText);
+      } catch (parseErr) {}
+
       if (response.ok) {
         setSections(prev => prev.filter(s => s._id !== id && s.id !== id));
       } else {
-        setSections(prev => prev.filter(s => s._id !== id && s.id !== id));
+        const errorMsg = responseData.message || responseText || "Unknown backend error";
+        console.error("Delete featured row API failed:", {
+          requestUrl: url,
+          statusCode: response.status,
+          response: responseText,
+          error: errorMsg
+        });
+        alert(`Failed to delete featured row:\nStatus: ${response.status}\nError: ${errorMsg}`);
       }
     } catch (err) {
-      console.error(err);
+      console.error("Delete featured row network exception:", {
+        requestUrl: url,
+        error: err.message
+      });
+      alert(`Network error deleting featured row:\n${err.message}`);
     } finally {
       setLoading(false);
     }

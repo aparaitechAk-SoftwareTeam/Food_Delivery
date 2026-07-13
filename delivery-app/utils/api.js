@@ -3,17 +3,14 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 
 const getBaseURL = () => {
+  if (Platform.OS === "web") {
+    return "http://localhost:5000/api";
+  }
   if (process.env.EXPO_PUBLIC_API_URL) {
     const url = process.env.EXPO_PUBLIC_API_URL;
     return url.endsWith("/api") ? url : `${url}/api`;
   }
-  if (__DEV__) {
-    if (Platform.OS === "web") {
-      return "http://localhost:5000/api";
-    }
-    return "http://10.84.254.127:5000/api";
-  }
-  return "https://cloudkitchen.aparaitech.org/api";
+  return "http://192.168.1.26:5000/api";
 };
 
 const api = axios.create({
@@ -37,6 +34,16 @@ api.interceptors.response.use(
       await AsyncStorage.removeItem("rider_token");
       await AsyncStorage.removeItem("rider_user");
     }
+
+    console.warn("=== API REQUEST FAILURE ===");
+    console.warn("API URL:", error.config?.url || "");
+    console.warn("Method:", error.config?.method?.toUpperCase() || "");
+    console.warn("Request Data:", error.config?.data || "N/A");
+    console.warn("Response Status Code:", error.response?.status || "N/A");
+    console.warn("Response Data:", JSON.stringify(error.response?.data) || "N/A");
+    console.warn("Backend Error:", error.response?.data?.message || error.message || "Unknown error");
+    console.warn("===========================");
+
     const message = error.response?.data?.message || error.message || "API request failed";
     return Promise.reject(new Error(message));
   }

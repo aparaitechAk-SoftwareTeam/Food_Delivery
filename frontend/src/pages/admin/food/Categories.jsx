@@ -85,23 +85,31 @@ const Categories = () => {
     if (!formData.name.trim()) return;
 
     setLoading(true);
+    let url = `${API_BASE_URL}/admin/categories`;
+    let method = 'POST';
+
+    const isMockId = editingId && editingId.startsWith('c-');
+
+    if (editingId && !isMockId) {
+      url = `${url}/${editingId}`;
+      method = 'PUT';
+    }
+
     try {
-      let url = `${API_BASE_URL}/admin/categories`;
-      let method = 'POST';
-
-      if (editingId) {
-        url = `${url}/${editingId}`;
-        method = 'PUT';
-      }
-
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       });
 
+      const responseText = await response.text();
+      let responseData = {};
+      try {
+        responseData = JSON.parse(responseText);
+      } catch (parseErr) {}
+
       if (response.ok) {
-        const saved = await response.json();
+        const saved = responseData;
         // Update local state directly
         if (editingId) {
           setCategories(prev => prev.map(c => (c._id === editingId || c.id === editingId) ? saved : c));
@@ -110,21 +118,25 @@ const Categories = () => {
         }
         handleCancelEdit();
       } else {
-        // Fallback for mock environment
-        const mockSaved = {
-          _id: editingId || `c-${categories.length + 1}`,
-          id: editingId || `c-${categories.length + 1}`,
-          ...formData,
-        };
-        if (editingId) {
-          setCategories(prev => prev.map(c => (c._id === editingId || c.id === editingId) ? mockSaved : c));
-        } else {
-          setCategories(prev => [...prev, mockSaved]);
-        }
-        handleCancelEdit();
+        const errorMsg = responseData.message || responseText || "Unknown backend error";
+        console.error("Save category API failed:", {
+          requestUrl: url,
+          method,
+          payload: formData,
+          statusCode: response.status,
+          response: responseText,
+          error: errorMsg
+        });
+        alert(`Failed to save category:\nStatus: ${response.status}\nError: ${errorMsg}`);
       }
     } catch (err) {
-      console.error(err);
+      console.error("Save category network exception:", {
+        requestUrl: url,
+        method,
+        payload: formData,
+        error: err.message
+      });
+      alert(`Network error saving category:\n${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -132,19 +144,40 @@ const Categories = () => {
 
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this category?')) return;
+    if (id && id.startsWith('c-')) {
+      setCategories(prev => prev.filter(c => c._id !== id && c.id !== id));
+      return;
+    }
     setLoading(true);
+    const url = `${API_BASE_URL}/admin/categories/${id}`;
+    const method = 'DELETE';
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/categories/${id}`, {
-        method: 'DELETE'
-      });
+      const response = await fetch(url, { method });
       if (response.ok) {
         setCategories(prev => prev.filter(c => c._id !== id && c.id !== id));
       } else {
-        // Mock fallback
-        setCategories(prev => prev.filter(c => c._id !== id && c.id !== id));
+        const responseText = await response.text();
+        let responseData = {};
+        try {
+          responseData = JSON.parse(responseText);
+        } catch (parseErr) {}
+        const errorMsg = responseData.message || responseText || "Unknown backend error";
+        console.error("Delete category API failed:", {
+          requestUrl: url,
+          method,
+          statusCode: response.status,
+          response: responseText,
+          error: errorMsg
+        });
+        alert(`Failed to delete category:\nStatus: ${response.status}\nError: ${errorMsg}`);
       }
     } catch (err) {
-      console.error(err);
+      console.error("Delete category network exception:", {
+        requestUrl: url,
+        method,
+        error: err.message
+      });
+      alert(`Network error deleting category:\n${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -153,19 +186,42 @@ const Categories = () => {
   const handleToggleVisibility = async (cat) => {
     const updatedVisible = !cat.isVisible;
     const catId = cat._id || cat.id;
+    const url = `${API_BASE_URL}/admin/categories/${catId}`;
+    const method = 'PUT';
+    const payload = { isVisible: updatedVisible };
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/categories/${catId}`, {
-        method: 'PUT',
+      const response = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isVisible: updatedVisible }),
+        body: JSON.stringify(payload),
       });
       if (response.ok) {
         setCategories(prev => prev.map(c => (c._id === catId || c.id === catId) ? { ...c, isVisible: updatedVisible } : c));
       } else {
-        setCategories(prev => prev.map(c => (c._id === catId || c.id === catId) ? { ...c, isVisible: updatedVisible } : c));
+        const responseText = await response.text();
+        let responseData = {};
+        try {
+          responseData = JSON.parse(responseText);
+        } catch (parseErr) {}
+        const errorMsg = responseData.message || responseText || "Unknown backend error";
+        console.error("Toggle category visibility API failed:", {
+          requestUrl: url,
+          method,
+          payload,
+          statusCode: response.status,
+          response: responseText,
+          error: errorMsg
+        });
+        alert(`Failed to update visibility:\nStatus: ${response.status}\nError: ${errorMsg}`);
       }
     } catch (err) {
-      console.error(err);
+      console.error("Toggle category visibility network exception:", {
+        requestUrl: url,
+        method,
+        payload,
+        error: err.message
+      });
+      alert(`Network error updating visibility:\n${err.message}`);
     }
   };
 

@@ -67,41 +67,50 @@ const OffersBanners = () => {
 
     setLoading(true);
     const payload = { title, description, image, cta, isActive };
+    let url = `${API_BASE_URL}/admin/banners`;
+    let method = 'POST';
+
+    if (editingId) {
+      url = `${url}/${editingId}`;
+      method = 'PUT';
+    }
 
     try {
-      let url = `${API_BASE_URL}/admin/banners`;
-      let method = 'POST';
-
-      if (editingId) {
-        url = `${url}/${editingId}`;
-        method = 'PUT';
-      }
-
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
 
+      const responseText = await response.text();
+      let responseData = {};
+      try {
+        responseData = JSON.parse(responseText);
+      } catch (parseErr) {}
+
       if (response.ok) {
         await loadBanners();
         handleReset();
       } else {
-        // Fallback mock
-        const mockBanner = {
-          _id: editingId || `b-${banners.length + 1}`,
-          id: editingId || `b-${banners.length + 1}`,
-          ...payload
-        };
-        if (editingId) {
-          setBanners(prev => prev.map(b => (b._id === editingId || b.id === editingId) ? mockBanner : b));
-        } else {
-          setBanners(prev => [...prev, mockBanner]);
-        }
-        handleReset();
+        const errorMsg = responseData.message || responseText || "Unknown backend error";
+        console.error("Save banner API failed:", {
+          requestUrl: url,
+          method,
+          payload,
+          statusCode: response.status,
+          response: responseText,
+          error: errorMsg
+        });
+        alert(`Failed to save banner:\nStatus: ${response.status}\nError: ${errorMsg}`);
       }
     } catch (err) {
-      console.error(err);
+      console.error("Save banner network exception:", {
+        requestUrl: url,
+        method,
+        payload,
+        error: err.message
+      });
+      alert(`Network error saving banner:\n${err.message}`);
     } finally {
       setLoading(false);
     }

@@ -1,6 +1,5 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import orderService from "../../services/orderService";
-import mockData from "../../mockData/data";
 import { logout } from "./authSlice";
 
 const initialState = {
@@ -16,7 +15,7 @@ export const fetchOrders = createAsyncThunk(
     try {
       return await orderService.getOrders();
     } catch (error) {
-      return { current: mockData.orders, history: [] };
+      return thunkAPI.rejectWithValue(error.message || "Failed to fetch orders");
     }
   },
 );
@@ -25,8 +24,12 @@ export const placeOrder = createAsyncThunk(
   "orders/placeOrder",
   async (payload, thunkAPI) => {
     try {
-      return await orderService.placeOrder(payload);
+      console.log("[DEBUG] ordersSlice.placeOrder payload:", JSON.stringify(payload, null, 2));
+      const res = await orderService.placeOrder(payload);
+      console.log("[DEBUG] ordersSlice.placeOrder success response:", JSON.stringify(res, null, 2));
+      return res;
     } catch (error) {
+      console.error("[DEBUG] ordersSlice.placeOrder rejected error:", error);
       return thunkAPI.rejectWithValue(error.message || "Failed to place order");
     }
   },

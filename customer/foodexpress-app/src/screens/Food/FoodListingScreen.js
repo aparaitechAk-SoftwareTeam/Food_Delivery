@@ -10,7 +10,9 @@ import {
   Alert,
   Modal,
   ScrollView,
+  SafeAreaView,
 } from "react-native";
+import CustomScreenHeader from "../../components/CustomScreenHeader";
 import {
   Text,
   Card,
@@ -559,9 +561,11 @@ const FoodListingScreen = ({ navigation, route }) => {
   };
 
   return (
-    <View style={styles.container}>
-      {/* Sticky Search Bar */}
-      <View style={styles.searchHeader}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#ffffff" }}>
+      <CustomScreenHeader title={route.params?.category || "Explore Menu"} navigation={navigation} />
+      <View style={styles.container}>
+        {/* Sticky Search Bar */}
+        <View style={styles.searchHeader}>
         <Searchbar
           placeholder="Search for food, restaurants, cuisines..."
           onChangeText={setSearchQuery}
@@ -681,7 +685,8 @@ const FoodListingScreen = ({ navigation, route }) => {
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
-    </View>
+      </View>
+    </SafeAreaView>
   );
 };
 

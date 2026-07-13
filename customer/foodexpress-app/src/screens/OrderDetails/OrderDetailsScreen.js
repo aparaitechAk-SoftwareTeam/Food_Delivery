@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { View, StyleSheet, ScrollView, TouchableOpacity, Image, Alert } from "react-native";
+import { View, StyleSheet, ScrollView, TouchableOpacity, Image, Alert, SafeAreaView } from "react-native";
+import CustomScreenHeader from "../../components/CustomScreenHeader";
 import { Text, Divider, Portal, Dialog, RadioButton, Snackbar, ActivityIndicator } from "react-native-paper";
 import { useDispatch } from "react-redux";
 import orderService from "../../services/orderService";
@@ -20,21 +21,23 @@ const OrderDetailsScreen = ({ route, navigation }) => {
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMsg, setSnackbarMsg] = useState("");
 
-  const fetchDetails = async () => {
+  const fetchDetails = async (initial = false) => {
     try {
-      setLoading(true);
+      if (initial) setLoading(true);
       const data = await orderService.getOrderDetails(orderId);
       setOrder(data);
     } catch (err) {
       console.log("Error loading order details:", err);
-      Alert.alert("Error", "Could not load order details.");
+      if (initial) Alert.alert("Error", "Could not load order details.");
     } finally {
-      setLoading(false);
+      if (initial) setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchDetails();
+    fetchDetails(true);
+    const interval = setInterval(() => fetchDetails(false), 3000); // Poll every 3 seconds
+    return () => clearInterval(interval);
   }, [orderId]);
 
   const handleCancelOrder = () => {
@@ -78,7 +81,9 @@ const OrderDetailsScreen = ({ route, navigation }) => {
 
   return (
     <Portal.Host>
-      <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#f8f9fa" }}>
+        <CustomScreenHeader title="Order Details" navigation={navigation} />
+        <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
         {/* Status Header */}
         <View style={styles.statusHeaderCard}>
           <Text style={styles.orderNumberTitle}>Order #{order.orderNumber}</Text>
@@ -218,6 +223,18 @@ const OrderDetailsScreen = ({ route, navigation }) => {
               </Text>
             </View>
           </View>
+          {order.transactionId && (
+            <>
+              <Divider style={styles.detailDivider} />
+              <View style={styles.detailRow}>
+                <MaterialCommunityIcons name="receipt" size={18} color="#666" style={styles.detailIcon} />
+                <View style={styles.detailTextCol}>
+                  <Text style={styles.detailTextLabel}>Transaction / Payment ID</Text>
+                  <Text style={styles.detailTextVal}>{order.transactionId}</Text>
+                </View>
+              </View>
+            </>
+          )}
         </View>
 
         {/* Actions bottom */}
@@ -281,6 +298,7 @@ const OrderDetailsScreen = ({ route, navigation }) => {
           {snackbarMsg}
         </Snackbar>
       </ScrollView>
+      </SafeAreaView>
     </Portal.Host>
   );
 };

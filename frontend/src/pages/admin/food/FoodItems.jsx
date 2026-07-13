@@ -239,8 +239,14 @@ const FoodItems = () => {
         body: JSON.stringify(payload)
       });
 
+      const responseText = await response.text();
+      let responseData = {};
+      try {
+        responseData = JSON.parse(responseText);
+      } catch (parseErr) {}
+
       if (response.ok) {
-        const saved = await response.json();
+        const saved = responseData;
         if (editingId) {
           setFoods(prev => prev.map(f => (f._id === editingId || f.id === editingId) ? saved : f));
         } else {
@@ -248,22 +254,25 @@ const FoodItems = () => {
         }
         setFormOpen(false);
       } else {
-        // Mock fallback update
-        const mockSaved = {
-          _id: editingId || `f-${foods.length + 1}`,
-          id: editingId || `f-${foods.length + 1}`,
-          ...payload,
-          category: categories.find(c => c._id === formData.category || c.id === formData.category) || { name: 'Catalog' }
-        };
-        if (editingId) {
-          setFoods(prev => prev.map(f => (f._id === editingId || f.id === editingId) ? mockSaved : f));
-        } else {
-          setFoods(prev => [...prev, mockSaved]);
-        }
-        setFormOpen(false);
+        const errorMsg = responseData.message || responseText || "Unknown backend error";
+        console.error("Save food item API failed:", {
+          requestUrl: url,
+          method,
+          payload,
+          statusCode: response.status,
+          response: responseText,
+          error: errorMsg
+        });
+        alert(`Failed to save food item:\nStatus: ${response.status}\nError: ${errorMsg}`);
       }
     } catch (err) {
-      console.error(err);
+      console.error("Save food item network exception:", {
+        requestUrl: `${API_BASE_URL}/admin/foods`,
+        method: editingId ? 'PUT' : 'POST',
+        payload,
+        error: err.message
+      });
+      alert(`Network error saving food item:\n${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -272,17 +281,35 @@ const FoodItems = () => {
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this food item?')) return;
     setLoading(true);
+    const url = `${API_BASE_URL}/admin/foods/${id}`;
+    const method = 'DELETE';
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/foods/${id}`, {
-        method: 'DELETE'
-      });
+      const response = await fetch(url, { method });
       if (response.ok) {
         setFoods(prev => prev.filter(f => f._id !== id && f.id !== id));
       } else {
-        setFoods(prev => prev.filter(f => f._id !== id && f.id !== id));
+        const responseText = await response.text();
+        let responseData = {};
+        try {
+          responseData = JSON.parse(responseText);
+        } catch (parseErr) {}
+        const errorMsg = responseData.message || responseText || "Unknown backend error";
+        console.error("Delete food item API failed:", {
+          requestUrl: url,
+          method,
+          statusCode: response.status,
+          response: responseText,
+          error: errorMsg
+        });
+        alert(`Failed to delete food item:\nStatus: ${response.status}\nError: ${errorMsg}`);
       }
     } catch (err) {
-      console.error(err);
+      console.error("Delete food item network exception:", {
+        requestUrl: url,
+        method,
+        error: err.message
+      });
+      alert(`Network error deleting food item:\n${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -293,15 +320,18 @@ const FoodItems = () => {
     if (selectedIds.length === 0 || !bulkAction) return;
 
     setLoading(true);
+    const url = `${API_BASE_URL}/admin/bulk-update`;
+    const method = 'POST';
+    const payload = {
+      ids: selectedIds,
+      action: bulkAction,
+      value: bulkValue
+    };
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/bulk-update`, {
-        method: 'POST',
+      const response = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ids: selectedIds,
-          action: bulkAction,
-          value: bulkValue
-        })
+        body: JSON.stringify(payload)
       });
 
       if (response.ok) {
@@ -311,29 +341,30 @@ const FoodItems = () => {
         setBulkAction('');
         setBulkValue('');
       } else {
-        // Mock execution fallback
-        setFoods(prev => {
-          let list = [...prev];
-          if (bulkAction === 'delete') {
-            list = list.filter(f => !selectedIds.includes(f._id || f.id));
-          } else {
-            list = list.map(f => {
-              if (selectedIds.includes(f._id || f.id)) {
-                if (bulkAction === 'disable') return { ...f, isAvailable: false };
-                if (bulkAction === 'enable') return { ...f, isAvailable: true };
-                if (bulkAction === 'change_price') return { ...f, price: Number(bulkValue) };
-              }
-              return f;
-            });
-          }
-          return list;
+        const responseText = await response.text();
+        let responseData = {};
+        try {
+          responseData = JSON.parse(responseText);
+        } catch (parseErr) {}
+        const errorMsg = responseData.message || responseText || "Unknown backend error";
+        console.error("Bulk update API failed:", {
+          requestUrl: url,
+          method,
+          payload,
+          statusCode: response.status,
+          response: responseText,
+          error: errorMsg
         });
-        setSelectedIds([]);
-        setBulkAction('');
-        setBulkValue('');
+        alert(`Failed to execute bulk operation:\nStatus: ${response.status}\nError: ${errorMsg}`);
       }
     } catch (err) {
-      console.error(err);
+      console.error("Bulk update network exception:", {
+        requestUrl: url,
+        method,
+        payload,
+        error: err.message
+      });
+      alert(`Network error executing bulk operation:\n${err.message}`);
     } finally {
       setLoading(false);
     }

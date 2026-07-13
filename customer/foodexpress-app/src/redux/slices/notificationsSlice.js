@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import mockData from "../../mockData/data";
+import api from "../../utils/api";
 
 const initialState = {
   notifications: [],
@@ -11,8 +11,8 @@ export const fetchNotifications = createAsyncThunk(
   "notifications/fetchNotifications",
   async (_, thunkAPI) => {
     try {
-      // Replace with real API call when available
-      return mockData.notifications;
+      const { data } = await api.get("/notifications");
+      return data;
     } catch (error) {
       return thunkAPI.rejectWithValue(
         error.message || "Could not fetch notifications",

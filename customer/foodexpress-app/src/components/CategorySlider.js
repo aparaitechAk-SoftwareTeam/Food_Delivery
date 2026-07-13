@@ -1,6 +1,29 @@
 import React from "react";
-import { View, StyleSheet, FlatList, TouchableOpacity, Animated } from "react-native";
+import { View, StyleSheet, FlatList, TouchableOpacity, Image } from "react-native";
 import { Text } from "react-native-paper";
+
+const categoryImageMap = {
+  "pizza": "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=200&q=80",
+  "burger": "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=200&q=80",
+  "biryani": "https://images.unsplash.com/photo-1563379091339-03b21ab4a4d8?auto=format&fit=crop&w=200&q=80",
+  "chinese": "https://images.unsplash.com/photo-1585032226651-759b368d7246?auto=format&fit=crop&w=200&q=80",
+  "south indian": "https://images.unsplash.com/photo-1668236543090-82eba5ee5976?auto=format&fit=crop&w=200&q=80",
+  "desserts": "https://images.unsplash.com/photo-1551024601-bec78aea704b?auto=format&fit=crop&w=200&q=80",
+  "beverages": "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=200&q=80",
+  "breakfast": "https://images.unsplash.com/photo-1496042399014-dc73c4f2bde1?auto=format&fit=crop&w=200&q=80",
+  "snacks": "https://images.unsplash.com/photo-1599490659213-e2b9527bb087?auto=format&fit=crop&w=200&q=80",
+  "combos": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=200&q=80",
+};
+
+const getCategoryImage = (item) => {
+  if (!item) return { uri: "https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=200&q=80" };
+  if (item.image) return { uri: item.image };
+  const lowerName = (item.name || "").toLowerCase();
+  if (categoryImageMap[lowerName]) {
+    return { uri: categoryImageMap[lowerName] };
+  }
+  return { uri: "https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=200&q=80" };
+};
 
 const CategorySlider = ({
   categories = [],
@@ -17,7 +40,11 @@ const CategorySlider = ({
         activeOpacity={0.8}
       >
         <View style={[styles.iconWrapper, isSelected && styles.selectedIconWrapper]}>
-          <Text style={styles.emojiText}>{item.icon}</Text>
+          <Image 
+            source={getCategoryImage(item)} 
+            style={styles.categoryImage} 
+            resizeMode="cover"
+          />
         </View>
         <Text style={[styles.label, isSelected && styles.selectedLabel]} numberOfLines={1}>
           {item.name}
@@ -77,6 +104,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.03,
     shadowRadius: 3,
+    overflow: "hidden",
   },
   selectedIconWrapper: {
     backgroundColor: "#FF6F61",
@@ -85,6 +113,11 @@ const styles = StyleSheet.create({
     shadowColor: "#FF6F61",
     shadowOpacity: 0.3,
     shadowRadius: 5,
+  },
+  categoryImage: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 29,
   },
   emojiText: {
     fontSize: 26,
@@ -98,7 +131,7 @@ const styles = StyleSheet.create({
   },
   selectedLabel: {
     color: "#FF6F61",
-    fontWeight: "bold",
+    fontWeight: "700",
   },
 });
 

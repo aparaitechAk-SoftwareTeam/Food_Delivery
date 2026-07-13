@@ -3,6 +3,7 @@ import { ClipboardList, Search, Eye, Check, X, CheckCircle2, AlertTriangle, Refr
 import Sidebar from '../../../components/admin/Sidebar';
 import TopHeader from '../../../components/admin/TopHeader';
 import { API_BASE_URL } from '../../../config';
+import { getSocket } from '../../../utils/socket';
 
 const Orders = () => {
   const [orders, setOrders] = useState([]);
@@ -12,6 +13,8 @@ const Orders = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
+  const [filterPaymentMethod, setFilterPaymentMethod] = useState('All');
+  const [filterPaymentStatus, setFilterPaymentStatus] = useState('All');
   const [updatingId, setUpdatingId] = useState(null);
 
   const loadRiders = async () => {
@@ -23,7 +26,7 @@ const Orders = () => {
         }
       });
       const data = await response.json();
-      setRiders(Array.isArray(data) ? data.filter(r => !r.isBlocked) : []);
+      setRiders(Array.isArray(data) ? data.filter(r => r.isOnline && !r.isBlocked) : []);
     } catch (e) {
       console.error(e);
     }
@@ -50,11 +53,35 @@ const Orders = () => {
   useEffect(() => {
     loadOrders();
     loadRiders();
-    const interval = setInterval(() => {
-      loadOrders();
-      loadRiders();
-    }, 3000);
-    return () => clearInterval(interval);
+
+    const socket = getSocket();
+    socket.emit("join-role", "admin");
+
+    socket.on("new-order", (newOrder) => {
+      console.log("[Socket] Received new order in admin panel:", newOrder);
+      setOrders((prev) => {
+        if (prev.some((o) => o._id === newOrder._id)) return prev;
+        return [newOrder, ...prev];
+      });
+    });
+
+    socket.on("order-status-updated", (updatedOrder) => {
+      console.log("[Socket] Received order update in admin panel:", updatedOrder);
+      setOrders((prev) => prev.map((o) => (o._id === updatedOrder._id ? updatedOrder : o)));
+      setSelectedOrder((prev) => (prev && prev._id === updatedOrder._id ? updatedOrder : prev));
+    });
+
+    socket.on("delivery-assigned", (updatedOrder) => {
+      console.log("[Socket] Received delivery-assigned event in admin panel:", updatedOrder);
+      setOrders((prev) => prev.map((o) => (o._id === updatedOrder._id ? updatedOrder : o)));
+      setSelectedOrder((prev) => (prev && prev._id === updatedOrder._id ? updatedOrder : prev));
+    });
+
+    return () => {
+      socket.off("new-order");
+      socket.off("order-status-updated");
+      socket.off("delivery-assigned");
+    };
   }, []);
 
   const handleUpdateStatus = async (orderId, newStatus, newPaymentStatus) => {
@@ -124,7 +151,14 @@ const Orders = () => {
         customerPhone.includes(searchTerm);
       
       const matchesStatus = filterStatus === 'All' || order.status === filterStatus;
-      return matchesSearch && matchesStatus;
+
+      const matchesPaymentMethod = filterPaymentMethod === 'All' || 
+        (filterPaymentMethod === 'COD' && order.paymentMethod === 'Cash on Delivery') ||
+        (filterPaymentMethod === 'Online' && order.paymentMethod !== 'Cash on Delivery');
+
+      const matchesPaymentStatus = filterPaymentStatus === 'All' || order.paymentStatus === filterPaymentStatus;
+
+      return matchesSearch && matchesStatus && matchesPaymentMethod && matchesPaymentStatus;
     });
   };
 
@@ -186,6 +220,31 @@ const Orders = () => {
                     <option value="Out For Delivery">Out For Delivery</option>
                     <option value="Delivered">Delivered</option>
                     <option value="Cancelled">Cancelled</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-1.5 border border-gray-250 rounded-xl px-3 py-2 bg-slate-50 text-xs text-gray-600">
+                  <select
+                    value={filterPaymentMethod}
+                    onChange={(e) => setFilterPaymentMethod(e.target.value)}
+                    className="bg-transparent outline-none cursor-pointer font-semibold"
+                  >
+                    <option value="All">All Payments</option>
+                    <option value="COD">COD Only</option>
+                    <option value="Online">Online Only</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-1.5 border border-gray-250 rounded-xl px-3 py-2 bg-slate-50 text-xs text-gray-600">
+                  <select
+                    value={filterPaymentStatus}
+                    onChange={(e) => setFilterPaymentStatus(e.target.value)}
+                    className="bg-transparent outline-none cursor-pointer font-semibold"
+                  >
+                    <option value="All">All Pay Statuses</option>
+                    <option value="Paid">Paid Only</option>
+                    <option value="Pending">Pending Only</option>
+                    <option value="Failed">Failed Only</option>
                   </select>
                 </div>
 
@@ -327,6 +386,12 @@ const Orders = () => {
                     {selectedOrder.paymentStatus}
                   </span>
                 </div>
+                {selectedOrder.transactionId && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-450 font-medium">Transaction ID:</span>
+                    <span className="font-semibold text-slate-700 select-all">{selectedOrder.transactionId}</span>
+                  </div>
+                )}
               </div>
 
               {/* Delivery Address */}

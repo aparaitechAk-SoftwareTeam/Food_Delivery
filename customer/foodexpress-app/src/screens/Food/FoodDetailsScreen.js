@@ -7,11 +7,13 @@ import {
   Animated, 
   Dimensions, 
   Platform,
-  TouchableOpacity
+  TouchableOpacity,
+  SafeAreaView
 } from "react-native";
 import { Text, Button } from "react-native-paper";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useDispatch, useSelector } from "react-redux";
+import CustomScreenHeader from "../../components/CustomScreenHeader";
 import { addToCart } from "../../redux/slices/cartSlice";
 
 // Components
@@ -63,26 +65,32 @@ const FoodDetailsScreen = ({ route, navigation }) => {
     }
   }, [loading]);
 
-  const fetchFoodDetails = () => {
-    setLoading(true);
-    setError(null);
+  const fetchFoodDetails = (initial = false) => {
+    if (initial) {
+      setLoading(true);
+      setError(null);
+    }
     foodService.getFoodDetails(foodId)
       .then((response) => {
         if (!response) {
-          setError("No food details found");
+          if (initial) setError("No food details found");
         } else {
           setFood(response);
         }
-        setLoading(false);
+        if (initial) setLoading(false);
       })
       .catch((err) => {
-        setError(err.message || "Failed to load food details");
-        setLoading(false);
+        if (initial) {
+          setError(err.message || "Failed to load food details");
+          setLoading(false);
+        }
       });
   };
 
   useEffect(() => {
-    fetchFoodDetails();
+    fetchFoodDetails(true);
+    const interval = setInterval(() => fetchFoodDetails(false), 5000); // Poll every 5 seconds
+    return () => clearInterval(interval);
   }, [foodId]);
 
   const handleStickyAddPress = () => {
@@ -170,8 +178,10 @@ const FoodDetailsScreen = ({ route, navigation }) => {
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#ffffff" }}>
+      <CustomScreenHeader title={food?.name || "Food Details"} navigation={navigation} />
       <ScrollView 
+        style={styles.container}
         contentContainerStyle={styles.scrollContent} 
         showsVerticalScrollIndicator={false}
       >
@@ -204,7 +214,7 @@ const FoodDetailsScreen = ({ route, navigation }) => {
         food={food}
         onAddComplete={handleCustomizationComplete}
       />
-    </View>
+    </SafeAreaView>
   );
 };
 

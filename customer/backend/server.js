@@ -24,6 +24,14 @@ const searchRoutes      = require("./routes/searchRoutes");
 const adminRoutes       = require("./routes/adminRoutes");
 const paymentRoutes     = require("./routes/paymentRoutes");
 const deliveryRoutes    = require("./routes/deliveryRoutes");
+const notificationRoutes = require("./routes/notificationRoutes");
+const sectionRoutes      = require("./routes/sectionRoutes");
+const couponRoutes       = require("./routes/couponRoutes");
+const rewardRoutes       = require("./routes/rewardRoutes");
+const walletRoutes       = require("./routes/walletRoutes");
+const membershipRoutes   = require("./routes/membershipRoutes");
+const referralRoutes     = require("./routes/referralRoutes");
+const campaignRoutes     = require("./routes/campaignRoutes");
 const errorHandler      = require("./middleware/errorHandler");
 const seedDatabase      = require("./config/seed");
 
@@ -36,22 +44,56 @@ const limiter = rateLimit({
   legacyHeaders: false,
 });
 
-// ── App ────────────────────────────────────────────────────────────────────────
 const app = express();
 app.use(helmet());
 app.use(limiter);
+
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  process.env.ADMIN_URL,
+  // Vercel deployments (admin panel)
+  "https://food-delivery-rouge-one.vercel.app",
+  "https://cloudkitchen.aparaitech.org",
+  "https://cloudkitchen.aparaitech.org/",
+  // Local development
+  "http://localhost:3000",
+  "http://localhost:5173",
+  "http://localhost:8081",
+  "http://localhost:8082",
+  "http://localhost:19000",
+  "http://localhost:19006",
+  // Expo Go & Expo Web
+  "http://127.0.0.1:8081",
+  "http://127.0.0.1:19000",
+  "http://127.0.0.1:19006",
+].filter(Boolean);
+
 app.use(
   cors({
-    origin: [
-      "https://food-delivery-rouge-one.vercel.app",
-      "https://cloudkitchen.aparaitech.org",
-      "http://localhost:5173",
-      "http://localhost:8081",
-      "http://localhost:8082"
-    ],
+    origin: (origin, callback) => {
+      // Allow requests with no origin (mobile apps, curl, Postman, React Native)
+      if (!origin) return callback(null, true);
+      // Allow any vercel.app subdomain (for preview deployments)
+      if (origin.endsWith(".vercel.app")) return callback(null, true);
+      // Allow any render.com subdomain (service-to-service)
+      if (origin.endsWith(".onrender.com")) return callback(null, true);
+      // Allow any localhost or 192.168.x.x (development)
+      if (
+        origin.startsWith("http://localhost") ||
+        origin.startsWith("http://127.0.0.1") ||
+        /^http:\/\/192\.168\.\d+\.\d+/.test(origin)
+      ) {
+        return callback(null, true);
+      }
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      console.warn(`[CORS] Origin blocked: ${origin}`);
+      return callback(new Error("Not allowed by CORS"));
+    },
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"]
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"]
   })
 );
 app.use(express.json());
@@ -74,6 +116,27 @@ app.use("/api/search",      searchRoutes);
 app.use("/api/payment",     paymentRoutes);
 app.use("/api/admin",       adminRoutes);
 app.use("/api/delivery",    deliveryRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/sections",      sectionRoutes);
+app.use("/api/coupons",       couponRoutes);
+app.use("/api/rewards",       rewardRoutes);
+app.use("/api/wallet",        walletRoutes);
+app.use("/api/memberships",   membershipRoutes);
+app.use("/api/referrals",     referralRoutes);
+app.use("/api/campaigns",     campaignRoutes);
+
+// Health check endpoint
+app.get("/api/health", async (req, res) => {
+  const mongoose = require("mongoose");
+  const dbState = mongoose.connection.readyState;
+  res.json({
+    success: true,
+    status: "running",
+    uptime: Math.floor(process.uptime()),
+    timestamp: new Date().toISOString(),
+    mongoDB: dbState === 1 ? "CONNECTED" : dbState === 2 ? "CONNECTING" : "DISCONNECTED"
+  });
+});
 
 // ── Global error handler (must be last) ────────────────────────────────────────
 app.use(errorHandler);
@@ -104,17 +167,16 @@ if (require.main === module) {
   connectDB(MONGO_URI)
     .then(() => {
       // Seed / mock data
-      if (process.env.MOCK_DB === "true") {
-        const { initializeMockData } = require("./config/mockDataStore");
-        initializeMockData();
-      } else {
-        seedDatabase();
-      }
+      seedDatabase();
 
       // Start the HTTP server — only once, only after DB is ready
       const server = app.listen(PORT, () => {
         console.log(`\n✅  Server running on port ${PORT}\n`);
       });
+
+      // Initialize Socket.IO
+      const { initSocket } = require("./config/socket");
+      initSocket(server);
 
       // ── Graceful EADDRINUSE handler ─────────────────────────────────────────
       // process.exit(1) stops nodemon from restarting (nodemon exits on code 1

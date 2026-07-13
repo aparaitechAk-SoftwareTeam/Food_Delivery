@@ -1,6 +1,5 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import foodService from "../../services/foodService";
-import mockData from "../../mockData/data";
 
 const initialState = {
   foods: [],
@@ -19,7 +18,7 @@ export const fetchFoods = createAsyncThunk(
     try {
       return await foodService.getFoods(params);
     } catch (error) {
-      return mockData;
+      return thunkAPI.rejectWithValue(error.message || "Failed to fetch foods");
     }
   },
 );

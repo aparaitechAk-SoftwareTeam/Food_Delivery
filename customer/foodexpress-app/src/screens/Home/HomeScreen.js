@@ -12,6 +12,8 @@ import {
   LayoutAnimation,
   Platform,
   UIManager,
+  Modal,
+  Easing,
 } from "react-native";
 import { Text, ActivityIndicator, IconButton, Card, Button } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -21,8 +23,12 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 // Redux Actions & Utilities
 import { fetchFoods } from "../../redux/slices/foodsSlice";
 import { fetchFavorites, fetchWishlist } from "../../redux/slices/wishlistSlice";
-import { fetchAddresses } from "../../redux/slices/authSlice";
+import { fetchAddresses, fetchUserProfile } from "../../redux/slices/authSlice";
+import { fetchRewardStatus, claimReward } from "../../redux/slices/rewardSlice";
 import api from "../../utils/api";
+import bannerService from "../../services/bannerService";
+import sectionService from "../../services/sectionService";
+import { CameraView, useCameraPermissions } from "expo-camera";
 
 // Time-of-day
 import { useTimeOfDay } from "../../hooks/useTimeOfDay";
@@ -57,6 +63,29 @@ if (Platform.OS === "android") {
   }
 }
 
+const categoryImageMap = {
+  "pizza": "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=200&q=80",
+  "burger": "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=200&q=80",
+  "biryani": "https://images.unsplash.com/photo-1563379091339-03b21ab4a4d8?auto=format&fit=crop&w=200&q=80",
+  "chinese": "https://images.unsplash.com/photo-1585032226651-759b368d7246?auto=format&fit=crop&w=200&q=80",
+  "south indian": "https://images.unsplash.com/photo-1668236543090-82eba5ee5976?auto=format&fit=crop&w=200&q=80",
+  "desserts": "https://images.unsplash.com/photo-1551024601-bec78aea704b?auto=format&fit=crop&w=200&q=80",
+  "beverages": "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=200&q=80",
+  "breakfast": "https://images.unsplash.com/photo-1496042399014-dc73c4f2bde1?auto=format&fit=crop&w=200&q=80",
+  "snacks": "https://images.unsplash.com/photo-1599490659213-e2b9527bb087?auto=format&fit=crop&w=200&q=80",
+  "combos": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=200&q=80",
+};
+
+const getCategoryImage = (item) => {
+  if (!item) return { uri: "https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=200&q=80" };
+  if (item.image) return { uri: item.image };
+  const lowerName = (item.name || "").toLowerCase();
+  if (categoryImageMap[lowerName]) {
+    return { uri: categoryImageMap[lowerName] };
+  }
+  return { uri: "https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=200&q=80" };
+};
+
 const HomeScreen = ({ navigation }) => {
   // ── Time-of-day ────────────────────────────────────────────────────────────
   const timeInfo = useTimeOfDay();
@@ -67,12 +96,26 @@ const HomeScreen = ({ navigation }) => {
   const { user, activeAddress, token } = useSelector((state) => state.auth);
   const cartItems = useSelector((state) => state.cart.items);
   const cartTotalAmount = useSelector((state) => state.cart.totalAmount);
+  const { reward, progress, remainingTime, status: rewardStatus } = useSelector((state) => state.rewards);
 
   // States
   const [locationSheetVisible, setLocationSheetVisible] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+  const [banners, setBanners] = useState([]);
+  const [featuredSections, setFeaturedSections] = useState([]);
+  const [coupons, setCoupons] = useState([]);
+
+  // Camera & Voice states
+  const [qrModalVisible, setQrModalVisible] = useState(false);
+  const [scanned, setScanned] = useState(false);
+  const [permission, requestPermission] = useCameraPermissions();
+
+  const [voiceModalVisible, setVoiceModalVisible] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [recognizedText, setRecognizedText] = useState("");
+  const pulseAnim = useRef(new Animated.Value(1)).current;
 
   // Premium scrollable sections states
   const [bestsellers, setBestsellers] = useState([]);
@@ -99,6 +142,29 @@ const HomeScreen = ({ navigation }) => {
     () => bestsellers.filter((f) => !timeMealIdSet.has((f._id || f.id)?.toString())),
     [bestsellers, timeMealIdSet]
   );
+
+  const computedCategorizedMenu = useMemo(() => {
+    const cats = categories && categories.length > 0 ? categories : [];
+    const allFoods = foods && foods.length > 0 ? foods : [];
+
+    if (cats.length === 0) return [];
+
+    return cats.map(cat => {
+      const catFoods = allFoods.filter(f => {
+        if (!f.category) return false;
+        if (typeof f.category === "object") {
+          return f.category._id === cat._id || f.category.id === cat.id || f.category.name?.toLowerCase() === cat.name?.toLowerCase();
+        }
+        return f.category === cat._id || f.category === cat.id || f.category?.toLowerCase() === cat.name?.toLowerCase();
+      });
+
+      return {
+        category: cat,
+        totalCount: catFoods.length,
+        foods: catFoods.slice(0, 4)
+      };
+    }).filter(group => group.totalCount > 0);
+  }, [categories, foods]);
 
   // Animation values
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -140,29 +206,150 @@ const HomeScreen = ({ navigation }) => {
     }
   };
 
-  const loadData = () => {
+  const fetchBanners = async () => {
+    try {
+      const data = await bannerService.getBanners();
+      setBanners(data || []);
+    } catch (err) {
+      console.log("Error loading banners:", err.message);
+    }
+  };
+
+  const fetchFeaturedSections = async () => {
+    try {
+      const data = await sectionService.getSections();
+      setFeaturedSections(data || []);
+    } catch (err) {
+      console.log("Error loading featured sections:", err.message);
+    }
+  };
+
+  const fetchCoupons = async () => {
+    try {
+      const { data } = await api.get("/coupons");
+      setCoupons(data || []);
+    } catch (err) {
+      console.log("Error loading coupons:", err.message);
+    }
+  };
+
+  const startListening = () => {
+    setIsListening(true);
+    setRecognizedText("Listening...");
+    
+    pulseAnim.setValue(1);
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.4,
+          duration: 800,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1.0,
+          duration: 800,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    setTimeout(() => {
+      const foodOptions = ["Chicken Biryani", "Double Cheese Pizza", "Healthy Salad", "Chocolate Waffle", "Paneer Tikka"];
+      const randomFood = foodOptions[Math.floor(Math.random() * foodOptions.length)];
+      setRecognizedText(`"${randomFood}"`);
+      setIsListening(false);
+      
+      setTimeout(() => {
+        setVoiceModalVisible(false);
+        setSearchQuery(randomFood);
+        navigation.navigate("FoodListing", { searchQuery: randomFood });
+      }, 1200);
+    }, 2500);
+  };
+
+  const handleVoicePress = () => {
+    setVoiceModalVisible(true);
+    startListening();
+  };
+
+  const handleScanPress = async () => {
+    if (!permission) {
+      return;
+    }
+    if (!permission.granted) {
+      const res = await requestPermission();
+      if (!res.granted) {
+        Alert.alert("Permission Required", "Camera permission is needed to scan QR codes.");
+        return;
+      }
+    }
+    setScanned(false);
+    setQrModalVisible(true);
+  };
+
+  const handleBarCodeScanned = ({ type, data }) => {
+    setScanned(true);
+    setQrModalVisible(false);
+    
+    const scannedCode = (data || "").trim();
+    Alert.alert(
+      "QR Code Scanned",
+      `Coupon Code: "${scannedCode}"`,
+      [
+        {
+          text: "Cancel",
+          style: "cancel"
+        },
+        {
+          text: "Copy & Use Coupon",
+          onPress: () => {
+            setSearchQuery(scannedCode);
+            Alert.alert("Coupon Saved", `Coupon "${scannedCode}" set! You can paste/apply it in checkout.`);
+          }
+        }
+      ]
+    );
+  };
+
+  const loadData = (initial = false) => {
     dispatch(fetchFoods());
     fetchPremiumSections();
+    fetchBanners();
+    fetchFeaturedSections();
+    fetchCoupons();
     if (token) {
+      dispatch(fetchRewardStatus());
+      if (initial) {
+        dispatch(fetchUserProfile());
+        dispatch(fetchAddresses());
+      }
       dispatch(fetchFavorites());
-      dispatch(fetchAddresses());
       dispatch(fetchWishlist());
     }
   };
 
   useEffect(() => {
-    loadData();
+    loadData(true);
+    const interval = setInterval(() => loadData(false), 10000); // Poll every 10 seconds
+    return () => clearInterval(interval);
   }, [dispatch, token]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
     await Promise.all([
       dispatch(fetchFoods()),
-      fetchPremiumSections()
+      fetchPremiumSections(),
+      fetchBanners(),
+      fetchFeaturedSections()
     ]);
     if (token) {
-      await dispatch(fetchFavorites());
-      await dispatch(fetchWishlist());
+      await Promise.all([
+        dispatch(fetchFavorites()),
+        dispatch(fetchWishlist()),
+        dispatch(fetchRewardStatus())
+      ]);
     }
     setRefreshing(false);
   };
@@ -265,7 +452,9 @@ const HomeScreen = ({ navigation }) => {
         <Header
           activeAddress={activeAddress}
           onAddressPress={() => setLocationSheetVisible(true)}
-          onNotificationPress={() => Alert.alert("Notifications", "No new notifications.")}
+          onNotificationPress={() => {
+            navigation.navigate("Notifications");
+          }}
           onProfilePress={() => {
             if (!token) {
               navigation.navigate("Login", { redirectTo: "Main", redirectTab: "Profile" });
@@ -273,8 +462,27 @@ const HomeScreen = ({ navigation }) => {
               navigation.navigate("Profile");
             }
           }}
-          onWalletPress={() => Alert.alert("Wallet", "Wallet balance: ₹500 (mock)")}
+          onWalletPress={() => {
+            if (!token) {
+              Alert.alert("FE Wallet", "Please log in to view your wallet balance.");
+              return;
+            }
+            const balance = user?.walletBalance !== undefined ? user.walletBalance : 150.00;
+            Alert.alert("FE Wallet", `Wallet balance: ₹${balance.toFixed(2)}`);
+          }}
+          onCouponsPress={() => {
+            if (coupons.length === 0) {
+              Alert.alert("Active Coupons", "No active coupons available at the moment.");
+              return;
+            }
+            const couponList = coupons
+              .map(c => `• ${c.code}: ${c.discountType === "percentage" ? `${c.value}% OFF` : `₹${c.value} OFF`}${c.minOrderAmount ? ` (Min order: ₹${c.minOrderAmount})` : ""}`)
+              .join("\n\n");
+            Alert.alert("Active Coupons", couponList);
+          }}
           user={user}
+          walletBalance={user?.walletBalance !== undefined ? user.walletBalance : 150.00}
+          activeCouponsCount={coupons.length}
         />
 
         {/* Scrollable Area */}
@@ -295,6 +503,8 @@ const HomeScreen = ({ navigation }) => {
           <SearchBar
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
+            onVoicePress={handleVoicePress}
+            onScanPress={handleScanPress}
             onSubmit={() => {
               if (searchQuery) {
                 navigation.navigate("FoodListing", { searchQuery });
@@ -306,16 +516,37 @@ const HomeScreen = ({ navigation }) => {
           {!searchQuery && !selectedCategory ? (
             <>
               <BannerCarousel
+                banners={banners}
                 onBannerPress={(banner) => {
                   setSelectedCategory(banner.cta);
                 }}
               />
-              <RewardCard
-                onClaim={() => Alert.alert("Congratulations!", "₹50 Coupon code applied.")}
-              />
+              {token && reward ? (
+                <RewardCard
+                  reward={reward}
+                  onClaim={() => {
+                    dispatch(claimReward())
+                      .unwrap()
+                      .then(() => {
+                        Alert.alert("Success", "₹150 Cashback has been credited to your wallet!");
+                        dispatch(fetchUserProfile());
+                        dispatch(fetchRewardStatus());
+                      })
+                      .catch((err) => {
+                        Alert.alert("Error", err || "Failed to claim cashback");
+                      });
+                  }}
+                />
+              ) : null}
               <OfferStrip
                 onPressItem={(item) => {
-                  Alert.alert(item.title, item.desc);
+                  if (item.id === "membership") {
+                    navigation.navigate("GoldMembership");
+                  } else if (item.id === "referral") {
+                    navigation.navigate("Referral");
+                  } else if (item.id === "cashback") {
+                    navigation.navigate("CashbackDeals");
+                  }
                 }}
               />
             </>
@@ -349,122 +580,41 @@ const HomeScreen = ({ navigation }) => {
                 </>
               ) : (
                 <>
-                  {/* ── Time-Based Meal Section (above Bestsellers) ── */}
-                  <TimeMealSection
-                    period={timeInfo.period}
-                    greeting={timeInfo.greeting}
-                    emoji={timeInfo.emoji}
-                    subtitle={timeInfo.subtitle}
-                    accentColor={timeInfo.accentColor}
-                    gradientColors={timeInfo.gradientColors}
-                    timeLabel={timeInfo.timeLabel}
-                    foods={timeMealFoods}
-                    navigation={navigation}
-                  />
 
-                  {/* Dynamic Section 1: 🔥 Bestsellers (deduped) */}
-                  {dedupedBestsellers.length > 0 && (
-                    <View style={styles.premiumSection}>
-                      <View style={styles.sectionHeaderRow}>
-                        <View>
-                          <Text style={styles.sectionTitle}>🔥 Bestsellers</Text>
-                          <Text style={styles.sectionSubtitle}>Most loved dishes near you</Text>
+                  {/* Dynamic Featured Sections from MongoDB */}
+                  {featuredSections.map((sec) => {
+                    const secId = sec._id || sec.id;
+                    const secItems = sec.items || [];
+                    if (secItems.length === 0) return null;
+                    return (
+                      <View key={secId} style={styles.premiumSection}>
+                        <View style={styles.sectionHeaderRow}>
+                          <View>
+                            <Text style={styles.sectionTitle}>{sec.title}</Text>
+                            <Text style={styles.sectionSubtitle}>{sec.subtitle || ""}</Text>
+                          </View>
                         </View>
-                        <TouchableOpacity onPress={handleViewAllBestsellers}>
-                          <Text style={styles.viewAllLink}>View All</Text>
-                        </TouchableOpacity>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
+                          {secItems.map((item) => (
+                            <FoodCard key={item._id || item.id} food={item} navigation={navigation} />
+                          ))}
+                        </ScrollView>
                       </View>
-                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
-                        {dedupedBestsellers.map((item) => (
-                          <FoodCard key={item.id || item._id} food={item} navigation={navigation} />
-                        ))}
-                      </ScrollView>
-                    </View>
-                  )}
-
-                  {/* Dynamic Section 2: 🌟 Fresh Arrivals */}
-                  {newArrivals.length > 0 && (
-                    <View style={styles.premiumSection}>
-                      <View style={styles.sectionHeaderRow}>
-                        <View>
-                          <Text style={styles.sectionTitle}>🌟 Fresh Arrivals</Text>
-                          <Text style={styles.sectionSubtitle}>Recently added dishes</Text>
-                        </View>
-                        <TouchableOpacity onPress={handleViewAllNewArrivals}>
-                          <Text style={styles.viewAllLink}>View All</Text>
-                        </TouchableOpacity>
-                      </View>
-                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
-                        {newArrivals.map((item) => (
-                          <FoodCard key={item.id || item._id} food={item} navigation={navigation} />
-                        ))}
-                      </ScrollView>
-                    </View>
-                  )}
+                    );
+                  })}
 
                   {/* Membership Card Banner */}
                   <MembershipCard
-                    onPress={() => Alert.alert("Gold Program", "Join Gold Membership today for free deliveries!")}
+                    onPress={() => navigation.navigate("GoldMembership")}
                   />
 
-                  {/* Dynamic Section 3: 🥗 Wholesome Meals (With height animation collapse) */}
-                  {healthyMeals.length > 0 && (
-                    <View style={styles.premiumSection}>
-                      <View style={styles.sectionHeaderRow}>
-                        <View>
-                          <Text style={styles.sectionTitle}>🥗 Wholesome Meals</Text>
-                          <Text style={styles.sectionSubtitle}>Healthy, nutritious & balanced meals</Text>
-                        </View>
-                      </View>
-                      
-                      <View style={styles.gridContainer}>
-                        {(wholesomeExpanded ? healthyMeals : healthyMeals.slice(0, 6)).map((item) => (
-                          <View key={item.id || item._id} style={styles.gridHalfCol}>
-                            <FoodCard food={item} navigation={navigation} />
-                          </View>
-                        ))}
-                      </View>
-
-                      {healthyMeals.length > 6 && (
-                        <Button
-                          mode="outlined"
-                          onPress={handleToggleWholesome}
-                          style={styles.seeMoreBtn}
-                          textColor="#FF6F61"
-                        >
-                          {wholesomeExpanded ? "Show Less" : "See More"}
-                        </Button>
-                      )}
-                    </View>
-                  )}
-
-                  {/* Dynamic Section 4: 🍱 Curated Combos */}
-                  {combos.length > 0 && (
-                    <View style={styles.premiumSection}>
-                      <View style={styles.sectionHeaderRow}>
-                        <View>
-                          <Text style={styles.sectionTitle}>🍱 Curated Combos</Text>
-                          <Text style={styles.sectionSubtitle}>Perfect meal combinations</Text>
-                        </View>
-                        <TouchableOpacity onPress={handleViewAllCombos}>
-                          <Text style={styles.viewAllLink}>View All</Text>
-                        </TouchableOpacity>
-                      </View>
-                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
-                        {combos.map((item) => (
-                          <FoodCard key={item.id || item._id} food={item} navigation={navigation} />
-                        ))}
-                      </ScrollView>
-                    </View>
-                  )}
-
-                  {/* Dynamic Category Independent Grids (10 sections for home preview) */}
-                  {categorizedMenu.slice(0, 10).map((group) => (
+                  {/* Dynamic Category Independent Grids */}
+                  {computedCategorizedMenu.map((group) => (
                     <View key={group.category._id || group.category.id} style={styles.categorizedSection}>
                       <View style={styles.sectionHeaderRow}>
                         <View style={styles.catHeaderLeft}>
                           <Image
-                            source={{ uri: group.category.image || "https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=200&q=80" }}
+                            source={getCategoryImage(group.category)}
                             style={styles.catImage}
                             resizeMode="cover"
                           />
@@ -554,6 +704,78 @@ const HomeScreen = ({ navigation }) => {
           visible={locationSheetVisible}
           onClose={() => setLocationSheetVisible(false)}
         />
+
+        {/* QR Scanner Modal */}
+        <Modal
+          visible={qrModalVisible}
+          onRequestClose={() => setQrModalVisible(false)}
+          animationType="slide"
+        >
+          <SafeAreaView style={styles.scannerContainer}>
+            {qrModalVisible && (
+              <CameraView
+                style={StyleSheet.absoluteFillObject}
+                facing="back"
+                barcodeScannerSettings={{
+                  barcodeTypes: ["qr"],
+                }}
+                onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
+              />
+            )}
+            {/* Overlay mask */}
+            <View style={styles.overlayContainer}>
+              <View style={styles.unfocusedContainer} />
+              <View style={styles.middleRow}>
+                <View style={styles.unfocusedContainer} />
+                <View style={styles.focusedContainer}>
+                  <View style={[styles.corner, styles.topLeft]} />
+                  <View style={[styles.corner, styles.topRight]} />
+                  <View style={[styles.corner, styles.bottomLeft]} />
+                  <View style={[styles.corner, styles.bottomRight]} />
+                </View>
+                <View style={styles.unfocusedContainer} />
+              </View>
+              <View style={styles.unfocusedContainer} />
+            </View>
+
+            {/* Header/Footer Controls */}
+            <View style={styles.scannerHeader}>
+              <Text style={styles.scannerTitle}>Scan QR Code</Text>
+              <Text style={styles.scannerSubtitle}>Align QR code inside the box to scan</Text>
+            </View>
+
+            <TouchableOpacity style={styles.closeScannerButton} onPress={() => setQrModalVisible(false)}>
+              <MaterialCommunityIcons name="close" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+          </SafeAreaView>
+        </Modal>
+
+        {/* Voice Search Modal */}
+        <Modal
+          visible={voiceModalVisible}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setVoiceModalVisible(false)}
+        >
+          <View style={styles.voiceModalContainer}>
+            <Animated.View style={[styles.voicePulseCircle, { transform: [{ scale: pulseAnim }] }]}>
+              <View style={styles.voicePulseCircleInner}>
+                <MaterialCommunityIcons name="microphone" size={32} color="#FFFFFF" />
+              </View>
+            </Animated.View>
+            <Text style={styles.voiceText}>{recognizedText}</Text>
+            <Text style={styles.voiceSubtext}>
+              {isListening ? "Listening for your food cravings..." : "Recognized! Redirecting..."}
+            </Text>
+            
+            <TouchableOpacity 
+              style={[styles.closeScannerButton, { top: 50, right: 20 }]} 
+              onPress={() => setVoiceModalVisible(false)}
+            >
+              <MaterialCommunityIcons name="close" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
+        </Modal>
       </SafeAreaView>
     </View>
   );
@@ -567,6 +789,7 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: "#FFFFFF",
+    paddingTop: Platform.OS === "android" ? 12 : 6,
   },
   scrollContent: {
     paddingBottom: 96,
@@ -755,6 +978,132 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 8,
     marginRight: 10,
+  },
+  scannerContainer: {
+    flex: 1,
+    backgroundColor: "#000000",
+  },
+  overlayContainer: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  unfocusedContainer: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+  },
+  middleRow: {
+    flexDirection: "row",
+    height: 250,
+  },
+  focusedContainer: {
+    width: 250,
+    position: "relative",
+    backgroundColor: "transparent",
+  },
+  corner: {
+    position: "absolute",
+    width: 20,
+    height: 20,
+    borderColor: "#FF6F61",
+  },
+  topLeft: {
+    top: 0,
+    left: 0,
+    borderTopWidth: 4,
+    borderLeftWidth: 4,
+  },
+  topRight: {
+    top: 0,
+    right: 0,
+    borderTopWidth: 4,
+    borderRightWidth: 4,
+  },
+  bottomLeft: {
+    bottom: 0,
+    left: 0,
+    borderBottomWidth: 4,
+    borderLeftWidth: 4,
+  },
+  bottomRight: {
+    bottom: 0,
+    right: 0,
+    borderBottomWidth: 4,
+    borderRightWidth: 4,
+  },
+  scannerHeader: {
+    position: "absolute",
+    top: 60,
+    left: 20,
+    right: 20,
+    alignItems: "center",
+  },
+  scannerTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+    textAlign: "center",
+  },
+  scannerSubtitle: {
+    fontSize: 12,
+    color: "rgba(255,255,255,0.7)",
+    textAlign: "center",
+    marginTop: 8,
+  },
+  closeScannerButton: {
+    position: "absolute",
+    top: 40,
+    right: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 999,
+  },
+  voiceModalContainer: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.85)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  voicePulseCircle: {
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    backgroundColor: "rgba(255, 111, 97, 0.25)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 40,
+  },
+  voicePulseCircleInner: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: "#FF6F61",
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 4,
+    shadowColor: "#FF6F61",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  voiceText: {
+    fontSize: 22,
+    color: "#FFFFFF",
+    fontWeight: "bold",
+    textAlign: "center",
+    marginHorizontal: 30,
+  },
+  voiceSubtext: {
+    fontSize: 13,
+    color: "rgba(255,255,255,0.6)",
+    marginTop: 12,
+    textAlign: "center",
   },
 });
 

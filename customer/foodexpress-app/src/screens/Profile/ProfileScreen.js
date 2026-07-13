@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   StyleSheet,
@@ -7,6 +7,8 @@ import {
   Modal,
   TextInput,
   Alert,
+  SafeAreaView,
+  Linking,
 } from "react-native";
 import {
   Text,
@@ -18,8 +20,10 @@ import {
   Switch,
 } from "react-native-paper";
 import { useDispatch, useSelector } from "react-redux";
+import CustomScreenHeader from "../../components/CustomScreenHeader";
 import {
   logout,
+  fetchUserProfile,
   updateUserProfile,
   selectDefaultAddress,
   saveAddress,
@@ -32,6 +36,13 @@ const ProfileScreen = ({ navigation }) => {
   const dispatch = useDispatch();
   const { userProfile, addresses } = useSelector((state) => state.auth);
   const { items: wishlistFoods } = useSelector((state) => state.wishlist);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("focus", () => {
+      dispatch(fetchUserProfile());
+    });
+    return unsubscribe;
+  }, [navigation, dispatch]);
 
   // Edit Profile States
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -149,8 +160,46 @@ const ProfileScreen = ({ navigation }) => {
     });
   };
 
+  const openWhatsAppSupport = async () => {
+    const cleanPhone = "919158852129";
+    const supportMessage = `Hello FoodExpress Support,
+
+I need assistance regarding the FoodExpress app.
+
+Name: ${userProfile?.name || ""}
+Registered Mobile: ${userProfile?.phone ? `+91 ${userProfile.phone}` : ""}
+Order ID (if applicable): 
+
+My Issue: `;
+
+    const encodedText = encodeURIComponent(supportMessage);
+    const nativeUrl = `whatsapp://send?phone=${cleanPhone}&text=${encodedText}`;
+    const webUrl = `https://wa.me/${cleanPhone}?text=${encodedText}`;
+
+    try {
+      const canOpen = await Linking.canOpenURL(nativeUrl);
+      if (canOpen) {
+        await Linking.openURL(nativeUrl);
+      } else {
+        await Linking.openURL(webUrl);
+      }
+    } catch (err) {
+      console.warn("Failed to open WhatsApp native app, trying web URL:", err.message);
+      try {
+        await Linking.openURL(webUrl);
+      } catch (webErr) {
+        Alert.alert(
+          "Support Contact",
+          `Unable to open WhatsApp. Please contact us at +91 9158852129.`
+        );
+      }
+    }
+  };
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#ffffff" }}>
+      <CustomScreenHeader title="My Account" navigation={navigation} redirectToHome={true} />
+      <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       {/* User Header Profile */}
       <View style={styles.profileHeader}>
         <Avatar.Image
@@ -161,7 +210,12 @@ const ProfileScreen = ({ navigation }) => {
           style={styles.avatar}
         />
         <View style={styles.profileInfo}>
-          <Text style={styles.profileName}>{userProfile?.name || "Foodie Guest"}</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap" }}>
+            <Text style={styles.profileName}>{userProfile?.name || "Foodie Guest"}</Text>
+            {userProfile?.isGoldMember && userProfile?.goldExpiry && new Date(userProfile.goldExpiry) > new Date() && (
+              <MaterialCommunityIcons name="crown" size={18} color="#D4AF37" style={{ marginLeft: 6 }} />
+            )}
+          </View>
           <Text style={styles.profileEmail}>{userProfile?.email || "guest@foodexpress.com"}</Text>
           <Text style={styles.profilePhone}>
             {userProfile?.phone ? `+91 ${userProfile.phone}` : "Add Mobile Number"}
@@ -290,6 +344,24 @@ const ProfileScreen = ({ navigation }) => {
           <View style={styles.menuItemLeft}>
             <MaterialCommunityIcons name="google" size={20} color="#4285f4" style={{ marginRight: 2 }} />
             <Text style={styles.menuItemText}>Google Pay / UPI</Text>
+          </View>
+          <MaterialCommunityIcons name="chevron-right" size={20} color="#bbb" />
+        </TouchableOpacity>
+      </Card>
+
+      {/* Help & Support Section */}
+      <Card style={styles.menuCard}>
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={openWhatsAppSupport}
+          activeOpacity={0.7}
+        >
+          <View style={styles.menuItemLeft}>
+            <MaterialCommunityIcons name="headset" size={22} color="#ff6b00" />
+            <View style={{ marginLeft: 12, flexShrink: 1 }}>
+              <Text style={{ fontSize: 14, fontWeight: "600", color: "#333" }}>Help & Support</Text>
+              <Text style={{ fontSize: 11, color: "#666", marginTop: 2 }}>Chat with our support team on WhatsApp</Text>
+            </View>
           </View>
           <MaterialCommunityIcons name="chevron-right" size={20} color="#bbb" />
         </TouchableOpacity>
@@ -488,6 +560,7 @@ const ProfileScreen = ({ navigation }) => {
         </View>
       </Modal>
     </ScrollView>
+    </SafeAreaView>
   );
 };
 
