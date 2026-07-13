@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, StyleSheet, ScrollView, Alert, TouchableOpacity, Image, Dimensions, Platform, SafeAreaView } from "react-native";
+import { View, StyleSheet, ScrollView, Alert, TouchableOpacity, Image, Dimensions, Platform, SafeAreaView, Linking } from "react-native";
 import { Text, Card, RadioButton, Divider, ActivityIndicator, Portal, Dialog } from "react-native-paper";
 import { useSelector, useDispatch } from "react-redux";
 import CustomScreenHeader from "../../components/CustomScreenHeader";
@@ -8,6 +8,7 @@ import { placeOrder } from "../../redux/slices/ordersSlice";
 import { clearCart, selectCartBillDetails } from "../../redux/slices/cartSlice";
 import { isOutsideBaramati } from "../../utils/locationHelper";
 import paymentService from "../../services/paymentService";
+import api from "../../utils/api";
 import { MaterialCommunityIcons, FontAwesome6 } from "@expo/vector-icons";
 
 const { width } = Dimensions.get("window");
@@ -19,10 +20,12 @@ const CheckoutScreen = ({ navigation }) => {
   const { activeAddress, token } = useSelector((state) => state.auth);
   
   // Payment States
-  const [paymentMethod, setPaymentMethod] = useState("Cash on Delivery"); // Cash on Delivery, UPI, Scan QR, Card
+  const [paymentMethod, setPaymentMethod] = useState("Cash on Delivery"); // Cash on Delivery, UPI, Scan QR, Card, Razorpay Online Payment
   const [selectedUPI, setSelectedUPI] = useState("Google Pay"); // Google Pay, PhonePe, Paytm, BHIM, Other
   const [isProcessing, setIsProcessing] = useState(false);
   const [showUPIOverlay, setShowUPIOverlay] = useState(false);
+  const [paymentInitiated, setPaymentInitiated] = useState(false);
+  const [activeRazorpayOrderId, setActiveRazorpayOrderId] = useState("");
   
   const logAndGetError = (endpoint, payload, err) => {
     const errorMsg = typeof err === "string" ? err : (err?.message || "Failed to place order");
@@ -190,9 +193,126 @@ const CheckoutScreen = ({ navigation }) => {
       return;
     }
 
-    // ─── 3. UPI Intent Flow (Simulation Overlay) ──────────────────────────────
+    // ─── 3. UPI Payment Flow (Real Razorpay Integration) ─────────────────────
     if (paymentMethod === "UPI") {
-      setShowUPIOverlay(true);
+      if (paymentInitiated) {
+        setIsProcessing(true);
+        paymentService.verifyPayment({
+          razorpayOrderId: activeRazorpayOrderId,
+          paymentMethod: "UPI",
+          orderData: orderPayload
+        })
+          .then((res) => {
+            dispatch(clearCart());
+            setIsProcessing(false);
+            setPaymentInitiated(false);
+            navigation.replace("OrderSuccess", {
+              orderId: res._id || res.id,
+              orderNumber: res.orderNumber,
+              totalAmount: res.totalAmount,
+              paymentMethod: res.paymentMethod || "UPI",
+              address: res.address || orderPayload.address,
+            });
+          })
+          .catch((err) => {
+            setIsProcessing(false);
+            const errorMsg = logAndGetError("/payment/verify", {
+              razorpayOrderId: activeRazorpayOrderId,
+              paymentMethod: "UPI",
+              orderData: orderPayload
+            }, err);
+            if (Platform.OS === "web") {
+              alert("Payment verification failed. Please complete the transaction in your UPI app first, then try again.");
+            } else {
+              Alert.alert("Verification Pending", "We couldn't confirm your payment yet. Make sure you completed the payment in the UPI app before clicking verify.");
+            }
+          });
+        return;
+      }
+
+      setIsProcessing(true);
+      paymentService.createRazorpayOrder(bill.grandTotal)
+        .then(async (res) => {
+          const { order, key } = res;
+          setActiveRazorpayOrderId(order.id);
+
+          if (Platform.OS === "web") {
+            const script = document.createElement("script");
+            script.src = "https://checkout.razorpay.com/v1/checkout.js";
+            script.onload = () => {
+              const options = {
+                key: key,
+                amount: order.amount,
+                currency: "INR",
+                name: "FoodExpress",
+                description: "Order Checkout via UPI",
+                order_id: order.id,
+                prefill: {
+                  name: orderPayload.customerName || "Customer",
+                  email: orderPayload.customerEmail || "",
+                  contact: orderPayload.customerPhone || "",
+                  method: "upi"
+                },
+                theme: {
+                  color: "#ff6b00"
+                },
+                handler: function(response) {
+                  paymentService.verifyPayment({
+                    paymentId: response.razorpay_payment_id,
+                    signature: response.razorpay_signature,
+                    razorpayOrderId: response.razorpay_order_id,
+                    amount: bill.grandTotal,
+                    paymentMethod: "UPI",
+                    orderData: orderPayload
+                  })
+                    .then((placedOrder) => {
+                      dispatch(clearCart());
+                      setIsProcessing(false);
+                      navigation.replace("OrderSuccess", {
+                        orderId: placedOrder._id || placedOrder.id,
+                        orderNumber: placedOrder.orderNumber,
+                        totalAmount: placedOrder.totalAmount,
+                        paymentMethod: placedOrder.paymentMethod,
+                        address: placedOrder.address || orderPayload.address,
+                      });
+                    })
+                    .catch((verifyErr) => {
+                      setIsProcessing(false);
+                      alert("Payment verification failed: " + verifyErr.message);
+                    });
+                },
+                modal: {
+                  ondismiss: function() {
+                    setIsProcessing(false);
+                  }
+                }
+              };
+              const rzp = new window.Razorpay(options);
+              rzp.open();
+            };
+            document.body.appendChild(script);
+          } else {
+            const apiBaseURL = api.defaults.baseURL || "http://localhost:5000/api";
+            const serverOrigin = apiBaseURL.endsWith("/api") ? apiBaseURL.slice(0, -4) : apiBaseURL;
+            const checkoutUrl = `${serverOrigin}/api/payment/checkout-page?orderId=${order.id}&amount=${bill.grandTotal}&customerName=${encodeURIComponent(orderPayload.customerName || "Customer")}&customerEmail=${encodeURIComponent(orderPayload.customerEmail || "")}&customerPhone=${encodeURIComponent(orderPayload.customerPhone || "")}&preselectMethod=upi`;
+            
+            console.log("[Payment Integration Log] Redirecting customer to UPI checkout URL:", checkoutUrl);
+            
+            Linking.openURL(checkoutUrl)
+              .then(() => {
+                setIsProcessing(false);
+                setPaymentInitiated(true);
+              })
+              .catch((err) => {
+                setIsProcessing(false);
+                Alert.alert("Error", "Could not open payment page: " + err.message);
+              });
+          }
+        })
+        .catch((err) => {
+          setIsProcessing(false);
+          Alert.alert("Order Creation Failed", "Failed to initiate transaction: " + err.message);
+        });
       return;
     }
 
@@ -244,6 +364,121 @@ const CheckoutScreen = ({ navigation }) => {
             Alert.alert("Verification Failed", errorMsg);
           }
         });
+      return;
+    }
+
+    // ─── 5. Razorpay Online Payment Flow ─────────────────────────────────────
+    if (paymentMethod === "Razorpay Online Payment") {
+      if (paymentInitiated) {
+        setIsProcessing(true);
+        paymentService.verifyPayment({
+          razorpayOrderId: activeRazorpayOrderId,
+          paymentMethod: "Razorpay Online Payment",
+          orderData: orderPayload
+        })
+          .then((res) => {
+            dispatch(clearCart());
+            setIsProcessing(false);
+            setPaymentInitiated(false);
+            navigation.replace("OrderSuccess", {
+              orderId: res._id || res.id,
+              orderNumber: res.orderNumber,
+              totalAmount: res.totalAmount,
+              paymentMethod: res.paymentMethod || "Razorpay Online Payment",
+              address: res.address || orderPayload.address,
+            });
+          })
+          .catch((err) => {
+            setIsProcessing(false);
+            const errorMsg = logAndGetError("/payment/verify", {
+              razorpayOrderId: activeRazorpayOrderId,
+              paymentMethod: "Razorpay Online Payment",
+              orderData: orderPayload
+            }, err);
+            if (Platform.OS === "web") {
+              alert("Payment verification failed. Please complete the transaction in the browser tab first, then try again.");
+            } else {
+              Alert.alert("Verification Pending", "We couldn't confirm your payment yet. Make sure you completed the payment in the browser tab before clicking verify.");
+            }
+          });
+        return;
+      }
+
+      setIsProcessing(true);
+      paymentService.createRazorpayOrder(bill.grandTotal)
+        .then(async (res) => {
+          const { order, key } = res;
+          setActiveRazorpayOrderId(order.id);
+
+          if (Platform.OS === "web") {
+            const script = document.createElement("script");
+            script.src = "https://checkout.razorpay.com/v1/checkout.js";
+            script.onload = () => {
+              const options = {
+                key: key,
+                amount: order.amount,
+                currency: "INR",
+                name: "FoodExpress",
+                description: "Order Checkout",
+                order_id: order.id,
+                handler: function(response) {
+                  paymentService.verifyPayment({
+                    paymentId: response.razorpay_payment_id,
+                    signature: response.razorpay_signature,
+                    razorpayOrderId: response.razorpay_order_id,
+                    amount: bill.grandTotal,
+                    paymentMethod: "Razorpay Online Payment",
+                    orderData: orderPayload
+                  })
+                    .then((placedOrder) => {
+                      dispatch(clearCart());
+                      setIsProcessing(false);
+                      navigation.replace("OrderSuccess", {
+                        orderId: placedOrder._id || placedOrder.id,
+                        orderNumber: placedOrder.orderNumber,
+                        totalAmount: placedOrder.totalAmount,
+                        paymentMethod: placedOrder.paymentMethod,
+                        address: placedOrder.address || orderPayload.address,
+                      });
+                    })
+                    .catch((verifyErr) => {
+                      setIsProcessing(false);
+                      alert("Payment verification failed: " + verifyErr.message);
+                    });
+                },
+                modal: {
+                  ondismiss: function() {
+                    setIsProcessing(false);
+                  }
+                }
+              };
+              const rzp = new window.Razorpay(options);
+              rzp.open();
+            };
+            document.body.appendChild(script);
+          } else {
+            const apiBaseURL = api.defaults.baseURL || "http://localhost:5000/api";
+            const serverOrigin = apiBaseURL.endsWith("/api") ? apiBaseURL.slice(0, -4) : apiBaseURL;
+            const checkoutUrl = `${serverOrigin}/api/payment/checkout-page?orderId=${order.id}&amount=${bill.grandTotal}&customerName=${encodeURIComponent(req.user?.name || orderPayload.customerName || "Customer")}&customerEmail=${encodeURIComponent(req.user?.email || orderPayload.customerEmail || "")}&customerPhone=${encodeURIComponent(req.user?.phone || orderPayload.customerPhone || "")}`;
+            
+            console.log("[Payment Integration Log] Redirecting customer to checkout URL:", checkoutUrl);
+            
+            Linking.openURL(checkoutUrl)
+              .then(() => {
+                setIsProcessing(false);
+                setPaymentInitiated(true);
+              })
+              .catch((err) => {
+                setIsProcessing(false);
+                Alert.alert("Error", "Could not open payment page: " + err.message);
+              });
+          }
+        })
+        .catch((err) => {
+          setIsProcessing(false);
+          Alert.alert("Order Creation Failed", "Failed to initiate transaction: " + err.message);
+        });
+      return;
     }
   };
 
@@ -379,20 +614,58 @@ const CheckoutScreen = ({ navigation }) => {
               />
             </TouchableOpacity>
 
+            {/* Razorpay Online Payment */}
+            <TouchableOpacity 
+              style={[styles.paymentMethodRow, paymentMethod === "Razorpay Online Payment" && styles.paymentMethodRowSelected]}
+              onPress={() => {
+                setPaymentMethod("Razorpay Online Payment");
+                setPaymentInitiated(false);
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={styles.paymentMethodLeft}>
+                <MaterialCommunityIcons name="credit-card-outline" size={24} color={paymentMethod === "Razorpay Online Payment" ? "#ff6b00" : "#475467"} />
+                <Text style={styles.paymentMethodLabel}>Razorpay Online Payment</Text>
+              </View>
+              <RadioButton
+                value="Razorpay Online Payment"
+                status={paymentMethod === "Razorpay Online Payment" ? "checked" : "unchecked"}
+                onPress={() => {
+                  setPaymentMethod("Razorpay Online Payment");
+                  setPaymentInitiated(false);
+                }}
+                color="#ff6b00"
+              />
+            </TouchableOpacity>
+
+            {(paymentMethod === "Razorpay Online Payment" || paymentMethod === "UPI") && paymentInitiated && (
+              <Card style={{ backgroundColor: "#f0fdf4", borderWidth: 1, borderColor: "#bbf7d0", padding: 12, marginVertical: 8 }}>
+                <Text style={{ fontSize: 12, color: "#166534", fontWeight: "bold" }}>
+                  Payment session opened in browser. Tap "Verify & Confirm Payment" below once payment is completed.
+                </Text>
+              </Card>
+            )}
+
             {/* 2. UPI */}
             <TouchableOpacity 
               style={[styles.paymentMethodRow, paymentMethod === "UPI" && styles.paymentMethodRowSelected]}
-              onPress={() => setPaymentMethod("UPI")}
+              onPress={() => {
+                setPaymentMethod("UPI");
+                setPaymentInitiated(false);
+              }}
               activeOpacity={0.7}
             >
               <View style={styles.paymentMethodLeft}>
                 <MaterialCommunityIcons name="bank" size={24} color={paymentMethod === "UPI" ? "#ff6b00" : "#475467"} />
-                <Text style={styles.paymentMethodLabel}>UPI Payments (Instant)</Text>
+                <Text style={styles.paymentMethodLabel}>UPI Payment</Text>
               </View>
               <RadioButton
                 value="UPI"
                 status={paymentMethod === "UPI" ? "checked" : "unchecked"}
-                onPress={() => setPaymentMethod("UPI")}
+                onPress={() => {
+                  setPaymentMethod("UPI");
+                  setPaymentInitiated(false);
+                }}
                 color="#ff6b00"
               />
             </TouchableOpacity>
@@ -516,35 +789,15 @@ const CheckoutScreen = ({ navigation }) => {
           disabled={isProcessing}
           contentStyle={{ paddingVertical: 6 }}
         >
-          {paymentMethod === "Scan QR & Pay" ? "Verify Payment & Place Order" : paymentMethod === "UPI" ? `Pay via ${selectedUPI}` : "Place Order"}
+          {paymentMethod === "Scan QR & Pay" 
+            ? "Verify Payment & Place Order" 
+            : paymentMethod === "UPI" 
+            ? (paymentInitiated ? "Verify & Confirm Payment" : "Pay & Place Order")
+            : paymentMethod === "Razorpay Online Payment"
+            ? (paymentInitiated ? "Verify & Confirm Payment" : "Pay & Place Order")
+            : "Place Order"}
         </AppButton>
       </ScrollView>
-
-      {/* Simulated UPI Intent Dialog Overlay */}
-      <Portal>
-        <Dialog visible={showUPIOverlay} onDismiss={cancelUPIPayment} style={styles.upiDialog}>
-          <Dialog.Title style={styles.upiDialogTitle}>
-            <MaterialCommunityIcons name="wallet" size={24} color="#ff6b00" style={{ marginRight: 8 }} />
-            UPI Payment Portal
-          </Dialog.Title>
-          <Dialog.Content>
-            <Text style={styles.upiMerchant}>Pay to: Krushna's Restaurant</Text>
-            <View style={styles.upiCardDetails}>
-              <Text style={styles.upiAmountLabel}>Amount to Pay</Text>
-              <Text style={styles.upiAmountVal}>₹{bill.grandTotal.toFixed(2)}</Text>
-            </View>
-            <Text style={styles.upiSub}>Redirecting to {selectedUPI} sandbox...</Text>
-          </Dialog.Content>
-          <Dialog.Actions style={styles.upiActions}>
-            <AppButton mode="outlined" onPress={cancelUPIPayment} style={styles.upiBtnCancel}>
-              Decline / Cancel
-            </AppButton>
-            <AppButton mode="contained" buttonColor="#ff6b00" onPress={confirmUPIPayment} style={styles.upiBtnApprove}>
-              Approve Payment
-            </AppButton>
-          </Dialog.Actions>
-        </Dialog>
-      </Portal>
       </SafeAreaView>
     </Portal.Host>
   );

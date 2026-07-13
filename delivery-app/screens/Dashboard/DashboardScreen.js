@@ -241,8 +241,13 @@ const DashboardScreen = ({ navigation }) => {
                 <Card.Content>
                   <View style={styles.orderHeader}>
                     <Text style={styles.orderNumber}>#{item.orderNumber || item._id.slice(-6).toUpperCase()}</Text>
-                    <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.deliveryStatus) }]}>
-                      <Text style={styles.statusBadgeText}>{item.deliveryStatus}</Text>
+                    <View style={{ flexDirection: "row", gap: 6 }}>
+                      <View style={[styles.statusBadge, { backgroundColor: item.paymentMethod === "Cash on Delivery" ? "#b91c1c" : "#047857" }]}>
+                        <Text style={styles.statusBadgeText}>{item.paymentMethod === "Cash on Delivery" ? "COD" : "Paid Online"}</Text>
+                      </View>
+                      <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.deliveryStatus) }]}>
+                        <Text style={styles.statusBadgeText}>{item.deliveryStatus}</Text>
+                      </View>
                     </View>
                   </View>
 
