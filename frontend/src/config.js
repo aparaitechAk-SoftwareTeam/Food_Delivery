@@ -16,13 +16,13 @@ const getApiBaseURL = () => {
     return envUrl.endsWith("/api") ? envUrl : `${envUrl}/api`;
   }
 
-  // In a browser on Vercel production (hostname is not localhost) — use relative path
+  
   // so the vercel.json rewrite proxy forwards to Render without CORS issues.
   if (typeof window !== "undefined" && !window.location.hostname.includes("localhost")) {
     return "/api";
   }
 
-  // Local development fallback
+  
   return `${PRODUCTION_RENDER_URL}/api`;
 };
 
