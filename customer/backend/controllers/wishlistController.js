@@ -4,13 +4,7 @@ const Food = require("../models/Food");
 exports.getWishlist = async (req, res) => {
   try {
     const userId = req.user._id.toString();
-    if (process.env.MOCK_DB === "true") {
-      const { wishlists } = require("../config/mockDataStore");
-      if (!wishlists[userId]) {
-        wishlists[userId] = [];
-      }
-      return res.json({ foodItems: wishlists[userId] });
-    }
+    
 
     const wishlist = await Wishlist.findOne({ user: req.user._id }).populate({
       path: "foodItems",
@@ -35,24 +29,7 @@ exports.addToWishlist = async (req, res) => {
     }
 
     const userId = req.user._id.toString();
-    if (process.env.MOCK_DB === "true") {
-      const { wishlists, foods } = require("../config/mockDataStore");
-      if (!wishlists[userId]) {
-        wishlists[userId] = [];
-      }
-      // Check if food already in wishlist
-      const alreadyIn = wishlists[userId].find(item => item._id === foodId || item.id === foodId);
-      if (alreadyIn) {
-        return res.json({ foodItems: wishlists[userId] });
-      }
-      // Find food in mock foods
-      const foodItem = foods.find(f => f._id === foodId || f.id === foodId);
-      if (!foodItem) {
-        return res.status(404).json({ message: "Food item not found" });
-      }
-      wishlists[userId].push(foodItem);
-      return res.json({ foodItems: wishlists[userId] });
-    }
+    
 
     let wishlist = await Wishlist.findOne({ user: req.user._id });
     if (!wishlist) {
@@ -86,15 +63,7 @@ exports.removeFromWishlist = async (req, res) => {
     }
 
     const userId = req.user._id.toString();
-    if (process.env.MOCK_DB === "true") {
-      const { wishlists } = require("../config/mockDataStore");
-      if (wishlists[userId]) {
-        wishlists[userId] = wishlists[userId].filter(
-          item => item._id !== foodId && item.id !== foodId
-        );
-      }
-      return res.json({ foodItems: wishlists[userId] || [] });
-    }
+    
 
     let wishlist = await Wishlist.findOne({ user: req.user._id });
     if (wishlist) {

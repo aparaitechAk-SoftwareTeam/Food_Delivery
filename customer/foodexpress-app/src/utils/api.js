@@ -2,12 +2,24 @@ import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 
+<<<<<<< HEAD
 const DEFAULT_REMOTE_API = "https://food-delivery-gtq0.onrender.com/api";
 
 const normalizeApiUrl = (url) => {
   if (!url) return null;
   const trimmed = url.trim().replace(/\/+$/, "");
   return trimmed.endsWith("/api") ? trimmed : `${trimmed}/api`;
+=======
+const getBaseURL = () => {
+  if (Platform.OS === "web") {
+    return "http://localhost:5000/api";
+  }
+  if (process.env.EXPO_PUBLIC_API_URL) {
+    const url = process.env.EXPO_PUBLIC_API_URL;
+    return url.endsWith("/api") ? url : `${url}/api`;
+  }
+  return "http://192.168.1.26:5000/api";
+>>>>>>> fa7365685005be48c263c78c95718b01658f1a65
 };
 
 const isPrivateLanUrl = (url) => {
@@ -83,14 +95,12 @@ api.interceptors.response.use(
     // i.e. a 401 response from an AUTH endpoint (/auth/me, /auth/verify, etc.).
     // Do NOT logout on 401 from payment, order, or other data endpoints —
     // that was the root cause of the checkout → logout → location loop.
-    const isAuthEndpoint =
-      url.includes("/auth/me") ||
-      url.includes("/auth/verify") ||
-      url.includes("/auth/refresh");
+    const isAuthEndpoint = url.includes("/auth/");
+    const message = error.response?.data?.message || "";
+    const isBlocked = message.toLowerCase().includes("blocked");
+    const isTokenInvalid = message === "Token is not valid" || message === "Not authorized" || message === "jwt expired";
 
-    const isBlocked = error.response?.data?.message?.toLowerCase().includes("blocked");
-
-    if (status === 401 && (isAuthEndpoint || isBlocked)) {
+    if (status === 401 && (isAuthEndpoint || isBlocked || isTokenInvalid)) {
       await AsyncStorage.removeItem("foodexpress_token");
       await AsyncStorage.removeItem("foodexpress_user");
       await AsyncStorage.removeItem("foodexpress_active_address");
@@ -102,11 +112,17 @@ api.interceptors.response.use(
         console.log("Error dispatching logout on 401:", e);
       }
     }
-    // For all other errors (including 401 on payment/orders/QR with dummy token),
-    // simply propagate the error so the screen can show a message and retry.
-    const message =
-      error.response?.data?.message || error.message || "API request failed";
-    return Promise.reject(new Error(message));
+    console.warn("=== API REQUEST FAILURE ===");
+    console.warn("API URL:", error.config?.url || "");
+    console.warn("Method:", error.config?.method?.toUpperCase() || "");
+    console.warn("Request Data:", error.config?.data || "N/A");
+    console.warn("Response Status Code:", error.response?.status || "N/A");
+    console.warn("Response Data:", JSON.stringify(error.response?.data) || "N/A");
+    console.warn("Backend Error:", error.response?.data?.message || error.message || "Unknown error");
+    console.warn("===========================");
+
+    const responseMessage = error.response?.data?.message || error.message || "API request failed";
+    return Promise.reject(new Error(responseMessage));
   },
 );
 

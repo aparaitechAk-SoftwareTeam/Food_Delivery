@@ -23,7 +23,7 @@ exports.toggleOnlineStatus = async (req, res) => {
 
 // 2. Update Live GPS Location
 exports.updateLocation = async (req, res) => {
-  const { latitude, longitude } = req.body;
+  const { latitude, longitude, orderId, heading, speed } = req.body;
   if (latitude === undefined || longitude === undefined) {
     return res.status(400).json({ message: "Latitude and Longitude are required" });
   }
@@ -40,6 +40,36 @@ exports.updateLocation = async (req, res) => {
       updatedAt: new Date(),
     };
     await user.save();
+
+    // If active order is tracked, save history & emit socket event
+    if (orderId) {
+      const DeliveryLocation = require("../models/DeliveryLocation");
+      const locRecord = await DeliveryLocation.create({
+        orderId,
+        deliveryBoyId: req.user._id,
+        latitude: Number(latitude),
+        longitude: Number(longitude),
+        heading: heading !== undefined ? Number(heading) : 0,
+        speed: speed !== undefined ? Number(speed) : 0,
+        timestamp: new Date(),
+      });
+
+      const { getIo } = require("../config/socket");
+      const io = getIo();
+      if (io) {
+        const updatePayload = {
+          orderId,
+          deliveryBoyId: req.user._id,
+          latitude: Number(latitude),
+          longitude: Number(longitude),
+          heading: heading !== undefined ? Number(heading) : 0,
+          speed: speed !== undefined ? Number(speed) : 0,
+          timestamp: locRecord.timestamp,
+        };
+        io.to(orderId.toString()).emit("delivery-location", updatePayload);
+        io.to("admin").emit("delivery-location", updatePayload);
+      }
+    }
 
     res.json({ message: "Rider location updated successfully", location: user.location });
   } catch (err) {
@@ -117,7 +147,20 @@ exports.updateDeliveryStatus = async (req, res) => {
     order.orderStatus = order.status;
 
     await order.save();
-    res.json({ message: "Order status synchronized successfully", order });
+
+    if (status === "Delivered" || order.status === "Delivered") {
+      const cashbackService = require("../services/cashbackService");
+      await cashbackService.handleOrderDelivered(order);
+    }
+
+    const { emitOrderUpdate } = require("../config/socket");
+    let eventName = "order-status-updated";
+    if (status === "Picked Up") eventName = "delivery-picked";
+    else if (status === "Delivered" || status === "Completed") eventName = "delivery-completed";
+    await emitOrderUpdate(orderId, eventName);
+
+    const populatedOrder = await Order.findById(orderId).populate("user restaurant deliveryBoy");
+    res.json({ message: "Order status synchronized successfully", order: populatedOrder });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -181,7 +224,7 @@ exports.getRiderHistory = async (req, res) => {
   try {
     const orders = await Order.find({
       deliveryBoy: req.user._id,
-      status: { $in: ["Delivered", "Cancelled"] },
+      status: { $in: ["Delivered", "Completed", "Cancelled"] },
     })
       .populate("user", "name phone email")
       .populate("restaurant", "name address")

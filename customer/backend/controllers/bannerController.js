@@ -5,11 +5,15 @@ const shouldUseMockData = () => process.env.MOCK_DB === "true" || mongoose.conne
 
 // Get all active promotional banners
 exports.getBanners = async (req, res) => {
+<<<<<<< HEAD
   if (shouldUseMockData()) {
     const { banners, initializeMockData } = require("../config/mockDataStore");
     initializeMockData();
     return res.json(banners);
   }
+=======
+  
+>>>>>>> fa7365685005be48c263c78c95718b01658f1a65
   const banners = await Banner.find({ isActive: true });
   res.json(banners);
 };

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { View, StyleSheet, ScrollView, Alert, Linking, TouchableOpacity, Platform } from "react-native";
-import { Text, Card, Button, ActivityIndicator } from "react-native-paper";
+import { View, StyleSheet, ScrollView, Alert, Linking, TouchableOpacity, Platform, SafeAreaView, KeyboardAvoidingView } from "react-native";
+import { Text, Card, Button, ActivityIndicator, TextInput } from "react-native-paper";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import api from "../../utils/api";
 
@@ -9,6 +9,8 @@ const OrderDetailsScreen = ({ route, navigation }) => {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [showOtpInput, setShowOtpInput] = useState(false);
+  const [otpText, setOtpText] = useState("");
 
   const fetchOrderDetails = async () => {
     try {
@@ -108,16 +110,24 @@ const OrderDetailsScreen = ({ route, navigation }) => {
   }
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <MaterialCommunityIcons name="arrow-left" size={24} color="#FFFFFF" />
-        </TouchableOpacity>
-        <Text style={styles.title}>Order #{order.orderNumber || order._id.slice(-6).toUpperCase()}</Text>
-      </View>
+    <SafeAreaView style={styles.container}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+            <MaterialCommunityIcons name="arrow-left" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+          <Text style={styles.title}>Order #{order.orderNumber || order._id.slice(-6).toUpperCase()}</Text>
+        </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
         
         {/* Status indicator */}
         <Card style={styles.infoCard}>
@@ -269,14 +279,62 @@ const OrderDetailsScreen = ({ route, navigation }) => {
               )}
 
               {order.deliveryStatus === "Picked Up" && (
-                <Button 
-                  mode="contained" 
-                  buttonColor="#10b981" 
-                  style={styles.fullWidthBtn}
-                  onPress={() => handleUpdateStatus("Delivered")}
-                >
-                  Package Delivered Successfully
-                </Button>
+                <View style={{ width: "100%" }}>
+                  {showOtpInput ? (
+                    <Card style={{ backgroundColor: "#fef8f0", borderStyle: "dashed", borderWidth: 1, borderColor: "#ff6b00", marginBottom: 12, padding: 12 }}>
+                      <Text style={{ fontWeight: "bold", color: "#ff6b00", marginBottom: 6, fontSize: 13 }}>
+                        Enter Delivery Verification OTP:
+                      </Text>
+                      <TextInput
+                        mode="outlined"
+                        placeholder="e.g. 1234"
+                        value={otpText}
+                        onChangeText={setOtpText}
+                        keyboardType="number-pad"
+                        style={{ height: 40, backgroundColor: "#fff", marginBottom: 12 }}
+                      />
+                      <View style={{ flexDirection: "row", gap: 8 }}>
+                        <Button
+                          mode="contained"
+                          buttonColor="#10b981"
+                          style={{ flex: 1 }}
+                          labelStyle={{ fontSize: 12 }}
+                          onPress={() => {
+                            if (otpText.trim() === order.otp) {
+                              setShowOtpInput(false);
+                              handleUpdateStatus("Delivered");
+                            } else {
+                              Alert.alert("Invalid OTP", "The entered OTP is incorrect. Please ask the customer for the correct code.");
+                            }
+                          }}
+                        >
+                          Verify & Deliver
+                        </Button>
+                        <Button
+                          mode="outlined"
+                          textColor="#666"
+                          style={{ borderColor: "#ccc" }}
+                          labelStyle={{ fontSize: 12 }}
+                          onPress={() => setShowOtpInput(false)}
+                        >
+                          Cancel
+                        </Button>
+                      </View>
+                    </Card>
+                  ) : (
+                    <Button 
+                      mode="contained" 
+                      buttonColor="#10b981" 
+                      style={styles.fullWidthBtn}
+                      onPress={() => {
+                        setOtpText("");
+                        setShowOtpInput(true);
+                      }}
+                    >
+                      Package Delivered Successfully
+                    </Button>
+                  )}
+                </View>
               )}
 
               {order.deliveryStatus === "Delivered" && order.status !== "Completed" && (
@@ -317,7 +375,8 @@ const OrderDetailsScreen = ({ route, navigation }) => {
           )}
         </View>
       </ScrollView>
-    </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
@@ -328,7 +387,7 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: "#161b26",
-    paddingTop: 54,
+    paddingTop: Platform.OS === "web" ? 20 : 12,
     paddingHorizontal: 20,
     paddingBottom: 16,
     flexDirection: "row",
@@ -356,8 +415,9 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   scrollContent: {
+    flexGrow: 1,
     padding: 16,
-    paddingBottom: 40,
+    paddingBottom: 80,
   },
   infoCard: {
     backgroundColor: "#161b26",

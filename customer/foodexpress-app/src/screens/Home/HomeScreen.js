@@ -12,6 +12,8 @@ import {
   LayoutAnimation,
   Platform,
   UIManager,
+  Modal,
+  Easing,
 } from "react-native";
 import { Text, ActivityIndicator, IconButton, Card, Button } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -22,8 +24,14 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { fetchFoods } from "../../redux/slices/foodsSlice";
 import { fetchFavorites, fetchWishlist } from "../../redux/slices/wishlistSlice";
 import { fetchAddresses, fetchUserProfile } from "../../redux/slices/authSlice";
+<<<<<<< HEAD
+=======
+import { fetchRewardStatus, claimReward } from "../../redux/slices/rewardSlice";
+import api from "../../utils/api";
+>>>>>>> fa7365685005be48c263c78c95718b01658f1a65
 import bannerService from "../../services/bannerService";
 import sectionService from "../../services/sectionService";
+import { CameraView, useCameraPermissions } from "expo-camera";
 
 // Components
 import ScreenContainer from "../../components/ScreenContainer";
@@ -84,6 +92,7 @@ const HomeScreen = ({ navigation }) => {
   const { user, activeAddress, token } = useSelector((state) => state.auth);
   const cartItems = useSelector((state) => state.cart.items);
   const cartTotalAmount = useSelector((state) => state.cart.totalAmount);
+  const { reward, progress, remainingTime, status: rewardStatus } = useSelector((state) => state.rewards);
 
   // States
   const [locationSheetVisible, setLocationSheetVisible] = useState(false);
@@ -92,6 +101,17 @@ const HomeScreen = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [banners, setBanners] = useState([]);
   const [featuredSections, setFeaturedSections] = useState([]);
+  const [coupons, setCoupons] = useState([]);
+
+  // Camera & Voice states
+  const [qrModalVisible, setQrModalVisible] = useState(false);
+  const [scanned, setScanned] = useState(false);
+  const [permission, requestPermission] = useCameraPermissions();
+
+  const [voiceModalVisible, setVoiceModalVisible] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [recognizedText, setRecognizedText] = useState("");
+  const pulseAnim = useRef(new Animated.Value(1)).current;
 
   const [wholesomeExpanded, setWholesomeExpanded] = useState(false);
 
@@ -139,11 +159,102 @@ const HomeScreen = ({ navigation }) => {
     }
   };
 
+  const fetchCoupons = async () => {
+    try {
+      const { data } = await api.get("/coupons");
+      setCoupons(data || []);
+    } catch (err) {
+      console.log("Error loading coupons:", err.message);
+    }
+  };
+
+  const startListening = () => {
+    setIsListening(true);
+    setRecognizedText("Listening...");
+    
+    pulseAnim.setValue(1);
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.4,
+          duration: 800,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1.0,
+          duration: 800,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    setTimeout(() => {
+      const foodOptions = ["Chicken Biryani", "Double Cheese Pizza", "Healthy Salad", "Chocolate Waffle", "Paneer Tikka"];
+      const randomFood = foodOptions[Math.floor(Math.random() * foodOptions.length)];
+      setRecognizedText(`"${randomFood}"`);
+      setIsListening(false);
+      
+      setTimeout(() => {
+        setVoiceModalVisible(false);
+        setSearchQuery(randomFood);
+        navigation.navigate("FoodListing", { searchQuery: randomFood });
+      }, 1200);
+    }, 2500);
+  };
+
+  const handleVoicePress = () => {
+    setVoiceModalVisible(true);
+    startListening();
+  };
+
+  const handleScanPress = async () => {
+    if (!permission) {
+      return;
+    }
+    if (!permission.granted) {
+      const res = await requestPermission();
+      if (!res.granted) {
+        Alert.alert("Permission Required", "Camera permission is needed to scan QR codes.");
+        return;
+      }
+    }
+    setScanned(false);
+    setQrModalVisible(true);
+  };
+
+  const handleBarCodeScanned = ({ type, data }) => {
+    setScanned(true);
+    setQrModalVisible(false);
+    
+    const scannedCode = (data || "").trim();
+    Alert.alert(
+      "QR Code Scanned",
+      `Coupon Code: "${scannedCode}"`,
+      [
+        {
+          text: "Cancel",
+          style: "cancel"
+        },
+        {
+          text: "Copy & Use Coupon",
+          onPress: () => {
+            setSearchQuery(scannedCode);
+            Alert.alert("Coupon Saved", `Coupon "${scannedCode}" set! You can paste/apply it in checkout.`);
+          }
+        }
+      ]
+    );
+  };
+
   const loadData = (initial = false) => {
     dispatch(fetchFoods());
     fetchBanners();
     fetchFeaturedSections();
+    fetchCoupons();
     if (token) {
+      dispatch(fetchRewardStatus());
       if (initial) {
         dispatch(fetchUserProfile());
         dispatch(fetchAddresses());
@@ -167,8 +278,11 @@ const HomeScreen = ({ navigation }) => {
       fetchFeaturedSections()
     ]);
     if (token) {
-      await dispatch(fetchFavorites());
-      await dispatch(fetchWishlist());
+      await Promise.all([
+        dispatch(fetchFavorites()),
+        dispatch(fetchWishlist()),
+        dispatch(fetchRewardStatus())
+      ]);
     }
     setRefreshing(false);
   };
@@ -271,7 +385,9 @@ const HomeScreen = ({ navigation }) => {
         <Header
           activeAddress={activeAddress}
           onAddressPress={() => setLocationSheetVisible(true)}
-          onNotificationPress={() => Alert.alert("Notifications", "No new notifications.")}
+          onNotificationPress={() => {
+            navigation.navigate("Notifications");
+          }}
           onProfilePress={() => {
             if (!token) {
               navigation.navigate("Login", { redirectTo: "Main", redirectTab: "Profile" });
@@ -279,8 +395,27 @@ const HomeScreen = ({ navigation }) => {
               navigation.navigate("Profile");
             }
           }}
-          onWalletPress={() => Alert.alert("Wallet", "Wallet balance: ₹500 (mock)")}
+          onWalletPress={() => {
+            if (!token) {
+              Alert.alert("FE Wallet", "Please log in to view your wallet balance.");
+              return;
+            }
+            const balance = user?.walletBalance !== undefined ? user.walletBalance : 150.00;
+            Alert.alert("FE Wallet", `Wallet balance: ₹${balance.toFixed(2)}`);
+          }}
+          onCouponsPress={() => {
+            if (coupons.length === 0) {
+              Alert.alert("Active Coupons", "No active coupons available at the moment.");
+              return;
+            }
+            const couponList = coupons
+              .map(c => `• ${c.code}: ${c.discountType === "percentage" ? `${c.value}% OFF` : `₹${c.value} OFF`}${c.minOrderAmount ? ` (Min order: ₹${c.minOrderAmount})` : ""}`)
+              .join("\n\n");
+            Alert.alert("Active Coupons", couponList);
+          }}
           user={user}
+          walletBalance={user?.walletBalance !== undefined ? user.walletBalance : 150.00}
+          activeCouponsCount={coupons.length}
         />
 
         {/* Scrollable Area */}
@@ -301,6 +436,8 @@ const HomeScreen = ({ navigation }) => {
           <SearchBar
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
+            onVoicePress={handleVoicePress}
+            onScanPress={handleScanPress}
             onSubmit={() => {
               if (searchQuery) {
                 navigation.navigate("FoodListing", { searchQuery });
@@ -317,12 +454,32 @@ const HomeScreen = ({ navigation }) => {
                   setSelectedCategory(banner.cta);
                 }}
               />
-              <RewardCard
-                onClaim={() => Alert.alert("Congratulations!", "₹50 Coupon code applied.")}
-              />
+              {token && reward ? (
+                <RewardCard
+                  reward={reward}
+                  onClaim={() => {
+                    dispatch(claimReward())
+                      .unwrap()
+                      .then(() => {
+                        Alert.alert("Success", "₹150 Cashback has been credited to your wallet!");
+                        dispatch(fetchUserProfile());
+                        dispatch(fetchRewardStatus());
+                      })
+                      .catch((err) => {
+                        Alert.alert("Error", err || "Failed to claim cashback");
+                      });
+                  }}
+                />
+              ) : null}
               <OfferStrip
                 onPressItem={(item) => {
-                  Alert.alert(item.title, item.desc);
+                  if (item.id === "membership") {
+                    navigation.navigate("GoldMembership");
+                  } else if (item.id === "referral") {
+                    navigation.navigate("Referral");
+                  } else if (item.id === "cashback") {
+                    navigation.navigate("CashbackDeals");
+                  }
                 }}
               />
             </>
@@ -381,7 +538,7 @@ const HomeScreen = ({ navigation }) => {
 
                   {/* Membership Card Banner */}
                   <MembershipCard
-                    onPress={() => Alert.alert("Gold Program", "Join Gold Membership today for free deliveries!")}
+                    onPress={() => navigation.navigate("GoldMembership")}
                   />
 
                   {/* Dynamic Category Independent Grids */}
@@ -480,6 +637,78 @@ const HomeScreen = ({ navigation }) => {
           visible={locationSheetVisible}
           onClose={() => setLocationSheetVisible(false)}
         />
+
+        {/* QR Scanner Modal */}
+        <Modal
+          visible={qrModalVisible}
+          onRequestClose={() => setQrModalVisible(false)}
+          animationType="slide"
+        >
+          <SafeAreaView style={styles.scannerContainer}>
+            {qrModalVisible && (
+              <CameraView
+                style={StyleSheet.absoluteFillObject}
+                facing="back"
+                barcodeScannerSettings={{
+                  barcodeTypes: ["qr"],
+                }}
+                onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
+              />
+            )}
+            {/* Overlay mask */}
+            <View style={styles.overlayContainer}>
+              <View style={styles.unfocusedContainer} />
+              <View style={styles.middleRow}>
+                <View style={styles.unfocusedContainer} />
+                <View style={styles.focusedContainer}>
+                  <View style={[styles.corner, styles.topLeft]} />
+                  <View style={[styles.corner, styles.topRight]} />
+                  <View style={[styles.corner, styles.bottomLeft]} />
+                  <View style={[styles.corner, styles.bottomRight]} />
+                </View>
+                <View style={styles.unfocusedContainer} />
+              </View>
+              <View style={styles.unfocusedContainer} />
+            </View>
+
+            {/* Header/Footer Controls */}
+            <View style={styles.scannerHeader}>
+              <Text style={styles.scannerTitle}>Scan QR Code</Text>
+              <Text style={styles.scannerSubtitle}>Align QR code inside the box to scan</Text>
+            </View>
+
+            <TouchableOpacity style={styles.closeScannerButton} onPress={() => setQrModalVisible(false)}>
+              <MaterialCommunityIcons name="close" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+          </SafeAreaView>
+        </Modal>
+
+        {/* Voice Search Modal */}
+        <Modal
+          visible={voiceModalVisible}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setVoiceModalVisible(false)}
+        >
+          <View style={styles.voiceModalContainer}>
+            <Animated.View style={[styles.voicePulseCircle, { transform: [{ scale: pulseAnim }] }]}>
+              <View style={styles.voicePulseCircleInner}>
+                <MaterialCommunityIcons name="microphone" size={32} color="#FFFFFF" />
+              </View>
+            </Animated.View>
+            <Text style={styles.voiceText}>{recognizedText}</Text>
+            <Text style={styles.voiceSubtext}>
+              {isListening ? "Listening for your food cravings..." : "Recognized! Redirecting..."}
+            </Text>
+            
+            <TouchableOpacity 
+              style={[styles.closeScannerButton, { top: 50, right: 20 }]} 
+              onPress={() => setVoiceModalVisible(false)}
+            >
+              <MaterialCommunityIcons name="close" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
+        </Modal>
       </SafeAreaView>
     </View>
   );
@@ -493,6 +722,7 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: "#FFFFFF",
+    paddingTop: Platform.OS === "android" ? 12 : 6,
   },
   scrollContent: {
     paddingBottom: 96,
@@ -681,6 +911,132 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 8,
     marginRight: 10,
+  },
+  scannerContainer: {
+    flex: 1,
+    backgroundColor: "#000000",
+  },
+  overlayContainer: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  unfocusedContainer: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+  },
+  middleRow: {
+    flexDirection: "row",
+    height: 250,
+  },
+  focusedContainer: {
+    width: 250,
+    position: "relative",
+    backgroundColor: "transparent",
+  },
+  corner: {
+    position: "absolute",
+    width: 20,
+    height: 20,
+    borderColor: "#FF6F61",
+  },
+  topLeft: {
+    top: 0,
+    left: 0,
+    borderTopWidth: 4,
+    borderLeftWidth: 4,
+  },
+  topRight: {
+    top: 0,
+    right: 0,
+    borderTopWidth: 4,
+    borderRightWidth: 4,
+  },
+  bottomLeft: {
+    bottom: 0,
+    left: 0,
+    borderBottomWidth: 4,
+    borderLeftWidth: 4,
+  },
+  bottomRight: {
+    bottom: 0,
+    right: 0,
+    borderBottomWidth: 4,
+    borderRightWidth: 4,
+  },
+  scannerHeader: {
+    position: "absolute",
+    top: 60,
+    left: 20,
+    right: 20,
+    alignItems: "center",
+  },
+  scannerTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+    textAlign: "center",
+  },
+  scannerSubtitle: {
+    fontSize: 12,
+    color: "rgba(255,255,255,0.7)",
+    textAlign: "center",
+    marginTop: 8,
+  },
+  closeScannerButton: {
+    position: "absolute",
+    top: 40,
+    right: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 999,
+  },
+  voiceModalContainer: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.85)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  voicePulseCircle: {
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    backgroundColor: "rgba(255, 111, 97, 0.25)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 40,
+  },
+  voicePulseCircleInner: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: "#FF6F61",
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 4,
+    shadowColor: "#FF6F61",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  voiceText: {
+    fontSize: 22,
+    color: "#FFFFFF",
+    fontWeight: "bold",
+    textAlign: "center",
+    marginHorizontal: 30,
+  },
+  voiceSubtext: {
+    fontSize: 13,
+    color: "rgba(255,255,255,0.6)",
+    marginTop: 12,
+    textAlign: "center",
   },
 });
 

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { View, StyleSheet, ScrollView, TouchableOpacity, Image, Alert } from "react-native";
+import { View, StyleSheet, ScrollView, TouchableOpacity, Image, Alert, SafeAreaView } from "react-native";
+import CustomScreenHeader from "../../components/CustomScreenHeader";
 import { Text, Divider, Portal, Dialog, RadioButton, Snackbar, ActivityIndicator } from "react-native-paper";
 import { useDispatch } from "react-redux";
 import orderService from "../../services/orderService";
@@ -80,7 +81,9 @@ const OrderDetailsScreen = ({ route, navigation }) => {
 
   return (
     <Portal.Host>
-      <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#f8f9fa" }}>
+        <CustomScreenHeader title="Order Details" navigation={navigation} />
+        <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
         {/* Status Header */}
         <View style={styles.statusHeaderCard}>
           <Text style={styles.orderNumberTitle}>Order #{order.orderNumber}</Text>
@@ -283,6 +286,7 @@ const OrderDetailsScreen = ({ route, navigation }) => {
           {snackbarMsg}
         </Snackbar>
       </ScrollView>
+      </SafeAreaView>
     </Portal.Host>
   );
 };

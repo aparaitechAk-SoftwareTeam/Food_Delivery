@@ -26,6 +26,7 @@ exports.getFoods = async (req, res) => {
     limit = 20,
   } = req.query;
 
+<<<<<<< HEAD
   if (shouldUseMockData()) {
     const { queryMockFoods, categories, foods, restaurants, offers } = getMockDataStore();
     const result = queryMockFoods(req.query);
@@ -43,6 +44,9 @@ exports.getFoods = async (req, res) => {
       pages: result.pages,
     });
   }
+=======
+  
+>>>>>>> fa7365685005be48c263c78c95718b01658f1a65
 
   try {
     const pageNum = parseInt(page);
@@ -242,40 +246,21 @@ exports.getFoods = async (req, res) => {
 };
 
 exports.getFoodById = async (req, res) => {
-  let food;
-  if (process.env.MOCK_DB === "true") {
-    const { foods } = require("../config/mockDataStore");
-    food = foods.find(f => (f.id || f._id) === req.params.id);
-    if (!food) {
-      res.status(404);
-      throw new Error("Food not found");
-    }
-  } else {
-    food = await Food.findById(req.params.id).populate(
-      "category restaurant reviews",
-    );
-    if (!food) {
-      res.status(404);
-      throw new Error("Food not found");
-    }
+  const food = await Food.findById(req.params.id).populate(
+    "category restaurant reviews",
+  );
+  if (!food) {
+    res.status(404);
+    throw new Error("Food not found");
   }
 
   // Fetch recommended foods from same category
   let recommendedFoods = [];
   try {
-    if (process.env.MOCK_DB === "true") {
-      const { foods } = require("../config/mockDataStore");
-      const catId = food.category?._id || food.category?.id || food.category;
-      recommendedFoods = foods.filter(f => 
-        (f.category?._id || f.category?.id || f.category) === catId && 
-        (f.id || f._id) !== (food.id || food._id)
-      ).slice(0, 6);
-    } else {
-      recommendedFoods = await Food.find({
-        category: food.category?._id || food.category,
-        _id: { $ne: food._id }
-      }).limit(6).populate("category restaurant");
-    }
+    recommendedFoods = await Food.find({
+      category: food.category?._id || food.category,
+      _id: { $ne: food._id }
+    }).limit(6).populate("category restaurant");
   } catch (err) {
     console.error("Error fetching recommended foods:", err);
   }
@@ -318,18 +303,7 @@ exports.getProductsByCategory = async (req, res) => {
 exports.getProductsByCuisine = async (req, res) => {
   const { cuisine } = req.params;
   
-  if (process.env.MOCK_DB === "true") {
-    const { queryMockFoods } = require("../config/mockDataStore");
-    const result = queryMockFoods(req.query);
-    const searchRegex = new RegExp(cuisine, "i");
-    const filtered = result.foods.filter(f => f.restaurant && f.restaurant.cuisine && f.restaurant.cuisine.some(c => searchRegex.test(c)));
-    return res.json({
-      foods: filtered,
-      total: filtered.length,
-      page: result.page,
-      pages: result.pages
-    });
-  }
+  
 
   try {
     const searchRegex = new RegExp(cuisine, "i");
@@ -343,11 +317,7 @@ exports.getProductsByCuisine = async (req, res) => {
 };
 
 exports.getBestsellers = async (req, res) => {
-  if (process.env.MOCK_DB === "true") {
-    const { foods } = require("../config/mockDataStore");
-    const filtered = foods.filter(f => f.isBestSeller).slice(0, 30);
-    return res.json({ foods: filtered });
-  }
+  
   try {
     const filtered = await Food.find({ isBestSeller: true }).populate("category restaurant").limit(30);
     res.json({ foods: filtered });
@@ -357,15 +327,7 @@ exports.getBestsellers = async (req, res) => {
 };
 
 exports.getNewArrivals = async (req, res) => {
-  if (process.env.MOCK_DB === "true") {
-    const { foods } = require("../config/mockDataStore");
-    const sorted = [...foods].sort((a, b) => {
-      const idA = parseInt(a.id.split("-")[1]) || 0;
-      const idB = parseInt(b.id.split("-")[1]) || 0;
-      return idB - idA;
-    }).slice(0, 30);
-    return res.json({ foods: sorted });
-  }
+  
   try {
     const filtered = await Food.find().populate("category restaurant").sort({ createdAt: -1 }).limit(30);
     res.json({ foods: filtered });
@@ -375,11 +337,7 @@ exports.getNewArrivals = async (req, res) => {
 };
 
 exports.getHealthy = async (req, res) => {
-  if (process.env.MOCK_DB === "true") {
-    const { foods } = require("../config/mockDataStore");
-    const filtered = foods.filter(f => f.isHealthy).slice(0, 30);
-    return res.json({ foods: filtered });
-  }
+  
   try {
     const filtered = await Food.find({ isHealthy: true }).populate("category restaurant").limit(30);
     res.json({ foods: filtered });
@@ -389,11 +347,7 @@ exports.getHealthy = async (req, res) => {
 };
 
 exports.getCombos = async (req, res) => {
-  if (process.env.MOCK_DB === "true") {
-    const { foods } = require("../config/mockDataStore");
-    const filtered = foods.filter(f => f.isCombo).slice(0, 30);
-    return res.json({ foods: filtered });
-  }
+  
   try {
     const filtered = await Food.find({ isCombo: true }).populate("category restaurant").limit(30);
     res.json({ foods: filtered });
@@ -408,11 +362,7 @@ exports.getTrending = async (req, res) => {
 };
 
 exports.getPopular = async (req, res) => {
-  if (process.env.MOCK_DB === "true") {
-    const { foods } = require("../config/mockDataStore");
-    const filtered = foods.filter(f => f.isPopular).slice(0, 30);
-    return res.json({ foods: filtered });
-  }
+  
   try {
     const filtered = await Food.find({ isPopular: true }).populate("category restaurant").limit(30);
     res.json({ foods: filtered });
@@ -427,18 +377,7 @@ exports.getRecommended = async (req, res) => {
 };
 
 exports.getCategorizedMenu = async (req, res) => {
-  if (process.env.MOCK_DB === "true") {
-    const { foods, categories } = require("../config/mockDataStore");
-    const result = categories.map(cat => {
-      const catFoods = foods.filter(f => f.category && (f.category.id === cat.id || f.category._id === cat._id));
-      return {
-        category: cat,
-        totalCount: catFoods.length,
-        foods: catFoods.slice(0, 4) // First 4 for grid preview
-      };
-    }).filter(group => group.totalCount > 0);
-    return res.json(result);
-  }
+  
 
   try {
     const agg = await Food.aggregate([

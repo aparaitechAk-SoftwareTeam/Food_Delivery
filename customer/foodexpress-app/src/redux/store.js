@@ -5,6 +5,7 @@ import wishlistReducer from "./slices/wishlistSlice";
 import ordersReducer from "./slices/ordersSlice";
 import foodsReducer from "./slices/foodsSlice";
 import notificationsReducer from "./slices/notificationsSlice";
+import rewardReducer from "./slices/rewardSlice";
 
 export const store = configureStore({
   reducer: {
@@ -14,6 +15,7 @@ export const store = configureStore({
     orders: ordersReducer,
     foods: foodsReducer,
     notifications: notificationsReducer,
+    rewards: rewardReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

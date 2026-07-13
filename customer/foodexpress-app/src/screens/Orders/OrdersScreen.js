@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { View, StyleSheet, FlatList, TouchableOpacity, Image } from "react-native";
+import { View, StyleSheet, FlatList, TouchableOpacity, Image, SafeAreaView } from "react-native";
 import { Text, Snackbar } from "react-native-paper";
 import { useDispatch, useSelector } from "react-redux";
+import CustomScreenHeader from "../../components/CustomScreenHeader";
 import { fetchOrders } from "../../redux/slices/ordersSlice";
 import { addToCart } from "../../redux/slices/cartSlice";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -131,7 +132,9 @@ const OrdersScreen = ({ navigation }) => {
   const dataList = activeTab === "active" ? currentOrders : history;
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#ffffff" }}>
+      <CustomScreenHeader title="My Orders" navigation={navigation} redirectToHome={true} />
+      <View style={styles.container}>
       {/* Tabs Header */}
       <View style={styles.tabsContainer}>
         <TouchableOpacity
@@ -187,7 +190,8 @@ const OrdersScreen = ({ navigation }) => {
       >
         {snackbarMsg}
       </Snackbar>
-    </View>
+      </View>
+    </SafeAreaView>
   );
 };
 

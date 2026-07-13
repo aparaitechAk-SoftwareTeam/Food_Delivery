@@ -1,10 +1,11 @@
 import React, { useEffect } from "react";
-import { View, StyleSheet, FlatList } from "react-native";
+import { View, StyleSheet, FlatList, SafeAreaView } from "react-native";
+import CustomScreenHeader from "../../components/CustomScreenHeader";
 import { Card, Text, Chip } from "react-native-paper";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchNotifications } from "../../redux/slices/notificationsSlice";
 
-const NotificationsScreen = () => {
+const NotificationsScreen = ({ navigation }) => {
   const dispatch = useDispatch();
   const { notifications, loading } = useSelector(
     (state) => state.notifications,
@@ -20,11 +21,10 @@ const NotificationsScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <Text variant="headlineMedium" style={styles.title}>
-        Notifications
-      </Text>
-      <FlatList
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#ffffff" }}>
+      <CustomScreenHeader title="Notifications" navigation={navigation} />
+      <View style={styles.container}>
+        <FlatList
         data={notifications}
         keyExtractor={(item) => item.id.toString()}
         refreshing={loading}
@@ -42,7 +42,8 @@ const NotificationsScreen = () => {
         )}
         ListEmptyComponent={<Text style={styles.empty}>No notifications</Text>}
       />
-    </View>
+      </View>
+    </SafeAreaView>
   );
 };
 

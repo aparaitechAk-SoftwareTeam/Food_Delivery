@@ -8,24 +8,12 @@ const Combo = require("../models/Combo");
 const Banner = require("../models/Banner");
 const FeaturedSection = require("../models/FeaturedSection");
 const Review = require("../models/Review");
+const CashbackReward = require("../models/CashbackReward");
+const CashbackCampaign = require("../models/CashbackCampaign");
+const MembershipPlan = require("../models/MembershipPlan");
 
 exports.getDashboardStats = async (req, res) => {
-  if (process.env.MOCK_DB === "true") {
-    const { users, restaurants, orders, offers } = require("../config/mockDataStore");
-    const totalUsers = users.length;
-    const totalRestaurants = restaurants.length;
-    const totalOrders = orders.length;
-    const revenue = orders.reduce((sum, o) => sum + (o.status === "Delivered" ? o.totalAmount : 0), 0);
-    const activeCoupons = offers.length;
-    return res.json({
-      totalUsers,
-      totalRestaurants,
-      totalOrders,
-      revenue,
-      activeCoupons,
-      avgOrderValue: totalOrders > 0 ? parseFloat((revenue / totalOrders).toFixed(2)) : 0
-    });
-  }
+  
 
   try {
     const totalUsers = await User.countDocuments();
@@ -50,10 +38,7 @@ exports.getDashboardStats = async (req, res) => {
 };
 
 exports.getUsersList = async (req, res) => {
-  if (process.env.MOCK_DB === "true") {
-    const { users } = require("../config/mockDataStore");
-    return res.json(users);
-  }
+  
   try {
     const users = await User.find().select("-password");
     res.json(users);
@@ -63,10 +48,7 @@ exports.getUsersList = async (req, res) => {
 };
 
 exports.getRestaurantsList = async (req, res) => {
-  if (process.env.MOCK_DB === "true") {
-    const { restaurants } = require("../config/mockDataStore");
-    return res.json(restaurants);
-  }
+  
   try {
     const restaurants = await Restaurant.find();
     res.json(restaurants);
@@ -76,10 +58,7 @@ exports.getRestaurantsList = async (req, res) => {
 };
 
 exports.getOrdersList = async (req, res) => {
-  if (process.env.MOCK_DB === "true") {
-    const { orders } = require("../config/mockDataStore");
-    return res.json(orders);
-  }
+  
   try {
     const orders = await Order.find().populate("user").populate("restaurant");
     res.json(orders);
@@ -89,13 +68,7 @@ exports.getOrdersList = async (req, res) => {
 };
 
 exports.getRevenueAnalytics = async (req, res) => {
-  if (process.env.MOCK_DB === "true") {
-    const { orders } = require("../config/mockDataStore");
-    const monthly = {
-      "Jan": 12500, "Feb": 15400, "Mar": 18900, "Apr": 22000, "May": 25000, "Jun": 32000
-    };
-    return res.json(monthly);
-  }
+  
   try {
     const monthlyRevenue = await Order.aggregate([
       { $match: { status: "Delivered" } },
@@ -115,10 +88,7 @@ exports.getRevenueAnalytics = async (req, res) => {
 
 // CATEGORIES CRUD
 exports.getCategories = async (req, res) => {
-  if (process.env.MOCK_DB === "true") {
-    const { categories } = require("../config/mockDataStore");
-    return res.json(categories);
-  }
+  
   try {
     const categories = await Category.find().sort({ sortOrder: 1, name: 1 });
     res.json(categories);
@@ -128,21 +98,7 @@ exports.getCategories = async (req, res) => {
 };
 
 exports.createCategory = async (req, res) => {
-  if (process.env.MOCK_DB === "true") {
-    const { categories } = require("../config/mockDataStore");
-    const newCat = {
-      _id: `c-${categories.length + 1}`,
-      id: `c-${categories.length + 1}`,
-      name: req.body.name,
-      image: req.body.image || "",
-      icon: req.body.icon || "🍽️",
-      priority: req.body.priority || 0,
-      isVisible: req.body.isVisible !== false,
-      createdAt: new Date(),
-    };
-    categories.push(newCat);
-    return res.status(201).json(newCat);
-  }
+  
   try {
     const newCat = new Category(req.body);
     await newCat.save();
@@ -154,15 +110,7 @@ exports.createCategory = async (req, res) => {
 
 exports.updateCategory = async (req, res) => {
   const { id } = req.params;
-  if (process.env.MOCK_DB === "true") {
-    const { categories } = require("../config/mockDataStore");
-    const idx = categories.findIndex(c => c._id === id || c.id === id);
-    if (idx !== -1) {
-      categories[idx] = { ...categories[idx], ...req.body };
-      return res.json(categories[idx]);
-    }
-    return res.status(404).json({ message: "Category not found" });
-  }
+  
   try {
     const updated = await Category.findByIdAndUpdate(id, req.body, { new: true });
     if (!updated) return res.status(404).json({ message: "Category not found" });
@@ -174,15 +122,7 @@ exports.updateCategory = async (req, res) => {
 
 exports.deleteCategory = async (req, res) => {
   const { id } = req.params;
-  if (process.env.MOCK_DB === "true") {
-    const { categories } = require("../config/mockDataStore");
-    const idx = categories.findIndex(c => c._id === id || c.id === id);
-    if (idx !== -1) {
-      const deleted = categories.splice(idx, 1);
-      return res.json({ message: "Category deleted", deleted });
-    }
-    return res.status(404).json({ message: "Category not found" });
-  }
+  
   try {
     const deleted = await Category.findByIdAndDelete(id);
     if (!deleted) return res.status(404).json({ message: "Category not found" });
@@ -194,10 +134,7 @@ exports.deleteCategory = async (req, res) => {
 
 // FOOD ITEMS CRUD
 exports.getFoods = async (req, res) => {
-  if (process.env.MOCK_DB === "true") {
-    const { foods } = require("../config/mockDataStore");
-    return res.json(foods);
-  }
+  
   try {
     const foods = await Food.find().populate("category restaurant").sort({ name: 1 });
     res.json(foods);
@@ -207,17 +144,7 @@ exports.getFoods = async (req, res) => {
 };
 
 exports.createFood = async (req, res) => {
-  if (process.env.MOCK_DB === "true") {
-    const { foods } = require("../config/mockDataStore");
-    const newFood = {
-      _id: `f-${foods.length + 1}`,
-      id: `f-${foods.length + 1}`,
-      ...req.body,
-      createdAt: new Date(),
-    };
-    foods.push(newFood);
-    return res.status(201).json(newFood);
-  }
+  
   try {
     const newFood = new Food(req.body);
     await newFood.save();
@@ -230,15 +157,7 @@ exports.createFood = async (req, res) => {
 
 exports.updateFood = async (req, res) => {
   const { id } = req.params;
-  if (process.env.MOCK_DB === "true") {
-    const { foods } = require("../config/mockDataStore");
-    const idx = foods.findIndex(f => f._id === id || f.id === id);
-    if (idx !== -1) {
-      foods[idx] = { ...foods[idx], ...req.body };
-      return res.json(foods[idx]);
-    }
-    return res.status(404).json({ message: "Food not found" });
-  }
+  
   try {
     const updated = await Food.findByIdAndUpdate(id, req.body, { new: true }).populate("category restaurant");
     if (!updated) return res.status(404).json({ message: "Food not found" });
@@ -250,15 +169,7 @@ exports.updateFood = async (req, res) => {
 
 exports.deleteFood = async (req, res) => {
   const { id } = req.params;
-  if (process.env.MOCK_DB === "true") {
-    const { foods } = require("../config/mockDataStore");
-    const idx = foods.findIndex(f => f._id === id || f.id === id);
-    if (idx !== -1) {
-      const deleted = foods.splice(idx, 1);
-      return res.json({ message: "Food deleted", deleted });
-    }
-    return res.status(404).json({ message: "Food not found" });
-  }
+  
   try {
     const deleted = await Food.findByIdAndDelete(id);
     if (!deleted) return res.status(404).json({ message: "Food not found" });
@@ -270,10 +181,7 @@ exports.deleteFood = async (req, res) => {
 
 // COMBOS CRUD
 exports.getCombos = async (req, res) => {
-  if (process.env.MOCK_DB === "true") {
-    const { combos } = require("../config/mockDataStore");
-    return res.json(combos);
-  }
+  
   try {
     const combosList = await Combo.find().populate("items").sort({ name: 1 });
     res.json(combosList);
@@ -283,24 +191,7 @@ exports.getCombos = async (req, res) => {
 };
 
 exports.createCombo = async (req, res) => {
-  if (process.env.MOCK_DB === "true") {
-    const { combos, foods } = require("../config/mockDataStore");
-    const itemsPopulated = (req.body.items || []).map(itemId => foods.find(f => f.id === itemId || f._id === itemId)).filter(Boolean);
-    const newCombo = {
-      _id: `combo-${combos.length + 1}`,
-      id: `combo-${combos.length + 1}`,
-      name: req.body.name,
-      description: req.body.description || "",
-      items: itemsPopulated,
-      price: req.body.price,
-      originalPrice: req.body.originalPrice || req.body.price,
-      image: req.body.image || "",
-      isActive: req.body.isActive !== false,
-      createdAt: new Date(),
-    };
-    combos.push(newCombo);
-    return res.status(201).json(newCombo);
-  }
+  
   try {
     const newCombo = new Combo(req.body);
     await newCombo.save();
@@ -313,18 +204,7 @@ exports.createCombo = async (req, res) => {
 
 exports.updateCombo = async (req, res) => {
   const { id } = req.params;
-  if (process.env.MOCK_DB === "true") {
-    const { combos, foods } = require("../config/mockDataStore");
-    const idx = combos.findIndex(c => c._id === id || c.id === id);
-    if (idx !== -1) {
-      const itemsPopulated = req.body.items 
-        ? (req.body.items || []).map(itemId => foods.find(f => f.id === itemId || f._id === itemId)).filter(Boolean)
-        : combos[idx].items;
-      combos[idx] = { ...combos[idx], ...req.body, items: itemsPopulated };
-      return res.json(combos[idx]);
-    }
-    return res.status(404).json({ message: "Combo not found" });
-  }
+  
   try {
     const updated = await Combo.findByIdAndUpdate(id, req.body, { new: true }).populate("items");
     if (!updated) return res.status(404).json({ message: "Combo not found" });
@@ -336,15 +216,7 @@ exports.updateCombo = async (req, res) => {
 
 exports.deleteCombo = async (req, res) => {
   const { id } = req.params;
-  if (process.env.MOCK_DB === "true") {
-    const { combos } = require("../config/mockDataStore");
-    const idx = combos.findIndex(c => c._id === id || c.id === id);
-    if (idx !== -1) {
-      const deleted = combos.splice(idx, 1);
-      return res.json({ message: "Combo deleted", deleted });
-    }
-    return res.status(404).json({ message: "Combo not found" });
-  }
+  
   try {
     const deleted = await Combo.findByIdAndDelete(id);
     if (!deleted) return res.status(404).json({ message: "Combo not found" });
@@ -356,10 +228,7 @@ exports.deleteCombo = async (req, res) => {
 
 // BANNERS CRUD
 exports.getBanners = async (req, res) => {
-  if (process.env.MOCK_DB === "true") {
-    const { banners } = require("../config/mockDataStore");
-    return res.json(banners);
-  }
+  
   try {
     const bannersList = await Banner.find().sort({ createdAt: -1 });
     res.json(bannersList);
@@ -369,21 +238,7 @@ exports.getBanners = async (req, res) => {
 };
 
 exports.createBanner = async (req, res) => {
-  if (process.env.MOCK_DB === "true") {
-    const { banners } = require("../config/mockDataStore");
-    const newBanner = {
-      _id: `b-${banners.length + 1}`,
-      id: `b-${banners.length + 1}`,
-      title: req.body.title,
-      description: req.body.description || "",
-      image: req.body.image,
-      cta: req.body.cta || "",
-      isActive: req.body.isActive !== false,
-      createdAt: new Date(),
-    };
-    banners.push(newBanner);
-    return res.status(201).json(newBanner);
-  }
+  
   try {
     const newBanner = new Banner(req.body);
     await newBanner.save();
@@ -395,15 +250,7 @@ exports.createBanner = async (req, res) => {
 
 exports.updateBanner = async (req, res) => {
   const { id } = req.params;
-  if (process.env.MOCK_DB === "true") {
-    const { banners } = require("../config/mockDataStore");
-    const idx = banners.findIndex(b => b._id === id || b.id === id);
-    if (idx !== -1) {
-      banners[idx] = { ...banners[idx], ...req.body };
-      return res.json(banners[idx]);
-    }
-    return res.status(404).json({ message: "Banner not found" });
-  }
+  
   try {
     const updated = await Banner.findByIdAndUpdate(id, req.body, { new: true });
     if (!updated) return res.status(404).json({ message: "Banner not found" });
@@ -415,15 +262,7 @@ exports.updateBanner = async (req, res) => {
 
 exports.deleteBanner = async (req, res) => {
   const { id } = req.params;
-  if (process.env.MOCK_DB === "true") {
-    const { banners } = require("../config/mockDataStore");
-    const idx = banners.findIndex(b => b._id === id || b.id === id);
-    if (idx !== -1) {
-      const deleted = banners.splice(idx, 1);
-      return res.json({ message: "Banner deleted", deleted });
-    }
-    return res.status(404).json({ message: "Banner not found" });
-  }
+  
   try {
     const deleted = await Banner.findByIdAndDelete(id);
     if (!deleted) return res.status(404).json({ message: "Banner not found" });
@@ -435,10 +274,7 @@ exports.deleteBanner = async (req, res) => {
 
 // FEATURED SECTIONS CRUD
 exports.getSections = async (req, res) => {
-  if (process.env.MOCK_DB === "true") {
-    const { sections } = require("../config/mockDataStore");
-    return res.json(sections);
-  }
+  
   try {
     const list = await FeaturedSection.find().populate("items").sort({ displayOrder: 1 });
     res.json(list);
@@ -448,24 +284,7 @@ exports.getSections = async (req, res) => {
 };
 
 exports.createSection = async (req, res) => {
-  if (process.env.MOCK_DB === "true") {
-    const { sections, foods } = require("../config/mockDataStore");
-    const itemsPopulated = (req.body.items || []).map(itemId => foods.find(f => f.id === itemId || f._id === itemId)).filter(Boolean);
-    const newSec = {
-      _id: `sec-${sections.length + 1}`,
-      id: `sec-${sections.length + 1}`,
-      title: req.body.title,
-      subtitle: req.body.subtitle || "",
-      banner: req.body.banner || "",
-      displayOrder: req.body.displayOrder || 0,
-      maxItems: req.body.maxItems || 10,
-      isVisible: req.body.isVisible !== false,
-      items: itemsPopulated,
-      createdAt: new Date(),
-    };
-    sections.push(newSec);
-    return res.status(201).json(newSec);
-  }
+  
   try {
     const newSec = new FeaturedSection(req.body);
     await newSec.save();
@@ -478,18 +297,7 @@ exports.createSection = async (req, res) => {
 
 exports.updateSection = async (req, res) => {
   const { id } = req.params;
-  if (process.env.MOCK_DB === "true") {
-    const { sections, foods } = require("../config/mockDataStore");
-    const idx = sections.findIndex(s => s._id === id || s.id === id);
-    if (idx !== -1) {
-      const itemsPopulated = req.body.items 
-        ? (req.body.items || []).map(itemId => foods.find(f => f.id === itemId || f._id === itemId)).filter(Boolean)
-        : sections[idx].items;
-      sections[idx] = { ...sections[idx], ...req.body, items: itemsPopulated };
-      return res.json(sections[idx]);
-    }
-    return res.status(404).json({ message: "Section not found" });
-  }
+  
   try {
     const updated = await FeaturedSection.findByIdAndUpdate(id, req.body, { new: true }).populate("items");
     if (!updated) return res.status(404).json({ message: "Section not found" });
@@ -501,15 +309,7 @@ exports.updateSection = async (req, res) => {
 
 exports.deleteSection = async (req, res) => {
   const { id } = req.params;
-  if (process.env.MOCK_DB === "true") {
-    const { sections } = require("../config/mockDataStore");
-    const idx = sections.findIndex(s => s._id === id || s.id === id);
-    if (idx !== -1) {
-      const deleted = sections.splice(idx, 1);
-      return res.json({ message: "Section deleted", deleted });
-    }
-    return res.status(404).json({ message: "Section not found" });
-  }
+  
   try {
     const deleted = await FeaturedSection.findByIdAndDelete(id);
     if (!deleted) return res.status(404).json({ message: "Section not found" });
@@ -522,22 +322,7 @@ exports.deleteSection = async (req, res) => {
 // BULK ACTIONS
 exports.bulkUpload = async (req, res) => {
   const { type, items } = req.body;
-  if (process.env.MOCK_DB === "true") {
-    const { foods, categories } = require("../config/mockDataStore");
-    const list = type === "categories" ? categories : foods;
-    const prefix = type === "categories" ? "c-" : "f-";
-    const uploaded = items.map((item, idx) => {
-      const created = {
-        _id: `${prefix}bulk-${list.length + idx + 1}`,
-        id: `${prefix}bulk-${list.length + idx + 1}`,
-        ...item,
-        createdAt: new Date()
-      };
-      list.push(created);
-      return created;
-    });
-    return res.status(201).json({ message: `Successfully imported ${uploaded.length} items.`, count: uploaded.length });
-  }
+  
   try {
     let result;
     if (type === "categories") {
@@ -553,22 +338,7 @@ exports.bulkUpload = async (req, res) => {
 
 exports.bulkUpdate = async (req, res) => {
   const { ids, action, value } = req.body;
-  if (process.env.MOCK_DB === "true") {
-    const { foods } = require("../config/mockDataStore");
-    let count = 0;
-    ids.forEach(id => {
-      const idx = foods.findIndex(f => f.id === id || f._id === id);
-      if (idx !== -1) {
-        count++;
-        if (action === "disable") foods[idx].isAvailable = false;
-        else if (action === "enable") foods[idx].isAvailable = true;
-        else if (action === "delete") foods.splice(idx, 1);
-        else if (action === "change_price") foods[idx].price = Number(value);
-        else if (action === "change_category") foods[idx].category = value;
-      }
-    });
-    return res.json({ message: `Successfully updated ${count} records.`, count });
-  }
+  
   try {
     let updateQuery = {};
     if (action === "disable") updateQuery = { isAvailable: false };
@@ -589,14 +359,7 @@ exports.bulkUpdate = async (req, res) => {
 };
 
 exports.updateRestaurantDetails = async (req, res) => {
-  if (process.env.MOCK_DB === "true") {
-    const { restaurants } = require("../config/mockDataStore");
-    if (restaurants.length > 0) {
-      restaurants[0] = { ...restaurants[0], ...req.body };
-      return res.json(restaurants[0]);
-    }
-    return res.status(404).json({ message: "Restaurant not found" });
-  }
+  
 
   try {
     const restaurant = await Restaurant.findOne();
@@ -620,37 +383,7 @@ exports.updateOrderStatus = async (req, res) => {
   const { id } = req.params;
   const { status, paymentStatus } = req.body;
 
-  if (process.env.MOCK_DB === "true") {
-    const { orders } = require("../config/mockDataStore");
-    const idx = orders.findIndex(o => o._id === id || o.id === id);
-    if (idx !== -1) {
-      const targetOrder = orders[idx];
-      
-      if (status && ["Delivered", "Completed", "Cancelled"].includes(targetOrder.status) && !["Delivered", "Completed", "Cancelled"].includes(status)) {
-        return res.status(400).json({ message: "Cannot revert a finalized order (Delivered/Completed/Cancelled) to an active state." });
-      }
-
-      const targetStatus = status !== undefined ? status : targetOrder.status;
-      const targetPaymentStatus = paymentStatus !== undefined ? paymentStatus : targetOrder.paymentStatus;
-      
-      if (targetStatus === "Completed" && targetPaymentStatus !== "Paid") {
-        return res.status(400).json({ message: "Order cannot be completed until payment is confirmed." });
-      }
-      
-      if (status) {
-        targetOrder.status = status;
-        targetOrder.orderStatus = status;
-      }
-      if (paymentStatus) targetOrder.paymentStatus = paymentStatus;
-      if (status === "Completed") {
-        targetOrder.completedAt = new Date();
-        targetOrder.deliveryStatus = "Completed";
-        targetOrder.riderStatus = "Completed";
-      }
-      return res.json(targetOrder);
-    }
-    return res.status(404).json({ message: "Order not found" });
-  }
+  
 
   try {
     const order = await Order.findById(id);
@@ -686,7 +419,18 @@ exports.updateOrderStatus = async (req, res) => {
 
     await order.save();
     
-    const updated = await Order.findById(id).populate("user restaurant");
+    if (status === "Delivered") {
+      const cashbackService = require("../services/cashbackService");
+      await cashbackService.handleOrderDelivered(order);
+    }
+
+    const { emitOrderUpdate } = require("../config/socket");
+    let eventName = "order-status-updated";
+    if (status === "Cancelled") eventName = "delivery-cancelled";
+    else if (status === "Delivered") eventName = "delivery-completed";
+    await emitOrderUpdate(id, eventName);
+    
+    const updated = await Order.findById(id).populate("user restaurant deliveryBoy");
     res.json(updated);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -695,15 +439,7 @@ exports.updateOrderStatus = async (req, res) => {
 
 exports.toggleBlockUser = async (req, res) => {
   const { id } = req.params;
-  if (process.env.MOCK_DB === "true") {
-    const { users } = require("../config/mockDataStore");
-    const idx = users.findIndex(u => u._id === id || u.id === id);
-    if (idx !== -1) {
-      users[idx].isBlocked = !users[idx].isBlocked;
-      return res.json(users[idx]);
-    }
-    return res.status(404).json({ message: "User not found" });
-  }
+  
   try {
     const user = await User.findById(id);
     if (!user) return res.status(404).json({ message: "User not found" });
@@ -716,10 +452,7 @@ exports.toggleBlockUser = async (req, res) => {
 };
 
 exports.getReviews = async (req, res) => {
-  if (process.env.MOCK_DB === "true") {
-    const { reviews } = require("../config/mockDataStore");
-    return res.json(reviews || []);
-  }
+  
   try {
     const reviews = await Review.find().populate("user", "name email").populate("food", "name").populate("restaurant", "name");
     res.json(reviews);
@@ -731,15 +464,7 @@ exports.getReviews = async (req, res) => {
 exports.updateReviewStatus = async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
-  if (process.env.MOCK_DB === "true") {
-    const { reviews } = require("../config/mockDataStore");
-    const idx = reviews.findIndex(r => r._id === id || r.id === id);
-    if (idx !== -1) {
-      reviews[idx].status = status;
-      return res.json(reviews[idx]);
-    }
-    return res.status(404).json({ message: "Review not found" });
-  }
+  
   try {
     const updated = await Review.findByIdAndUpdate(id, { status }, { new: true }).populate("user", "name email").populate("food", "name");
     if (!updated) return res.status(404).json({ message: "Review not found" });
@@ -751,15 +476,7 @@ exports.updateReviewStatus = async (req, res) => {
 
 exports.deleteReview = async (req, res) => {
   const { id } = req.params;
-  if (process.env.MOCK_DB === "true") {
-    const { reviews } = require("../config/mockDataStore");
-    const idx = reviews.findIndex(r => r._id === id || r.id === id);
-    if (idx !== -1) {
-      const deleted = reviews.splice(idx, 1);
-      return res.json({ message: "Review deleted", deleted });
-    }
-    return res.status(404).json({ message: "Review not found" });
-  }
+  
   try {
     const deleted = await Review.findByIdAndDelete(id);
     if (!deleted) return res.status(404).json({ message: "Review not found" });
@@ -772,11 +489,7 @@ exports.deleteReview = async (req, res) => {
 // ── Delivery Boy Management ───────────────────────────────────────────────────
 
 exports.getDeliveryBoys = async (req, res) => {
-  if (process.env.MOCK_DB === "true") {
-    const { users } = require("../config/mockDataStore");
-    const riders = users.filter(u => u.role === "delivery");
-    return res.json(riders);
-  }
+  
   try {
     const riders = await User.find({ role: "delivery" }).select("-password");
     res.json(riders);
@@ -867,27 +580,7 @@ exports.assignOrderToRider = async (req, res) => {
   const { riderId } = req.body;
   const orderId = req.params.id;
 
-  if (process.env.MOCK_DB === "true") {
-    const { orders, users } = require("../config/mockDataStore");
-    const idx = orders.findIndex(o => o._id === orderId || o.id === orderId);
-    if (idx === -1) {
-      return res.status(404).json({ message: "Order not found" });
-    }
-    const rider = users.find(u => (u._id === riderId || u.id === riderId) && u.role === "delivery");
-    if (!rider) {
-      return res.status(400).json({ message: "Invalid delivery boy selected" });
-    }
-    
-    const targetOrder = orders[idx];
-    targetOrder.deliveryBoy = rider;
-    targetOrder.deliveryStatus = "Assigned";
-    targetOrder.riderStatus = "Assigned";
-    if (targetOrder.status === "Pending" || targetOrder.status === "Confirmed") {
-      targetOrder.status = "Confirmed";
-      targetOrder.orderStatus = "Confirmed";
-    }
-    return res.json({ message: "Order assigned to delivery rider", order: targetOrder });
-  }
+  
 
   try {
     const order = await Order.findById(orderId);
@@ -908,8 +601,143 @@ exports.assignOrderToRider = async (req, res) => {
     }
 
     await order.save();
-    res.json({ message: "Order assigned to delivery rider", order });
+    
+    const { emitOrderUpdate } = require("../config/socket");
+    await emitOrderUpdate(orderId, "delivery-assigned");
+
+    const populatedOrder = await Order.findById(orderId).populate("user restaurant deliveryBoy");
+    res.json({ message: "Order assigned to delivery rider", order: populatedOrder });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
+exports.getRewardsList = async (req, res) => {
+  try {
+    const { status, search } = req.query;
+    const now = new Date();
+
+    // Auto-expire rewards in the database whose expiry dates have passed
+    await CashbackReward.updateMany(
+      {
+        status: { $in: ["Pending", "Eligible"] },
+        expiryDate: { $lt: now },
+      },
+      {
+        $set: { status: "Expired" },
+      }
+    );
+
+    let query = {};
+    if (status && status !== "All") {
+      query.status = status;
+    }
+
+    let rewards = await CashbackReward.find(query)
+      .populate("userId", "name email createdAt walletBalance")
+      .sort({ createdAt: -1 });
+
+    if (search) {
+      const searchLower = search.toLowerCase();
+      rewards = rewards.filter((reward) => {
+        const userName = reward.userId?.name?.toLowerCase() || "";
+        const userEmail = reward.userId?.email?.toLowerCase() || "";
+        return userName.includes(searchLower) || userEmail.includes(searchLower);
+      });
+    }
+
+    res.json(rewards);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch rewards: " + error.message });
+  }
+};
+
+// --- Cashback Campaign CRUD ---
+exports.getCampaigns = async (req, res) => {
+  try {
+    const list = await CashbackCampaign.find().sort({ createdAt: -1 });
+    res.json(list);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch campaigns: " + error.message });
+  }
+};
+
+exports.createCampaign = async (req, res) => {
+  try {
+    const { title, category, cashbackPercentage, cashbackCap, expiryDate, isActive } = req.body;
+    if (!title || !category || !cashbackPercentage || !cashbackCap || !expiryDate) {
+      return res.status(400).json({ message: "All campaign fields are required" });
+    }
+
+    const campaign = await CashbackCampaign.create({
+      title,
+      category,
+      cashbackPercentage,
+      cashbackCap,
+      expiryDate,
+      isActive: isActive !== undefined ? isActive : true,
+    });
+
+    res.status(201).json(campaign);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to create campaign: " + error.message });
+  }
+};
+
+exports.deleteCampaign = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deleted = await CashbackCampaign.findByIdAndDelete(id);
+    if (!deleted) {
+      return res.status(404).json({ message: "Campaign not found" });
+    }
+    res.json({ message: "Campaign deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to delete campaign: " + error.message });
+  }
+};
+
+// --- Membership Plan CRUD ---
+exports.getPlansList = async (req, res) => {
+  try {
+    const list = await MembershipPlan.find().sort({ price: 1 });
+    res.json(list);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch membership plans: " + error.message });
+  }
+};
+
+exports.createPlan = async (req, res) => {
+  try {
+    const { name, price, durationDays, description } = req.body;
+    if (!name || !price || !durationDays || !description) {
+      return res.status(400).json({ message: "All membership plan fields are required" });
+    }
+
+    const plan = await MembershipPlan.create({
+      name,
+      price,
+      durationDays,
+      description,
+    });
+
+    res.status(201).json(plan);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to create membership plan: " + error.message });
+  }
+};
+
+exports.deletePlan = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deleted = await MembershipPlan.findByIdAndDelete(id);
+    if (!deleted) {
+      return res.status(404).json({ message: "Membership plan not found" });
+    }
+    res.json({ message: "Membership plan deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to delete membership plan: " + error.message });
+  }
+};
+
+

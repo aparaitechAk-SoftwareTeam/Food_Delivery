@@ -33,6 +33,8 @@ const restaurantSchema = new mongoose.Schema({
   },
   googleMapsLocation: { type: String, default: "" },
   deliveryRadius: { type: Number, default: 5.0 },
+  latitude: { type: Number, default: 18.1560 }, // Default Baramati coordinates
+  longitude: { type: Number, default: 74.5775 },
   paymentMethods: [
     {
       name: { type: String },
@@ -42,5 +44,7 @@ const restaurantSchema = new mongoose.Schema({
   ],
   createdAt: { type: Date, default: Date.now },
 });
+
+restaurantSchema.index({ name: 1 });
 
 module.exports = mongoose.model("Restaurant", restaurantSchema);

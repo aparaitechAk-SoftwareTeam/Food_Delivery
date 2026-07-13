@@ -7,6 +7,8 @@ import {
   Modal,
   TextInput,
   Alert,
+  SafeAreaView,
+  Linking,
 } from "react-native";
 import {
   Text,
@@ -18,6 +20,7 @@ import {
   Switch,
 } from "react-native-paper";
 import { useDispatch, useSelector } from "react-redux";
+import CustomScreenHeader from "../../components/CustomScreenHeader";
 import {
   logout,
   fetchUserProfile,
@@ -158,8 +161,46 @@ const ProfileScreen = ({ navigation }) => {
     });
   };
 
+  const openWhatsAppSupport = async () => {
+    const cleanPhone = "919158852129";
+    const supportMessage = `Hello FoodExpress Support,
+
+I need assistance regarding the FoodExpress app.
+
+Name: ${userProfile?.name || ""}
+Registered Mobile: ${userProfile?.phone ? `+91 ${userProfile.phone}` : ""}
+Order ID (if applicable): 
+
+My Issue: `;
+
+    const encodedText = encodeURIComponent(supportMessage);
+    const nativeUrl = `whatsapp://send?phone=${cleanPhone}&text=${encodedText}`;
+    const webUrl = `https://wa.me/${cleanPhone}?text=${encodedText}`;
+
+    try {
+      const canOpen = await Linking.canOpenURL(nativeUrl);
+      if (canOpen) {
+        await Linking.openURL(nativeUrl);
+      } else {
+        await Linking.openURL(webUrl);
+      }
+    } catch (err) {
+      console.warn("Failed to open WhatsApp native app, trying web URL:", err.message);
+      try {
+        await Linking.openURL(webUrl);
+      } catch (webErr) {
+        Alert.alert(
+          "Support Contact",
+          `Unable to open WhatsApp. Please contact us at +91 9158852129.`
+        );
+      }
+    }
+  };
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#ffffff" }}>
+      <CustomScreenHeader title="My Account" navigation={navigation} redirectToHome={true} />
+      <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       {/* User Header Profile */}
       <View style={styles.profileHeader}>
         <Avatar.Image
@@ -170,7 +211,12 @@ const ProfileScreen = ({ navigation }) => {
           style={styles.avatar}
         />
         <View style={styles.profileInfo}>
-          <Text style={styles.profileName}>{userProfile?.name || "Foodie Guest"}</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap" }}>
+            <Text style={styles.profileName}>{userProfile?.name || "Foodie Guest"}</Text>
+            {userProfile?.isGoldMember && userProfile?.goldExpiry && new Date(userProfile.goldExpiry) > new Date() && (
+              <MaterialCommunityIcons name="crown" size={18} color="#D4AF37" style={{ marginLeft: 6 }} />
+            )}
+          </View>
           <Text style={styles.profileEmail}>{userProfile?.email || "guest@foodexpress.com"}</Text>
           <Text style={styles.profilePhone}>
             {userProfile?.phone ? `+91 ${userProfile.phone}` : "Add Mobile Number"}
@@ -308,6 +354,7 @@ const ProfileScreen = ({ navigation }) => {
       <Card style={styles.menuCard}>
         <TouchableOpacity
           style={styles.menuItem}
+<<<<<<< HEAD
           onPress={() => openWhatsAppSupport(userProfile)}
         >
           <View style={styles.menuItemLeft}>
@@ -315,6 +362,16 @@ const ProfileScreen = ({ navigation }) => {
             <View style={{ marginLeft: 12 }}>
               <Text style={styles.menuItemTitleText}>Help & Support</Text>
               <Text style={styles.menuItemSubtitle}>Chat with our support team on WhatsApp</Text>
+=======
+          onPress={openWhatsAppSupport}
+          activeOpacity={0.7}
+        >
+          <View style={styles.menuItemLeft}>
+            <MaterialCommunityIcons name="headset" size={22} color="#ff6b00" />
+            <View style={{ marginLeft: 12, flexShrink: 1 }}>
+              <Text style={{ fontSize: 14, fontWeight: "600", color: "#333" }}>Help & Support</Text>
+              <Text style={{ fontSize: 11, color: "#666", marginTop: 2 }}>Chat with our support team on WhatsApp</Text>
+>>>>>>> fa7365685005be48c263c78c95718b01658f1a65
             </View>
           </View>
           <MaterialCommunityIcons name="chevron-right" size={20} color="#bbb" />
@@ -514,6 +571,7 @@ const ProfileScreen = ({ navigation }) => {
         </View>
       </Modal>
     </ScrollView>
+    </SafeAreaView>
   );
 };
 
