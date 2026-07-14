@@ -256,6 +256,19 @@ My Issue: `;
           </View>
           <MaterialCommunityIcons name="chevron-right" size={20} color="#bbb" />
         </TouchableOpacity>
+
+        <Divider style={styles.menuDivider} />
+
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => navigation.navigate("Coupons")}
+        >
+          <View style={styles.menuItemLeft}>
+            <MaterialCommunityIcons name="ticket-percent-outline" size={22} color="#ff6b00" />
+            <Text style={styles.menuItemText}>My Coupons & Cashback Wallet</Text>
+          </View>
+          <MaterialCommunityIcons name="chevron-right" size={20} color="#bbb" />
+        </TouchableOpacity>
       </Card>
 
       {/* Saved Addresses Section */}
@@ -354,7 +367,6 @@ My Issue: `;
       <Card style={styles.menuCard}>
         <TouchableOpacity
           style={styles.menuItem}
-<<<<<<< HEAD
           onPress={() => openWhatsAppSupport(userProfile)}
         >
           <View style={styles.menuItemLeft}>
@@ -362,16 +374,6 @@ My Issue: `;
             <View style={{ marginLeft: 12 }}>
               <Text style={styles.menuItemTitleText}>Help & Support</Text>
               <Text style={styles.menuItemSubtitle}>Chat with our support team on WhatsApp</Text>
-=======
-          onPress={openWhatsAppSupport}
-          activeOpacity={0.7}
-        >
-          <View style={styles.menuItemLeft}>
-            <MaterialCommunityIcons name="headset" size={22} color="#ff6b00" />
-            <View style={{ marginLeft: 12, flexShrink: 1 }}>
-              <Text style={{ fontSize: 14, fontWeight: "600", color: "#333" }}>Help & Support</Text>
-              <Text style={{ fontSize: 11, color: "#666", marginTop: 2 }}>Chat with our support team on WhatsApp</Text>
->>>>>>> fa7365685005be48c263c78c95718b01658f1a65
             </View>
           </View>
           <MaterialCommunityIcons name="chevron-right" size={20} color="#bbb" />

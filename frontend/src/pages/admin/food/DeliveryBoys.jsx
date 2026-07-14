@@ -6,6 +6,8 @@ import { API_BASE_URL } from '../../../config';
 
 const DeliveryBoys = () => {
   const [riders, setRiders] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [selectedRider, setSelectedRider] = useState(null);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingRider, setEditingRider] = useState(null);
@@ -26,13 +28,16 @@ const DeliveryBoys = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('admin_token');
-      const response = await fetch(`${API_BASE_URL}/admin/delivery-boys`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      const data = await response.json();
-      setRiders(Array.isArray(data) ? data : []);
+      const [ridersRes, ordersRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/admin/delivery-boys`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }).then(res => res.json()).catch(() => []),
+        fetch(`${API_BASE_URL}/admin/orders`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }).then(res => res.json()).catch(() => [])
+      ]);
+      setRiders(Array.isArray(ridersRes) ? ridersRes : []);
+      setOrders(Array.isArray(ordersRes) ? ordersRes : []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -166,114 +171,200 @@ const DeliveryBoys = () => {
       <div className="flex-1 pl-[240px] flex flex-col min-w-0">
         <TopHeader />
         
-        <main className="flex-1 p-8 flex flex-col gap-6">
-          {/* Header Actions */}
-          <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-gray-200/80 shadow-sm">
-            <span className="text-xs font-bold text-gray-500">Manage Delivery Personnel</span>
-            <div className="flex items-center gap-2">
-              <button 
-                onClick={openAddModal}
-                className="px-4 py-2 bg-indigo-650 hover:bg-indigo-600 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Add Delivery Boy</span>
-              </button>
-              <button 
-                onClick={loadRiders}
-                className="p-2 border border-gray-200 rounded-xl bg-white hover:bg-slate-50 transition-colors"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 text-gray-500 ${loading ? 'animate-spin' : ''}`} />
-              </button>
+        <main className="flex-1 p-8 flex gap-8">
+          {/* Riders Directory List */}
+          <div className="flex-1 flex flex-col gap-6 min-w-0">
+            {/* Header Actions */}
+            <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-gray-200/80 shadow-sm">
+              <span className="text-xs font-bold text-gray-500">Manage Delivery Personnel</span>
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={openAddModal}
+                  className="px-4 py-2 bg-indigo-650 hover:bg-indigo-600 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Add Delivery Boy</span>
+                </button>
+                <button 
+                  onClick={loadRiders}
+                  className="p-2 border border-gray-200 rounded-xl bg-white hover:bg-slate-50 transition-colors"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 text-gray-500 ${loading ? 'animate-spin' : ''}`} />
+                </button>
+              </div>
+            </div>
+
+            {/* Grid Layout */}
+            <div className={`grid grid-cols-1 ${selectedRider ? 'lg:grid-cols-2' : 'md:grid-cols-3'} gap-6`}>
+              {loading ? (
+                Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm animate-pulse space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-slate-200 rounded-full" />
+                      <div className="space-y-1.5 flex-1">
+                        <div className="h-3 bg-slate-200 rounded w-24" />
+                        <div className="h-2 bg-slate-200 rounded w-16" />
+                      </div>
+                    </div>
+                    <div className="h-2 bg-slate-200 rounded w-full" />
+                    <div className="h-2 bg-slate-200 rounded w-3/4" />
+                    <div className="h-8 bg-slate-200 rounded-xl w-full mt-4" />
+                  </div>
+                ))
+              ) : riders.length === 0 ? (
+                <div className="col-span-full bg-white border border-gray-200 rounded-2xl p-10 text-center text-gray-400 font-semibold shadow-sm">
+                  No delivery riders registered on the system.
+                </div>
+              ) : (
+                riders.map(rider => (
+                  <div key={rider._id} className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm flex flex-col justify-between hover:shadow-md transition-all duration-200 relative overflow-hidden">
+                    
+                    {/* Status Indicator Badge */}
+                    <span className={`absolute top-4 right-4 px-2 py-0.5 rounded-full text-[8px] font-extrabold uppercase border ${rider.isBlocked ? 'bg-rose-50 border-rose-100 text-rose-600' : rider.isOnline ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 'bg-slate-50 border-slate-200 text-slate-500'}`}>
+                      {rider.isBlocked ? 'Blocked' : rider.isOnline ? 'Online' : 'Offline'}
+                    </span>
+
+                    <div className="flex items-start gap-3.5 mb-4">
+                      <img 
+                        src={rider.profilePhoto || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80"} 
+                        alt={rider.name}
+                        className="w-12 h-12 rounded-2xl bg-slate-100 object-cover"
+                      />
+                      <div>
+                        <h3 className="text-xs font-bold text-slate-800">{rider.name}</h3>
+                        <p className="text-[10px] text-gray-400 font-medium mt-0.5">{rider.email}</p>
+                        <div className="flex items-center gap-1 mt-1 text-[10px] font-semibold text-slate-500">
+                          <Phone className="w-3 h-3 text-slate-400" />
+                          <span>{rider.phone}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Vehicle Details */}
+                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 text-[10px] space-y-1 text-slate-600 font-semibold mb-4">
+                      <div className="flex items-center gap-1 text-slate-700">
+                        <Truck className="w-3.5 h-3.5 text-indigo-500" />
+                        <span className="font-bold text-slate-800">Vehicle: {rider.vehicleType}</span>
+                      </div>
+                      <div>Number: <span className="text-slate-800">{rider.vehicleNumber || 'N/A'}</span></div>
+                      <div>License: <span className="text-slate-800">{rider.licenseNumber || 'N/A'}</span></div>
+                      {rider.isOnline && rider.location?.latitude && (
+                        <div className="text-emerald-600 text-[9px] font-bold block pt-1 border-t border-slate-200 mt-1">
+                          GPS Active: {rider.location.latitude.toFixed(4)}, {rider.location.longitude.toFixed(4)}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Action buttons */}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setSelectedRider(rider)}
+                        className="p-2 border border-gray-200 hover:bg-slate-50 text-gray-450 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl flex items-center justify-center transition-colors cursor-pointer"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => openEditModal(rider)}
+                        className="flex-1 py-2 border border-gray-200 hover:bg-slate-50 text-[10px] font-bold text-gray-650 rounded-xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                      >
+                        <Edit2 className="w-3 h-3" />
+                        <span>Edit</span>
+                      </button>
+                      <button
+                        onClick={() => handleToggleBlock(rider)}
+                        className={`px-3 py-2 border rounded-xl flex items-center justify-center transition-colors cursor-pointer ${rider.isBlocked ? 'bg-emerald-50 border-emerald-100 text-emerald-600 hover:bg-emerald-100' : 'bg-rose-50 border-rose-100 text-rose-600 hover:bg-rose-100'}`}
+                      >
+                        <Ban className="w-3 h-3" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(rider._id)}
+                        className="px-3 py-2 border border-gray-200 hover:border-rose-250 hover:bg-rose-50 text-gray-400 hover:text-rose-600 rounded-xl flex items-center justify-center transition-colors cursor-pointer"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 
-          {/* Grid Layout */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {loading ? (
-              Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm animate-pulse space-y-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-slate-200 rounded-full" />
-                    <div className="space-y-1.5 flex-1">
-                      <div className="h-3 bg-slate-200 rounded w-24" />
-                      <div className="h-2 bg-slate-200 rounded w-16" />
-                    </div>
-                  </div>
-                  <div className="h-2 bg-slate-200 rounded w-full" />
-                  <div className="h-2 bg-slate-200 rounded w-3/4" />
-                  <div className="h-8 bg-slate-200 rounded-xl w-full mt-4" />
-                </div>
-              ))
-            ) : riders.length === 0 ? (
-              <div className="col-span-full bg-white border border-gray-200 rounded-2xl p-10 text-center text-gray-400 font-semibold shadow-sm">
-                No delivery riders registered on the system.
+          {/* Details Sidebar */}
+          {selectedRider && (
+            <div className="w-[320px] bg-white rounded-2xl border border-gray-200 shadow-sm p-6 flex flex-col shrink-0 self-start max-h-[calc(100vh-120px)] overflow-y-auto">
+              <div className="flex justify-between items-center border-b border-gray-100 pb-3 mb-4">
+                <h3 className="text-sm font-bold text-gray-900">Rider Profile</h3>
+                <button 
+                  onClick={() => setSelectedRider(null)}
+                  className="p-1 border border-gray-200 hover:bg-slate-50 text-gray-450 hover:text-gray-700 rounded-lg transition-colors"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
               </div>
-            ) : (
-              riders.map(rider => (
-                <div key={rider._id} className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm flex flex-col justify-between hover:shadow-md transition-all duration-200 relative overflow-hidden">
-                  
-                  {/* Status Indicator Badge */}
-                  <span className={`absolute top-4 right-4 px-2 py-0.5 rounded-full text-[8px] font-extrabold uppercase border ${rider.isBlocked ? 'bg-rose-50 border-rose-100 text-rose-600' : rider.isOnline ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 'bg-slate-50 border-slate-200 text-slate-500'}`}>
-                    {rider.isBlocked ? 'Blocked' : rider.isOnline ? 'Online' : 'Offline'}
-                  </span>
 
-                  <div className="flex items-start gap-3.5 mb-4">
-                    <img 
-                      src={rider.profilePhoto || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80"} 
-                      alt={rider.name}
-                      className="w-12 h-12 rounded-2xl bg-slate-100 object-cover"
-                    />
-                    <div>
-                      <h3 className="text-xs font-bold text-slate-800">{rider.name}</h3>
-                      <p className="text-[10px] text-gray-400 font-medium mt-0.5">{rider.email}</p>
-                      <div className="flex items-center gap-1 mt-1 text-[10px] font-semibold text-slate-500">
-                        <Phone className="w-3 h-3 text-slate-400" />
-                        <span>{rider.phone}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Vehicle Details */}
-                  <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 text-[10px] space-y-1 text-slate-600 font-semibold mb-4">
-                    <div className="flex items-center gap-1 text-slate-700">
-                      <Truck className="w-3.5 h-3.5 text-indigo-500" />
-                      <span className="font-bold text-slate-800">Vehicle: {rider.vehicleType}</span>
-                    </div>
-                    <div>Number: <span className="text-slate-800">{rider.vehicleNumber || 'N/A'}</span></div>
-                    <div>License: <span className="text-slate-800">{rider.licenseNumber || 'N/A'}</span></div>
-                    {rider.isOnline && rider.location?.latitude && (
-                      <div className="text-emerald-600 text-[9px] font-bold block pt-1 border-t border-slate-200 mt-1">
-                        GPS Active: {rider.location.latitude.toFixed(4)}, {rider.location.longitude.toFixed(4)}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Action buttons */}
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => openEditModal(rider)}
-                      className="flex-1 py-2 border border-gray-200 hover:bg-slate-50 text-[10px] font-bold text-gray-650 rounded-xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                    >
-                      <Edit2 className="w-3 h-3" />
-                      <span>Edit</span>
-                    </button>
-                    <button
-                      onClick={() => handleToggleBlock(rider)}
-                      className={`px-3 py-2 border rounded-xl flex items-center justify-center transition-colors cursor-pointer ${rider.isBlocked ? 'bg-emerald-50 border-emerald-100 text-emerald-600 hover:bg-emerald-100' : 'bg-rose-50 border-rose-100 text-rose-600 hover:bg-rose-100'}`}
-                    >
-                      <Ban className="w-3 h-3" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(rider._id)}
-                      className="px-3 py-2 border border-gray-200 hover:border-rose-250 hover:bg-rose-50 text-gray-400 hover:text-rose-600 rounded-xl flex items-center justify-center transition-colors cursor-pointer"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
+              {/* Basic Details */}
+              <div className="space-y-3.5 text-xs pb-4 border-b border-gray-100 mb-4">
+                <div className="flex items-center gap-2">
+                  <img 
+                    src={selectedRider.profilePhoto || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80"} 
+                    alt={selectedRider.name}
+                    className="w-10 h-10 rounded-xl bg-slate-100 object-cover"
+                  />
+                  <div>
+                    <span className="font-bold text-slate-800 block">{selectedRider.name}</span>
+                    <span className={`text-[8px] font-bold uppercase ${selectedRider.isBlocked ? 'text-rose-500' : selectedRider.isOnline ? 'text-emerald-500' : 'text-slate-500'}`}>
+                      {selectedRider.isBlocked ? 'Blocked' : selectedRider.isOnline ? 'Online Now' : 'Offline'}
+                    </span>
                   </div>
                 </div>
-              ))
-            )}
-          </div>
+
+                <div className="flex items-center gap-2 text-slate-650 font-semibold">
+                  <Phone className="w-3.5 h-3.5 text-slate-400" />
+                  <span>{selectedRider.phone || 'No phone'}</span>
+                </div>
+                <div className="flex items-center gap-2 text-slate-650 font-semibold">
+                  <Truck className="w-3.5 h-3.5 text-slate-400" />
+                  <span className="flex-1 leading-normal">Vehicle: {selectedRider.vehicleType} ({selectedRider.vehicleNumber})</span>
+                </div>
+              </div>
+
+              {/* Delivery History */}
+              <div className="text-xs pb-4 mb-4 border-b border-gray-100">
+                <h4 className="font-bold text-gray-900 uppercase tracking-wider text-[9px] mb-2 text-slate-400 flex items-center gap-1"><Truck className="w-3 h-3 text-slate-500" /> Delivery History</h4>
+                {(() => {
+                  const riderOrders = orders.filter(o => o.deliveryBoy?._id === selectedRider._id || o.deliveryBoy === selectedRider._id);
+                  return riderOrders.length > 0 ? (
+                    <div className="space-y-2 overflow-y-auto pr-1 max-h-[300px]">
+                      {riderOrders.map((order) => (
+                        <div key={order._id} className="p-2.5 border border-gray-150 rounded-xl bg-slate-50 text-[10px] text-slate-650 font-semibold flex justify-between items-center">
+                          <div>
+                            <span className="font-bold text-slate-800 block">Order: #{order._id.slice(-6).toUpperCase()}</span>
+                            <span className="text-[9px] text-slate-450 block">{new Date(order.createdAt).toLocaleDateString()}</span>
+                          </div>
+                          <div className="text-right">
+                            <span className="font-bold text-slate-800 block">₹{order.totalAmount}</span>
+                            <span className={`text-[8px] font-black uppercase ${order.status === 'Delivered' ? 'text-emerald-600' : order.status === 'Cancelled' ? 'text-rose-500' : 'text-amber-500'}`}>{order.status}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-gray-450 italic">No deliveries recorded.</span>
+                  );
+                })()}
+              </div>
+
+              {/* Actions */}
+              <div className="text-xs space-y-2">
+                <button
+                  onClick={() => handleToggleBlock(selectedRider)}
+                  className={`w-full py-2.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer ${selectedRider.isBlocked ? 'bg-emerald-650 hover:bg-emerald-600 text-white' : 'bg-rose-600 hover:bg-rose-555 text-white'}`}
+                >
+                  {selectedRider.isBlocked ? 'Activate Account' : 'Block Rider Access'}
+                </button>
+              </div>
+            </div>
+          )}
         </main>
       </div>
 

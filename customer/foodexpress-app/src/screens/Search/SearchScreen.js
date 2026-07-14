@@ -100,7 +100,6 @@ const SearchScreen = ({ navigation }) => {
 
   const hasResults =
     results.categories.length > 0 ||
-    results.restaurants.length > 0 ||
     results.foods.length > 0;
 
   return (
@@ -164,17 +163,7 @@ const SearchScreen = ({ navigation }) => {
             </View>
           )}
 
-          {results.restaurants.length > 0 && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Restaurants</Text>
-              <FlatList
-                data={results.restaurants}
-                keyExtractor={(item) => (item.id || item._id).toString()}
-                renderItem={renderRestaurantItem}
-                scrollEnabled={false}
-              />
-            </View>
-          )}
+
 
           {results.foods.length > 0 && (
             <View style={styles.section}>

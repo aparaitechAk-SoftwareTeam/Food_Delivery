@@ -2,24 +2,12 @@ import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 
-<<<<<<< HEAD
 const DEFAULT_REMOTE_API = "https://food-delivery-gtq0.onrender.com/api";
 
 const normalizeApiUrl = (url) => {
   if (!url) return null;
   const trimmed = url.trim().replace(/\/+$/, "");
   return trimmed.endsWith("/api") ? trimmed : `${trimmed}/api`;
-=======
-const getBaseURL = () => {
-  if (Platform.OS === "web") {
-    return "http://localhost:5000/api";
-  }
-  if (process.env.EXPO_PUBLIC_API_URL) {
-    const url = process.env.EXPO_PUBLIC_API_URL;
-    return url.endsWith("/api") ? url : `${url}/api`;
-  }
-  return "http://192.168.1.26:5000/api";
->>>>>>> fa7365685005be48c263c78c95718b01658f1a65
 };
 
 const isPrivateLanUrl = (url) => {

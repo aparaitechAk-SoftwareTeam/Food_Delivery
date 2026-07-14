@@ -24,11 +24,8 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { fetchFoods } from "../../redux/slices/foodsSlice";
 import { fetchFavorites, fetchWishlist } from "../../redux/slices/wishlistSlice";
 import { fetchAddresses, fetchUserProfile } from "../../redux/slices/authSlice";
-<<<<<<< HEAD
-=======
 import { fetchRewardStatus, claimReward } from "../../redux/slices/rewardSlice";
 import api from "../../utils/api";
->>>>>>> fa7365685005be48c263c78c95718b01658f1a65
 import bannerService from "../../services/bannerService";
 import sectionService from "../../services/sectionService";
 import { CameraView, useCameraPermissions } from "expo-camera";
@@ -102,6 +99,7 @@ const HomeScreen = ({ navigation }) => {
   const [banners, setBanners] = useState([]);
   const [featuredSections, setFeaturedSections] = useState([]);
   const [coupons, setCoupons] = useState([]);
+  const [homeSections, setHomeSections] = useState([]);
 
   // Camera & Voice states
   const [qrModalVisible, setQrModalVisible] = useState(false);
@@ -165,6 +163,15 @@ const HomeScreen = ({ navigation }) => {
       setCoupons(data || []);
     } catch (err) {
       console.log("Error loading coupons:", err.message);
+    }
+  };
+
+  const fetchHomeSections = async () => {
+    try {
+      const { data } = await api.get("/home-sections");
+      setHomeSections(Array.isArray(data) ? data.sort((a, b) => a.displayOrder - b.displayOrder) : []);
+    } catch (err) {
+      console.log("Error loading home sections:", err.message);
     }
   };
 
@@ -253,6 +260,7 @@ const HomeScreen = ({ navigation }) => {
     fetchBanners();
     fetchFeaturedSections();
     fetchCoupons();
+    fetchHomeSections();
     if (token) {
       dispatch(fetchRewardStatus());
       if (initial) {
@@ -266,8 +274,6 @@ const HomeScreen = ({ navigation }) => {
 
   useEffect(() => {
     loadData(true);
-    const interval = setInterval(() => loadData(false), 10000); // Poll every 10 seconds
-    return () => clearInterval(interval);
   }, [dispatch, token]);
 
   const handleRefresh = async () => {
@@ -275,7 +281,8 @@ const HomeScreen = ({ navigation }) => {
     await Promise.all([
       dispatch(fetchFoods()),
       fetchBanners(),
-      fetchFeaturedSections()
+      fetchFeaturedSections(),
+      fetchHomeSections()
     ]);
     if (token) {
       await Promise.all([
@@ -460,10 +467,13 @@ const HomeScreen = ({ navigation }) => {
                   onClaim={() => {
                     dispatch(claimReward())
                       .unwrap()
-                      .then(() => {
-                        Alert.alert("Success", "₹150 Cashback has been credited to your wallet!");
+                      .then((res) => {
+                        Alert.alert(
+                          "🎉 Congratulations!",
+                          `Your ₹${res?.coupon?.value || 150} Cashback Coupon has been added to your Wallet.`,
+                          [{ text: "OK", onPress: () => dispatch(fetchRewardStatus()) }]
+                        );
                         dispatch(fetchUserProfile());
-                        dispatch(fetchRewardStatus());
                       })
                       .catch((err) => {
                         Alert.alert("Error", err || "Failed to claim cashback");
@@ -486,14 +496,6 @@ const HomeScreen = ({ navigation }) => {
           ) : null}
 
           {/* Categories Horizontal Chip Slider */}
-          <CategorySlider
-            categories={categories.slice(0, 25)}
-            selectedCategory={selectedCategory}
-            onSelectCategory={(cat) => {
-              setSelectedCategory(selectedCategory === cat.name ? null : cat.name);
-            }}
-          />
-
           {/* Main Feed Content */}
           {filteredRestaurants.length === 0 && filteredFoods.length === 0 ? (
             <EmptyState onAction={handleClearFilters} />
@@ -513,36 +515,244 @@ const HomeScreen = ({ navigation }) => {
                 </>
               ) : (
                 <>
+                  {/* Dynamic Server-Driven Home Layout Sections */}
+                  {homeSections.map((sec) => {
+                    if (!sec.isVisible) return null;
 
-                  {/* Dynamic Featured Sections from MongoDB */}
-                  {featuredSections.map((sec) => {
-                    const secId = sec._id || sec.id;
-                    const secItems = sec.items || [];
-                    if (secItems.length === 0) return null;
-                    return (
-                      <View key={secId} style={styles.premiumSection}>
-                        <View style={styles.sectionHeaderRow}>
-                          <View>
-                            <Text style={styles.sectionTitle}>{sec.title}</Text>
-                            <Text style={styles.sectionSubtitle}>{sec.subtitle || ""}</Text>
+                    switch (sec.key) {
+                      case "banners":
+                        return (
+                          <BannerCarousel
+                            key={sec.key}
+                            banners={banners}
+                            onBannerPress={(banner) => {
+                              setSelectedCategory(banner.cta);
+                            }}
+                          />
+                        );
+
+                      case "categories":
+                        return (
+                          <CategorySlider
+                            key={sec.key}
+                            categories={categories.slice(0, 25)}
+                            selectedCategory={selectedCategory}
+                            onSelectCategory={(cat) => {
+                              setSelectedCategory(selectedCategory === cat.name ? null : cat.name);
+                            }}
+                          />
+                        );
+
+                      case "featured_restaurants": {
+                        const featuredRests = restaurants.filter(r => r.isFeatured && r.isActive !== false);
+                        if (featuredRests.length === 0) return null;
+                        return (
+                          <View key={sec.key} style={styles.premiumSection}>
+                            <View style={styles.sectionHeaderRow}>
+                              <Text style={styles.sectionTitle}>{sec.title}</Text>
+                            </View>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
+                              {featuredRests.sort((a,b) => b.priority - a.priority).map((rest) => (
+                                <RestaurantCard key={rest._id || rest.id} restaurant={rest} navigation={navigation} />
+                              ))}
+                            </ScrollView>
                           </View>
-                        </View>
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
-                          {secItems.map((item) => (
-                            <FoodCard key={item._id || item.id} food={item} navigation={navigation} />
-                          ))}
-                        </ScrollView>
-                      </View>
-                    );
+                        );
+                      }
+
+                      case "popular_foods": {
+                        const popularFoodsList = foods.filter(f => f.isPopular && f.isAvailable !== false);
+                        if (popularFoodsList.length === 0) return null;
+                        return (
+                          <View key={sec.key} style={styles.premiumSection}>
+                            <View style={styles.sectionHeaderRow}>
+                              <Text style={styles.sectionTitle}>{sec.title}</Text>
+                            </View>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
+                              {popularFoodsList.sort((a,b) => b.sortOrder - a.sortOrder).map((item) => (
+                                <FoodCard key={item._id || item.id} food={item} navigation={navigation} />
+                              ))}
+                            </ScrollView>
+                          </View>
+                        );
+                      }
+
+                      case "recommended_items": {
+                        const recommendedFoods = foods.filter(f => f.isRecommended && f.isAvailable !== false);
+                        if (recommendedFoods.length === 0) return null;
+                        return (
+                          <View key={sec.key} style={styles.premiumSection}>
+                            <View style={styles.sectionHeaderRow}>
+                              <Text style={styles.sectionTitle}>{sec.title}</Text>
+                            </View>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
+                              {recommendedFoods.sort((a,b) => b.sortOrder - a.sortOrder).map((item) => (
+                                <FoodCard key={item._id || item.id} food={item} navigation={navigation} />
+                              ))}
+                            </ScrollView>
+                          </View>
+                        );
+                      }
+
+                      case "offers":
+                        return (
+                          <OfferStrip
+                            key={sec.key}
+                            onPressItem={(item) => {
+                              if (item.id === "membership") {
+                                navigation.navigate("GoldMembership");
+                              } else if (item.id === "referral") {
+                                navigation.navigate("Referral");
+                              } else if (item.id === "cashback") {
+                                navigation.navigate("CashbackDeals");
+                              }
+                            }}
+                          />
+                        );
+
+                      case "coupons":
+                        if (coupons.length === 0) return null;
+                        return (
+                          <View key={sec.key} style={{ marginHorizontal: 16, marginVertical: 12 }}>
+                            <Button 
+                              mode="outlined" 
+                              textColor="#FF6F61" 
+                              style={{ borderColor: "#FF6F61", borderRadius: 12 }}
+                              onPress={() => {
+                                const couponList = coupons
+                                  .map(c => `• ${c.code}: ${c.discountType === "percentage" ? `${c.value}% OFF` : `₹${c.value} OFF`}${c.minOrderAmount ? ` (Min order: ₹${c.minOrderAmount})` : ""}`)
+                                  .join("\n\n");
+                                Alert.alert("Active Coupons", couponList);
+                              }}
+                            >
+                              🎉 View Active Coupons ({coupons.length})
+                            </Button>
+                          </View>
+                        );
+
+                      case "trending_restaurants": {
+                        const trendingRests = restaurants.filter(r => r.isTrending && r.isActive !== false);
+                        if (trendingRests.length === 0) return null;
+                        return (
+                          <View key={sec.key} style={styles.premiumSection}>
+                            <View style={styles.sectionHeaderRow}>
+                              <Text style={styles.sectionTitle}>{sec.title}</Text>
+                            </View>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
+                              {trendingRests.sort((a,b) => b.priority - a.priority).map((rest) => (
+                                <RestaurantCard key={rest._id || rest.id} restaurant={rest} navigation={navigation} />
+                              ))}
+                            </ScrollView>
+                          </View>
+                        );
+                      }
+
+                      case "new_arrivals": {
+                        const newRests = restaurants.filter(r => r.isNew && r.isActive !== false);
+                        if (newRests.length === 0) return null;
+                        return (
+                          <View key={sec.key} style={styles.premiumSection}>
+                            <View style={styles.sectionHeaderRow}>
+                              <Text style={styles.sectionTitle}>{sec.title}</Text>
+                            </View>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
+                              {newRests.sort((a,b) => b.priority - a.priority).map((rest) => (
+                                <RestaurantCard key={rest._id || rest.id} restaurant={rest} navigation={navigation} />
+                              ))}
+                            </ScrollView>
+                          </View>
+                        );
+                      }
+
+                      case "top_rated": {
+                        const topFoods = foods.filter(f => f.rating >= 4.5 && f.isAvailable !== false);
+                        if (topFoods.length === 0) return null;
+                        return (
+                          <View key={sec.key} style={styles.premiumSection}>
+                            <View style={styles.sectionHeaderRow}>
+                              <Text style={styles.sectionTitle}>{sec.title}</Text>
+                            </View>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
+                              {topFoods.map((item) => (
+                                <FoodCard key={item._id || item.id} food={item} navigation={navigation} />
+                              ))}
+                            </ScrollView>
+                          </View>
+                        );
+                      }
+
+                      case "best_sellers": {
+                        const bestSellerFoods = foods.filter(f => f.isBestSeller && f.isAvailable !== false);
+                        if (bestSellerFoods.length === 0) return null;
+                        return (
+                          <View key={sec.key} style={styles.premiumSection}>
+                            <View style={styles.sectionHeaderRow}>
+                              <Text style={styles.sectionTitle}>{sec.title}</Text>
+                            </View>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
+                              {bestSellerFoods.sort((a,b) => b.sortOrder - a.sortOrder).map((item) => (
+                                <FoodCard key={item._id || item.id} food={item} navigation={navigation} />
+                              ))}
+                            </ScrollView>
+                          </View>
+                        );
+                      }
+
+                      case "recently_added": {
+                        const recentFoods = [...foods].sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 10);
+                        if (recentFoods.length === 0) return null;
+                        return (
+                          <View key={sec.key} style={styles.premiumSection}>
+                            <View style={styles.sectionHeaderRow}>
+                              <Text style={styles.sectionTitle}>{sec.title}</Text>
+                            </View>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
+                              {recentFoods.map((item) => (
+                                <FoodCard key={item._id || item.id} food={item} navigation={navigation} />
+                              ))}
+                            </ScrollView>
+                          </View>
+                        );
+                      }
+
+                      case "membership":
+                        return (
+                          <MembershipCard
+                            key={sec.key}
+                            onPress={() => navigation.navigate("GoldMembership")}
+                          />
+                        );
+
+                      case "referral":
+                        return token && reward ? (
+                          <RewardCard
+                            key={sec.key}
+                            reward={reward}
+                            onClaim={() => {
+                              dispatch(claimReward())
+                                .unwrap()
+                                .then((res) => {
+                                  Alert.alert(
+                                    "🎉 Congratulations!",
+                                    `Your ₹${res?.coupon?.value || 150} Cashback Coupon has been added to your Wallet.`,
+                                    [{ text: "OK", onPress: () => dispatch(fetchRewardStatus()) }]
+                                  );
+                                  dispatch(fetchUserProfile());
+                                })
+                                .catch((err) => {
+                                  Alert.alert("Error", err || "Failed to claim cashback");
+                                });
+                            }}
+                          />
+                        ) : null;
+
+                      default:
+                        return null;
+                    }
                   })}
 
-                  {/* Membership Card Banner */}
-                  <MembershipCard
-                    onPress={() => navigation.navigate("GoldMembership")}
-                  />
-
-                  {/* Dynamic Category Independent Grids */}
-                  {computedCategorizedMenu.map((group) => (
+                  {/* Fallback categorized category grid if homeSections config not yet loaded */}
+                  {homeSections.length === 0 && computedCategorizedMenu.map((group) => (
                     <View key={group.category._id || group.category.id} style={styles.categorizedSection}>
                       <View style={styles.sectionHeaderRow}>
                         <View style={styles.catHeaderLeft}>
@@ -571,6 +781,27 @@ const HomeScreen = ({ navigation }) => {
                     </View>
                   ))}
 
+                  {/* Render custom sections from MongoDB */}
+                  {featuredSections.map((sec) => {
+                    const secId = sec._id || sec.id;
+                    const secItems = sec.items || [];
+                    if (secItems.length === 0) return null;
+                    return (
+                      <View key={secId} style={styles.premiumSection}>
+                        <View style={styles.sectionHeaderRow}>
+                          <View>
+                            <Text style={styles.sectionTitle}>{sec.title}</Text>
+                            <Text style={styles.sectionSubtitle}>{sec.subtitle || ""}</Text>
+                          </View>
+                        </View>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
+                          {secItems.map((item) => (
+                            <FoodCard key={item._id || item.id} food={item} navigation={navigation} />
+                          ))}
+                        </ScrollView>
+                      </View>
+                    );
+                  })}
                 </>
               )}
             </>

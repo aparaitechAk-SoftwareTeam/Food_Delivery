@@ -1,14 +1,6 @@
 const Food = require("../models/Food");
 const Category = require("../models/Category");
 const Restaurant = require("../models/Restaurant");
-const mongoose = require("mongoose");
-
-const shouldUseMockData = () => process.env.MOCK_DB === "true" || mongoose.connection.readyState !== 1;
-const getMockDataStore = () => {
-  const store = require("../config/mockDataStore");
-  store.initializeMockData();
-  return store;
-};
 
 exports.getFoods = async (req, res) => {
   const {
@@ -26,27 +18,6 @@ exports.getFoods = async (req, res) => {
     limit = 20,
   } = req.query;
 
-<<<<<<< HEAD
-  if (shouldUseMockData()) {
-    const { queryMockFoods, categories, foods, restaurants, offers } = getMockDataStore();
-    const result = queryMockFoods(req.query);
-    const featured = foods.filter(f => f.isFeatured).slice(0, 10);
-    const popular = foods.filter(f => f.isPopular).slice(0, 10);
-    return res.json({
-      foods: result.foods,
-      categories: categories,
-      featured,
-      popular,
-      restaurants: restaurants.slice(0, 30), // Slice to keep it light but representative
-      offers: offers.slice(0, 50),
-      total: result.total,
-      page: result.page,
-      pages: result.pages,
-    });
-  }
-=======
-  
->>>>>>> fa7365685005be48c263c78c95718b01658f1a65
 
   try {
     const pageNum = parseInt(page);
