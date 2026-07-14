@@ -17,7 +17,7 @@ const CheckoutScreen = ({ navigation }) => {
   const dispatch = useDispatch();
   const { items } = useSelector((state) => state.cart);
   const bill = useSelector(selectCartBillDetails);
-  const { activeAddress, token } = useSelector((state) => state.auth);
+  const { activeAddress, token, user } = useSelector((state) => state.auth);
   
   // Payment States
   const [paymentMethod, setPaymentMethod] = useState("Cash on Delivery"); // Cash on Delivery, UPI, Scan QR, Card, Razorpay Online Payment
@@ -459,7 +459,8 @@ const CheckoutScreen = ({ navigation }) => {
           } else {
             const apiBaseURL = api.defaults.baseURL || "http://localhost:5000/api";
             const serverOrigin = apiBaseURL.endsWith("/api") ? apiBaseURL.slice(0, -4) : apiBaseURL;
-            const checkoutUrl = `${serverOrigin}/api/payment/checkout-page?orderId=${order.id}&amount=${bill.grandTotal}&customerName=${encodeURIComponent(req.user?.name || orderPayload.customerName || "Customer")}&customerEmail=${encodeURIComponent(req.user?.email || orderPayload.customerEmail || "")}&customerPhone=${encodeURIComponent(req.user?.phone || orderPayload.customerPhone || "")}`;
+            const checkoutUrl = `${serverOrigin}/api/payment/checkout-page?orderId=${order.id}&amount=${bill.grandTotal}&customerName=${encodeURIComponent(user?.name || "Customer")}&customerEmail=${encodeURIComponent(user?.email || "")}&customerPhone=${encodeURIComponent(user?.phone || "")}`;
+            console.log("[Payment] Opening Razorpay checkout URL:", checkoutUrl);
             
             console.log("[Payment Integration Log] Redirecting customer to checkout URL:", checkoutUrl);
             
