@@ -1,11 +1,4 @@
-// Configuration for dynamic API Base URL
-//
-// Priority:
-//   1. VITE_API_URL / VITE_API_BASE_URL (set in .env or Vercel project settings)
-//   2. Relative "/api" path – works when deployed on Vercel because vercel.json
-//      proxies /api/* → https://food-delivery-gtq0.onrender.com/api/*
-//      This removes CORS entirely since browser sees the same origin.
-//   3. Local fallback for development
+
 
 const PRODUCTION_RENDER_URL = "https://food-delivery-gtq0.onrender.com";
 
@@ -17,7 +10,7 @@ const getApiBaseURL = () => {
   }
 
   
-  // so the vercel.json rewrite proxy forwards to Render without CORS issues.
+
   if (typeof window !== "undefined" && !window.location.hostname.includes("localhost")) {
     return "/api";
   }
