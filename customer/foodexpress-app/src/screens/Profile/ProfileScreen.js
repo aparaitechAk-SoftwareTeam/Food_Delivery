@@ -367,12 +367,11 @@ My Issue: `;
       <Card style={styles.menuCard}>
         <TouchableOpacity
           style={styles.menuItem}
-          onPress={openWhatsAppSupport}
-          activeOpacity={0.7}
+          onPress={() => openWhatsAppSupport(userProfile)}
         >
           <View style={styles.menuItemLeft}>
             <MaterialCommunityIcons name="headset" size={22} color="#ff6b00" />
-            <View style={{ marginLeft: 12, flexShrink: 1 }}>
+            <View style={{ marginLeft: 12 }}>
               <Text style={styles.menuItemTitleText}>Help & Support</Text>
               <Text style={styles.menuItemSubtitle}>Chat with our support team on WhatsApp</Text>
             </View>

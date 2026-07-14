@@ -52,7 +52,6 @@ const limiter = rateLimit({
 });
 
 const app = express();
-app.set("trust proxy", 1); // Required for Render/Heroku proxy — correct IP for rate limiting
 app.use(helmet());
 app.use(limiter);
 
@@ -61,16 +60,10 @@ const allowedOrigins = [
   process.env.ADMIN_URL,
   "https://food-delivery-rouge-one.vercel.app",
   "https://cloudkitchen.aparaitech.org",
-  "https://cloudkitchen.aparaitech.org/",
-  "http://localhost:3000",
   "http://localhost:5173",
   "http://localhost:8081",
   "http://localhost:8082",
-  "http://localhost:19000",
-  "http://localhost:19006",
-  "http://127.0.0.1:8081",
-  "http://127.0.0.1:19000",
-  "http://127.0.0.1:19006",
+  "https://cloudkitchen.aparaitech.org/"
 ].filter(Boolean);
 
 app.use(
@@ -79,23 +72,18 @@ app.use(
       // Allow requests with no origin (like mobile apps, curl, postman)
       if (!origin) return callback(null, true);
       
-      // Allow any vercel.app subdomain (for preview deployments)
-      if (origin.endsWith(".vercel.app")) return callback(null, true);
-      // Allow any render.com subdomain (service-to-service)
-      if (origin.endsWith(".onrender.com")) return callback(null, true);
-      
       // Allow local development origins dynamically
       const isLocal = /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+)(:\d+)?$/.test(origin);
       if (isLocal || allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
       
-      console.warn(`[CORS] Origin blocked: ${origin}`);
+      console.warn(`Origin ${origin} blocked by CORS`);
       return callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"]
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"]
   })
 );
 app.use(express.json());
@@ -131,13 +119,10 @@ app.use("/api/campaigns",     campaignRoutes);
 // Health check endpoint
 app.get("/api/health", async (req, res) => {
   const mongoose = require("mongoose");
-  const dbState = mongoose.connection.readyState;
   res.json({
-    success: true,
-    status: "running",
-    uptime: Math.floor(process.uptime()),
-    timestamp: new Date().toISOString(),
-    mongoDB: dbState === 1 ? "CONNECTED" : dbState === 2 ? "CONNECTING" : "DISCONNECTED"
+    status: "UP",
+    timestamp: new Date(),
+    mongoDB: mongoose.connection.readyState === 1 ? "CONNECTED" : "DISCONNECTED"
   });
 });
 
@@ -156,12 +141,6 @@ if (!MONGO_URI) {
   process.exit(1);
 }
 
-if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
-  console.warn(
-    "\n⚠️   RAZORPAY_KEY_ID or RAZORPAY_KEY_SECRET not found in .env\n" +
-    "   Payment features will run in sandbox/dummy mode.\n"
-  );
-}
 // ── Startup ────────────────────────────────────────────────────────────────────
 // Guard against being required as a module (prevents duplicate server instances)
 if (require.main === module) {

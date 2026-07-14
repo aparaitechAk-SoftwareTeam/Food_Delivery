@@ -13,8 +13,6 @@ const Orders = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
-  const [filterPaymentMethod, setFilterPaymentMethod] = useState('All');
-  const [filterPaymentStatus, setFilterPaymentStatus] = useState('All');
   const [updatingId, setUpdatingId] = useState(null);
 
   const loadRiders = async () => {
@@ -151,14 +149,7 @@ const Orders = () => {
         customerPhone.includes(searchTerm);
       
       const matchesStatus = filterStatus === 'All' || order.status === filterStatus;
-
-      const matchesPaymentMethod = filterPaymentMethod === 'All' || 
-        (filterPaymentMethod === 'COD' && order.paymentMethod === 'Cash on Delivery') ||
-        (filterPaymentMethod === 'Online' && order.paymentMethod !== 'Cash on Delivery');
-
-      const matchesPaymentStatus = filterPaymentStatus === 'All' || order.paymentStatus === filterPaymentStatus;
-
-      return matchesSearch && matchesStatus && matchesPaymentMethod && matchesPaymentStatus;
+      return matchesSearch && matchesStatus;
     });
   };
 
@@ -220,31 +211,6 @@ const Orders = () => {
                     <option value="Out For Delivery">Out For Delivery</option>
                     <option value="Delivered">Delivered</option>
                     <option value="Cancelled">Cancelled</option>
-                  </select>
-                </div>
-
-                <div className="flex items-center gap-1.5 border border-gray-250 rounded-xl px-3 py-2 bg-slate-50 text-xs text-gray-600">
-                  <select
-                    value={filterPaymentMethod}
-                    onChange={(e) => setFilterPaymentMethod(e.target.value)}
-                    className="bg-transparent outline-none cursor-pointer font-semibold"
-                  >
-                    <option value="All">All Payments</option>
-                    <option value="COD">COD Only</option>
-                    <option value="Online">Online Only</option>
-                  </select>
-                </div>
-
-                <div className="flex items-center gap-1.5 border border-gray-250 rounded-xl px-3 py-2 bg-slate-50 text-xs text-gray-600">
-                  <select
-                    value={filterPaymentStatus}
-                    onChange={(e) => setFilterPaymentStatus(e.target.value)}
-                    className="bg-transparent outline-none cursor-pointer font-semibold"
-                  >
-                    <option value="All">All Pay Statuses</option>
-                    <option value="Paid">Paid Only</option>
-                    <option value="Pending">Pending Only</option>
-                    <option value="Failed">Failed Only</option>
                   </select>
                 </div>
 

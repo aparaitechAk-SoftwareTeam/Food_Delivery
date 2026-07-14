@@ -183,8 +183,6 @@ const Rewards = () => {
       'Expiry Date',
       'Completed Orders',
       'Total Required',
-      'Wallet Balance',
-      'Wallet Credited',
       'Status',
     ];
 
@@ -195,8 +193,6 @@ const Rewards = () => {
       r.expiryDate ? new Date(r.expiryDate).toLocaleString() : '',
       r.completedOrders || 0,
       r.totalRequiredOrders || 4,
-      r.userId?.walletBalance || 0,
-      r.status === 'Claimed' ? '₹150' : 'No',
       r.status,
     ]);
 

@@ -46,10 +46,9 @@ const getBaseURLs = () => {
 };
 
 const API_BASE_URLS = getBaseURLs();
-const BASE_URL = API_BASE_URLS[0];
 
 const api = axios.create({
-  baseURL: BASE_URL,
+  baseURL: API_BASE_URLS[0],
   timeout: 15000,
 });
 
@@ -58,16 +57,11 @@ api.interceptors.request.use(async (config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
-  const fullURL = `${config.baseURL || BASE_URL}${config.url}`;
-  console.log(`[API] --> ${config.method?.toUpperCase()} ${fullURL}`);
   return config;
 });
 
 api.interceptors.response.use(
-  (response) => {
-    console.log(`[API] <-- ${response.status} ${response.config?.url}`);
-    return response;
-  },
+  (response) => response,
   async (error) => {
     const originalConfig = error.config || {};
     const hasNoResponse = !error.response;
@@ -84,7 +78,6 @@ api.interceptors.response.use(
 
     const status = error.response?.status;
     const url = error.config?.url || "";
-    const fullURL = `${error.config?.baseURL || BASE_URL}${url}`;
 
     // Only force-logout when the session token itself is invalid,
     // i.e. a 401 response from an AUTH endpoint (/auth/me, /auth/verify, etc.).
@@ -107,22 +100,13 @@ api.interceptors.response.use(
         console.log("Error dispatching logout on 401:", e);
       }
     }
-    // Detailed error logging
     console.warn("=== API REQUEST FAILURE ===");
-    console.warn("Full Request URL:", fullURL);
-    console.warn("Endpoint Path:", url);
+    console.warn("API URL:", error.config?.url || "");
     console.warn("Method:", error.config?.method?.toUpperCase() || "");
     console.warn("Request Data:", error.config?.data || "N/A");
-    console.warn("Response Status Code:", status || "N/A (Network Error / Timeout)");
+    console.warn("Response Status Code:", error.response?.status || "N/A");
     console.warn("Response Data:", JSON.stringify(error.response?.data) || "N/A");
     console.warn("Backend Error:", error.response?.data?.message || error.message || "Unknown error");
-    if (error.code === "ECONNABORTED") {
-      console.warn("Error Type: TIMEOUT — server took too long to respond");
-    } else if (!error.response) {
-      console.warn("Error Type: NETWORK ERROR — no response received (check CORS / server reachability)");
-    } else if (status === 0 || error.message?.includes("Mixed Content")) {
-      console.warn("Error Type: MIXED CONTENT — HTTP request blocked on HTTPS page");
-    }
     console.warn("===========================");
 
     const responseMessage = error.response?.data?.message || error.message || "API request failed";

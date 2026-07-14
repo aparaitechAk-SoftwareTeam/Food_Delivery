@@ -223,18 +223,6 @@ const OrderDetailsScreen = ({ route, navigation }) => {
               </Text>
             </View>
           </View>
-          {order.transactionId && (
-            <>
-              <Divider style={styles.detailDivider} />
-              <View style={styles.detailRow}>
-                <MaterialCommunityIcons name="receipt" size={18} color="#666" style={styles.detailIcon} />
-                <View style={styles.detailTextCol}>
-                  <Text style={styles.detailTextLabel}>Transaction / Payment ID</Text>
-                  <Text style={styles.detailTextVal}>{order.transactionId}</Text>
-                </View>
-              </View>
-            </>
-          )}
         </View>
 
         {/* Actions bottom */}

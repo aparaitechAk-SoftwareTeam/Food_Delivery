@@ -29,9 +29,6 @@ import api from "../../utils/api";
 import bannerService from "../../services/bannerService";
 import sectionService from "../../services/sectionService";
 import { CameraView, useCameraPermissions } from "expo-camera";
-// Time-of-day
-import { useTimeOfDay } from "../../hooks/useTimeOfDay";
-import { filterFoodsByPeriod } from "../../utils/timeOfDay";
 
 // Components
 import ScreenContainer from "../../components/ScreenContainer";
@@ -150,6 +147,7 @@ const HomeScreen = ({ navigation }) => {
       console.log("Error loading banners:", err.message);
     }
   };
+
   const fetchFeaturedSections = async () => {
     try {
       const data = await sectionService.getSections();
@@ -176,6 +174,7 @@ const HomeScreen = ({ navigation }) => {
       console.log("Error loading home sections:", err.message);
     }
   };
+
   const startListening = () => {
     setIsListening(true);
     setRecognizedText("Listening...");
@@ -275,8 +274,6 @@ const HomeScreen = ({ navigation }) => {
 
   useEffect(() => {
     loadData(true);
-    const interval = setInterval(() => loadData(false), 10000); // Poll every 10 seconds
-    return () => clearInterval(interval);
   }, [dispatch, token]);
 
   const handleRefresh = async () => {

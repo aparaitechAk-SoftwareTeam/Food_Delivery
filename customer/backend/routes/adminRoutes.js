@@ -137,10 +137,7 @@ router.get("/campaigns", getCampaigns);
 router.post("/campaigns", createCampaign);
 router.delete("/campaigns/:id", deleteCampaign);
 
-// Membership plans
-router.get("/plans", getPlansList);
-router.post("/plans", createPlan);
-router.delete("/plans/:id", deletePlan);
+  router.delete("/plans/:id", deletePlan);
 
 // Admin Coupon Management
 router.get("/coupons", getCouponsList);

@@ -12,20 +12,11 @@ const CashbackReward = require("../models/CashbackReward");
 const CashbackCampaign = require("../models/CashbackCampaign");
 const MembershipPlan = require("../models/MembershipPlan");
 const Admin = require("../models/Admin");
-
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
 const generateToken = (id) =>
-  jwt.sign(
-    { id },
-    process.env.JWT_SECRET || "foodexpress_jwt_fallback_secret_key_12345",
-    { expiresIn: "7d" }
-  );
-
-// =====================
-// Admin Authentication
-// =====================
+  jwt.sign({ id }, process.env.JWT_SECRET || "foodexpress_jwt_fallback_secret_key_12345", { expiresIn: "7d" });
 
 exports.adminLogin = async (req, res) => {
   const { email, password } = req.body;
@@ -36,7 +27,6 @@ exports.adminLogin = async (req, res) => {
   }
 
   const admin = await Admin.findOne({ email });
-
   if (!admin || !(await bcrypt.compare(password, admin.password))) {
     res.status(401);
     throw new Error("Invalid email or password");
@@ -69,27 +59,21 @@ exports.getAdminProfile = async (req, res) => {
       name: req.user.name,
       email: req.user.email,
       role: req.user.role,
-    },
+    }
   });
 };
 
-// =====================
-// Dashboard
-// =====================
-
 exports.getDashboardStats = async (req, res) => {
+  
+
   try {
     const totalUsers = await User.countDocuments();
     const totalRestaurants = await Restaurant.countDocuments();
     const totalOrders = await Order.countDocuments();
     const activeCoupons = await Coupon.countDocuments({ active: true });
-
+    
     const deliveredOrders = await Order.find({ status: "Delivered" });
-
-    const revenue = deliveredOrders.reduce(
-      (sum, order) => sum + order.totalAmount,
-      0
-    );
+    const revenue = deliveredOrders.reduce((sum, o) => sum + o.totalAmount, 0);
 
     res.json({
       totalUsers,
@@ -97,21 +81,15 @@ exports.getDashboardStats = async (req, res) => {
       totalOrders,
       revenue,
       activeCoupons,
-      avgOrderValue:
-        totalOrders > 0
-          ? parseFloat((revenue / totalOrders).toFixed(2))
-          : 0,
+      avgOrderValue: totalOrders > 0 ? parseFloat((revenue / totalOrders).toFixed(2)) : 0
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// =====================
-// Users
-// =====================
-
 exports.getUsersList = async (req, res) => {
+  
   try {
     const users = await User.find().select("-password");
     res.json(users);
@@ -879,4 +857,5 @@ exports.updateCouponStatus = async (req, res) => {
     res.status(500).json({ message: "Failed to update coupon: " + error.message });
   }
 };
+
 

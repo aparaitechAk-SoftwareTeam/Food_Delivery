@@ -7,6 +7,8 @@ exports.createOrder = async (req, res) => {
   console.log("[DEBUG BACKEND] createOrder user:", req.user ? req.user._id : "no user");
   try {
     const { restaurant, items, address, paymentMethod, discount, deliveryCharge, tax, totalAmount, couponCode } = req.body;
+    
+    
 
     let finalRestaurantId = restaurant;
     let resolvedItems = items;

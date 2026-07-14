@@ -104,8 +104,8 @@ exports.forgotPassword = async (req, res) => {
   user.resetPasswordOTP = otp;
   user.resetPasswordOTPExpires = expires;
   await user.save();
-  console.log(`[ForgotPassword] Generated OTP for User: ${email} (check server logs for dev testing)`);
-  res.json({ message: "OTP sent successfully to your email" });
+  console.log(`[ForgotPassword] Generated OTP: ${otp} for User: ${email}`);
+  res.json({ message: "OTP sent successfully to your email", otp });
 };
 
 exports.verifyOtp = async (req, res) => {
