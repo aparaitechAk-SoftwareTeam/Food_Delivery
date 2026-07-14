@@ -2,24 +2,51 @@ import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 
-const RENDER_API_URL = "http://localhost:5000";
+const DEFAULT_REMOTE_API = "https://food-delivery-gtq0.onrender.com/api";
 
-const getBaseURL = () => {
-  // Check env variable first — works on all platforms
-  if (process.env.EXPO_PUBLIC_API_URL) {
-    const url = process.env.EXPO_PUBLIC_API_URL;
-    return url.endsWith("/api") ? url : `${url}/api`;
-  }
-  // Web fallback: use production Render URL (not localhost, which only works locally)
-  if (Platform.OS === "web") {
-    return `${RENDER_API_URL}/api`;
-  }
-  // Native fallback: use local network IP for development
-  return "http://192.168.1.26:5000/api";
+const normalizeApiUrl = (url) => {
+  if (!url) return null;
+  const trimmed = url.trim().replace(/\/+$/, "");
+  return trimmed.endsWith("/api") ? trimmed : `${trimmed}/api`;
 };
 
-const BASE_URL = getBaseURL();
-console.log(`[API] Initializing Axios with baseURL: ${BASE_URL} | Platform: ${Platform.OS}`);
+const isPrivateLanUrl = (url) => {
+  try {
+    const { hostname } = new URL(url);
+    return (
+      /^192\.168\.\d+\.\d+$/.test(hostname) ||
+      /^10\.\d+\.\d+\.\d+$/.test(hostname) ||
+      /^172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+$/.test(hostname)
+    );
+  } catch (error) {
+    return false;
+  }
+};
+
+const getBaseURLs = () => {
+  const configuredUrl = normalizeApiUrl(process.env.EXPO_PUBLIC_API_URL);
+  const urls = [];
+
+  if (Platform.OS === "web" && configuredUrl && isPrivateLanUrl(configuredUrl)) {
+    const port = new URL(configuredUrl).port || "5000";
+    urls.push(normalizeApiUrl(`http://localhost:${port}`));
+  }
+
+  if (configuredUrl) {
+    urls.push(configuredUrl);
+  }
+
+  if (Platform.OS === "android") {
+    urls.push("http://10.0.2.2:5000/api");
+  }
+
+  urls.push(DEFAULT_REMOTE_API);
+
+  return [...new Set(urls.filter(Boolean))];
+};
+
+const API_BASE_URLS = getBaseURLs();
+const BASE_URL = API_BASE_URLS[0];
 
 const api = axios.create({
   baseURL: BASE_URL,
@@ -42,6 +69,19 @@ api.interceptors.response.use(
     return response;
   },
   async (error) => {
+    const originalConfig = error.config || {};
+    const hasNoResponse = !error.response;
+    const currentBaseURL = originalConfig.baseURL || api.defaults.baseURL;
+    const currentIndex = Math.max(API_BASE_URLS.indexOf(currentBaseURL), originalConfig.__baseURLRetryIndex || 0);
+    const nextBaseURL = API_BASE_URLS[currentIndex + 1];
+
+    if (hasNoResponse && nextBaseURL) {
+      originalConfig.__baseURLRetryIndex = currentIndex + 1;
+      originalConfig.baseURL = nextBaseURL;
+      api.defaults.baseURL = nextBaseURL;
+      return api(originalConfig);
+    }
+
     const status = error.response?.status;
     const url = error.config?.url || "";
     const fullURL = `${error.config?.baseURL || BASE_URL}${url}`;
@@ -67,7 +107,6 @@ api.interceptors.response.use(
         console.log("Error dispatching logout on 401:", e);
       }
     }
-
     // Detailed error logging
     console.warn("=== API REQUEST FAILURE ===");
     console.warn("Full Request URL:", fullURL);

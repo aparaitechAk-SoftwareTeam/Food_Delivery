@@ -25,6 +25,7 @@ import Reports from './pages/admin/food/Reports';
 import Notifications from './pages/admin/food/Notifications';
 import Rewards from './pages/admin/food/Rewards';
 import CampaignsManager from './pages/admin/food/CampaignsManager';
+import HomeManagement from './pages/admin/food/HomeManagement';
 
 function App() {
   return (
@@ -38,6 +39,7 @@ function App() {
         
         {/* Protected Food Management Routing Tree */}
         <Route path="/admin/food-management" element={<ProtectedRoute><FoodDashboard /></ProtectedRoute>} />
+        <Route path="/admin/food-management/home" element={<ProtectedRoute><HomeManagement /></ProtectedRoute>} />
         <Route path="/admin/food-management/categories" element={<ProtectedRoute><Categories /></ProtectedRoute>} />
         <Route path="/admin/food-management/foods" element={<ProtectedRoute><FoodItems /></ProtectedRoute>} />
         <Route path="/admin/food-management/featured" element={<ProtectedRoute><FeaturedSections /></ProtectedRoute>} />

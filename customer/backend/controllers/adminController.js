@@ -11,18 +11,85 @@ const Review = require("../models/Review");
 const CashbackReward = require("../models/CashbackReward");
 const CashbackCampaign = require("../models/CashbackCampaign");
 const MembershipPlan = require("../models/MembershipPlan");
+const Admin = require("../models/Admin");
+
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+
+const generateToken = (id) =>
+  jwt.sign(
+    { id },
+    process.env.JWT_SECRET || "foodexpress_jwt_fallback_secret_key_12345",
+    { expiresIn: "7d" }
+  );
+
+// =====================
+// Admin Authentication
+// =====================
+
+exports.adminLogin = async (req, res) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    res.status(400);
+    throw new Error("Email and password are required");
+  }
+
+  const admin = await Admin.findOne({ email });
+
+  if (!admin || !(await bcrypt.compare(password, admin.password))) {
+    res.status(401);
+    throw new Error("Invalid email or password");
+  }
+
+  if (!admin.isActive) {
+    res.status(403);
+    throw new Error("Your account has been deactivated");
+  }
+
+  res.json({
+    admin: {
+      id: admin._id,
+      name: admin.name,
+      email: admin.email,
+      role: admin.role,
+    },
+    token: generateToken(admin._id),
+  });
+};
+
+exports.adminLogout = async (req, res) => {
+  res.json({ message: "Logged out successfully" });
+};
+
+exports.getAdminProfile = async (req, res) => {
+  res.json({
+    admin: {
+      id: req.user.id || req.user._id,
+      name: req.user.name,
+      email: req.user.email,
+      role: req.user.role,
+    },
+  });
+};
+
+// =====================
+// Dashboard
+// =====================
 
 exports.getDashboardStats = async (req, res) => {
-  
-
   try {
     const totalUsers = await User.countDocuments();
     const totalRestaurants = await Restaurant.countDocuments();
     const totalOrders = await Order.countDocuments();
     const activeCoupons = await Coupon.countDocuments({ active: true });
-    
+
     const deliveredOrders = await Order.find({ status: "Delivered" });
-    const revenue = deliveredOrders.reduce((sum, o) => sum + o.totalAmount, 0);
+
+    const revenue = deliveredOrders.reduce(
+      (sum, order) => sum + order.totalAmount,
+      0
+    );
 
     res.json({
       totalUsers,
@@ -30,15 +97,21 @@ exports.getDashboardStats = async (req, res) => {
       totalOrders,
       revenue,
       activeCoupons,
-      avgOrderValue: totalOrders > 0 ? parseFloat((revenue / totalOrders).toFixed(2)) : 0
+      avgOrderValue:
+        totalOrders > 0
+          ? parseFloat((revenue / totalOrders).toFixed(2))
+          : 0,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
+// =====================
+// Users
+// =====================
+
 exports.getUsersList = async (req, res) => {
-  
   try {
     const users = await User.find().select("-password");
     res.json(users);
@@ -144,8 +217,9 @@ exports.getFoods = async (req, res) => {
 };
 
 exports.createFood = async (req, res) => {
-  
   try {
+    if (req.body.category === "") req.body.category = null;
+    if (req.body.restaurant === "") req.body.restaurant = null;
     const newFood = new Food(req.body);
     await newFood.save();
     const populated = await Food.findById(newFood._id).populate("category restaurant");
@@ -159,6 +233,8 @@ exports.updateFood = async (req, res) => {
   const { id } = req.params;
   
   try {
+    if (req.body.category === "") req.body.category = null;
+    if (req.body.restaurant === "") req.body.restaurant = null;
     const updated = await Food.findByIdAndUpdate(id, req.body, { new: true }).populate("category restaurant");
     if (!updated) return res.status(404).json({ message: "Food not found" });
     res.json(updated);
@@ -740,4 +816,67 @@ exports.deletePlan = async (req, res) => {
   }
 };
 
+exports.getCouponsList = async (req, res) => {
+  try {
+    const { status, search } = req.query;
+    
+    // Auto-expire active coupons
+    await Coupon.updateMany(
+      { status: "Active", expiresAt: { $lt: new Date() } },
+      { $set: { status: "Expired" } }
+    );
+
+    let query = {};
+    if (status && status !== "All") {
+      query.status = status;
+    }
+
+    let coupons = await Coupon.find(query)
+      .populate("userId", "name email")
+      .populate("orderId", "orderNumber totalAmount createdAt")
+      .sort({ createdAt: -1 });
+
+    if (search) {
+      const searchLower = search.toLowerCase();
+      coupons = coupons.filter(c => {
+        const userName = c.userId?.name?.toLowerCase() || "";
+        const userEmail = c.userId?.email?.toLowerCase() || "";
+        const code = c.code.toLowerCase();
+        return userName.includes(searchLower) || userEmail.includes(searchLower) || code.includes(searchLower);
+      });
+    }
+
+    res.json(coupons);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch coupons list: " + error.message });
+  }
+};
+
+exports.updateCouponStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!["Active", "Used", "Expired", "Disabled"].includes(status)) {
+      return res.status(400).json({ message: "Invalid status option" });
+    }
+
+    const updateFields = {};
+    if (status === "Disabled") {
+      updateFields.active = false;
+    } else {
+      updateFields.status = status;
+      if (status === "Active") updateFields.active = true;
+    }
+
+    const coupon = await Coupon.findByIdAndUpdate(id, { $set: updateFields }, { new: true });
+    if (!coupon) {
+      return res.status(404).json({ message: "Coupon not found" });
+    }
+
+    res.json({ message: "Coupon status updated successfully", coupon });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to update coupon: " + error.message });
+  }
+};
 

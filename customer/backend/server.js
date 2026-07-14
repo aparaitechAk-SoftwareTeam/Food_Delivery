@@ -1,6 +1,14 @@
 require("dotenv").config();
 require("express-async-errors");
 
+// Workaround for querySrv ECONNREFUSED DNS issues (especially on Windows / Atlas)
+const dns = require("dns");
+try {
+  dns.setServers(["8.8.8.8", "8.8.4.4"]);
+} catch (err) {
+  console.warn("Warning: Could not set custom DNS servers:", err.message);
+}
+
 const express = require("express");
 const cors = require("cors");
 const morgan = require("morgan");
@@ -33,7 +41,6 @@ const membershipRoutes   = require("./routes/membershipRoutes");
 const referralRoutes     = require("./routes/referralRoutes");
 const campaignRoutes     = require("./routes/campaignRoutes");
 const errorHandler      = require("./middleware/errorHandler");
-const seedDatabase      = require("./config/seed");
 
 // Rate limiter: maximum 300 requests per 15 minutes per IP
 const limiter = rateLimit({
@@ -52,18 +59,15 @@ app.use(limiter);
 const allowedOrigins = [
   process.env.FRONTEND_URL,
   process.env.ADMIN_URL,
-  // Vercel deployments (admin panel)
   "https://food-delivery-rouge-one.vercel.app",
   "https://cloudkitchen.aparaitech.org",
   "https://cloudkitchen.aparaitech.org/",
-  // Local development
   "http://localhost:3000",
   "http://localhost:5173",
   "http://localhost:8081",
   "http://localhost:8082",
   "http://localhost:19000",
   "http://localhost:19006",
-  // Expo Go & Expo Web
   "http://127.0.0.1:8081",
   "http://127.0.0.1:19000",
   "http://127.0.0.1:19006",
@@ -72,23 +76,20 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (mobile apps, curl, Postman, React Native)
+      // Allow requests with no origin (like mobile apps, curl, postman)
       if (!origin) return callback(null, true);
+      
       // Allow any vercel.app subdomain (for preview deployments)
       if (origin.endsWith(".vercel.app")) return callback(null, true);
       // Allow any render.com subdomain (service-to-service)
       if (origin.endsWith(".onrender.com")) return callback(null, true);
-      // Allow any localhost or 192.168.x.x (development)
-      if (
-        origin.startsWith("http://localhost") ||
-        origin.startsWith("http://127.0.0.1") ||
-        /^http:\/\/192\.168\.\d+\.\d+/.test(origin)
-      ) {
+      
+      // Allow local development origins dynamically
+      const isLocal = /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+)(:\d+)?$/.test(origin);
+      if (isLocal || allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
+      
       console.warn(`[CORS] Origin blocked: ${origin}`);
       return callback(new Error("Not allowed by CORS"));
     },
@@ -119,6 +120,7 @@ app.use("/api/admin",       adminRoutes);
 app.use("/api/delivery",    deliveryRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/sections",      sectionRoutes);
+app.use("/api/home-sections", require("./routes/homeSectionRoutes"));
 app.use("/api/coupons",       couponRoutes);
 app.use("/api/rewards",       rewardRoutes);
 app.use("/api/wallet",        walletRoutes);
@@ -160,14 +162,22 @@ if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
     "   Payment features will run in sandbox/dummy mode.\n"
   );
 }
-
 // ── Startup ────────────────────────────────────────────────────────────────────
 // Guard against being required as a module (prevents duplicate server instances)
 if (require.main === module) {
   connectDB(MONGO_URI)
-    .then(() => {
-      // Seed / mock data
-      seedDatabase();
+    .then(async () => {
+      // Initialize default admin account if not exists
+      const initializeAdmin = require("./config/initAdmin");
+      await initializeAdmin();
+
+      // Initialize default home screen sections if not exists
+      const initializeHomeSections = require("./config/initHomeSections");
+      await initializeHomeSections();
+
+      // Initialize single restaurant settings and link foods
+      const initializeSingleRestaurant = require("./config/initSingleRestaurant");
+      await initializeSingleRestaurant();
 
       // Start the HTTP server — only once, only after DB is ready
       const server = app.listen(PORT, () => {

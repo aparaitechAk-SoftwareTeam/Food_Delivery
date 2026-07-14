@@ -45,6 +45,11 @@ const {
   getPlansList,
   createPlan,
   deletePlan,
+  adminLogin,
+  adminLogout,
+  getAdminProfile,
+  getCouponsList,
+  updateCouponStatus,
 } = require("../controllers/adminController");
 const protect = require("../middleware/authMiddleware");
 const router = express.Router();
@@ -59,8 +64,15 @@ const adminOnly = (req, res, next) => {
   }
 };
 
+// Unprotected routes
+router.post("/login", adminLogin);
+
+// Protected routes
 router.use(protect);
 router.use(adminOnly);
+
+router.post("/logout", adminLogout);
+router.get("/profile", getAdminProfile);
 
 router.get("/dashboard", getDashboardStats);
 router.get("/users", getUsersList);
@@ -129,5 +141,9 @@ router.delete("/campaigns/:id", deleteCampaign);
 router.get("/plans", getPlansList);
 router.post("/plans", createPlan);
 router.delete("/plans/:id", deletePlan);
+
+// Admin Coupon Management
+router.get("/coupons", getCouponsList);
+router.put("/coupons/:id/status", updateCouponStatus);
 
 module.exports = router;

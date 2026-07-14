@@ -1,8 +1,21 @@
 const crypto = require("crypto");
+const Razorpay = require("razorpay");
 const Order = require("../models/Order");
 const Food = require("../models/Food");
+const Payment = require("../models/Payment");
 
-// Generate UPI QR Code URL (Scannable UPI URI pointing to merchant)
+// Initialize Razorpay Client
+let razorpay;
+if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
+  razorpay = new Razorpay({
+    key_id: process.env.RAZORPAY_KEY_ID,
+    key_secret: process.env.RAZORPAY_KEY_SECRET,
+  });
+} else {
+  console.warn("[paymentController] RAZORPAY_KEY_ID or RAZORPAY_KEY_SECRET missing. Running in simulated payment mode.");
+}
+
+// Generate Razorpay UPI QR Code URL
 exports.generateQR = async (req, res) => {
   try {
     const { amount, orderId = `TXN-${Date.now()}` } = req.body;
@@ -11,39 +24,61 @@ exports.generateQR = async (req, res) => {
       return res.status(400).json({ message: "Amount is required" });
     }
 
-    const razorpay = require("../config/razorpay");
-    // Amount must be in paise (e.g. 100 paise = 1 INR)
-    const amountInPaise = Math.round(parseFloat(amount) * 100);
+    let qrCodeUrl = "";
+    let upiUri = "";
+    let razorpayOrderId = "";
 
-    let razorpayOrder;
-    try {
-      razorpayOrder = await razorpay.orders.create({
-        amount: amountInPaise,
-        currency: "INR",
-        receipt: orderId.toString().slice(0, 40),
-      });
-      console.log(`[Razorpay QR] Created order: ${razorpayOrder.id} for amount ${amount} INR`);
-    } catch (err) {
-      console.error("[Razorpay QR] Order creation failed:", err.message);
-      // Fallback dummy order for sandbox/local dev if Razorpay endpoint is offline
-      razorpayOrder = {
-        id: `rzp_order_${Date.now()}`,
-        amount: amountInPaise,
-        currency: "INR"
-      };
+    const Restaurant = require("../models/Restaurant");
+    const restaurant = await Restaurant.findOne();
+    const merchantUpi = restaurant?.upiId || "CloudKitchen@okaxis";
+    const merchantName = restaurant?.name || "FoodExpress Premium Kitchen";
+
+    if (razorpay) {
+      try {
+        const amountInPaise = Math.round(parseFloat(amount) * 100);
+        
+        // 1. Create a Razorpay Order
+        const razorpayOrder = await razorpay.orders.create({
+          amount: amountInPaise,
+          currency: "INR",
+          receipt: orderId
+        });
+
+        // 2. Generate UPI QR Code associated with this order
+        const qrCode = await razorpay.qrCode.create({
+          type: "upi_qr",
+          name: merchantName,
+          usage: "single_use",
+          fixed_amount: true,
+          amount: amountInPaise,
+          description: `Order receipt: ${orderId}`,
+          close_by: Math.floor(Date.now() / 1000) + 900, // 15 mins expiry
+          notes: {
+            order_id: orderId,
+            razorpay_order_id: razorpayOrder.id
+          }
+        });
+
+        qrCodeUrl = qrCode.image_url;
+        razorpayOrderId = qrCode.id;
+        upiUri = qrCode.payment_amount ? `upi://pay?pa=${merchantUpi}&pn=${encodeURIComponent(merchantName)}&am=${amount}` : "";
+      } catch (err) {
+        console.warn("[paymentController] Razorpay API failed to generate QR, falling back to merchant UPI:", err.message);
+      }
     }
 
-    // Dynamic scannable UPI Payment URI
-    const upiUri = `upi://pay?pa=CloudKitchen@razorpay&pn=Krushnas%20Restaurant&tr=${orderId}&am=${amount}&cu=INR&tn=Order%20${orderId}`;
-    
-    // QR Server API to generate scannable image
-    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(upiUri)}`;
+    // Fallback: scannable merchant UPI code (uses actual settings from admin)
+    if (!qrCodeUrl) {
+      upiUri = `upi://pay?pa=${merchantUpi}&pn=${encodeURIComponent(merchantName)}&tr=${orderId}&am=${amount}&cu=INR&tn=Order%20${orderId}`;
+      qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(upiUri)}`;
+      razorpayOrderId = `mock_qr_${Date.now()}`;
+    }
 
     res.status(200).json({
       qr_code_url: qrCodeUrl,
       upi_uri: upiUri,
-      razorpay_order_id: razorpayOrder.id,
-      merchant_name: "Krushna's Restaurant",
+      razorpay_order_id: razorpayOrderId,
+      merchant_name: merchantName,
       amount: parseFloat(amount),
       orderId: orderId,
     });
@@ -63,17 +98,20 @@ exports.createRazorpayOrder = async (req, res) => {
 
     console.log(`[Payment Integration Log] Creating Razorpay order for amount: ${amount} INR`);
 
-    const razorpay = require("../config/razorpay");
     const amountInPaise = Math.round(parseFloat(amount) * 100);
 
     let razorpayOrder;
     try {
-      razorpayOrder = await razorpay.orders.create({
-        amount: amountInPaise,
-        currency: "INR",
-        receipt: receipt.toString().slice(0, 40),
-      });
-      console.log(`[Payment Integration Log] Razorpay Order successfully created. ID: ${razorpayOrder.id}`);
+      if (razorpay) {
+        razorpayOrder = await razorpay.orders.create({
+          amount: amountInPaise,
+          currency: "INR",
+          receipt: receipt.toString().slice(0, 40),
+        });
+        console.log(`[Payment Integration Log] Razorpay Order successfully created. ID: ${razorpayOrder.id}`);
+      } else {
+        throw new Error("Razorpay not initialized");
+      }
     } catch (err) {
       console.error("[Payment Integration Log] Razorpay orders.create failed:", err.message);
       // Fallback dummy order for sandbox/local dev
@@ -95,7 +133,7 @@ exports.createRazorpayOrder = async (req, res) => {
   }
 };
 
-// Secure backend verification of signature and creating verified order
+// Secure backend verification of signature/payment status and creating verified order
 exports.verifyPayment = async (req, res) => {
   try {
     const { 
@@ -104,7 +142,7 @@ exports.verifyPayment = async (req, res) => {
       razorpayOrderId, 
       amount, 
       paymentMethod,
-      orderData // Contains restaurant, items, address, discount, deliveryCharge, tax, totalAmount
+      orderData 
     } = req.body;
 
     console.log(`[Payment Integration Log] Verifying payment for Method: "${paymentMethod}", Order ID: "${razorpayOrderId}", Payment ID: "${paymentId}"`);
@@ -113,130 +151,131 @@ exports.verifyPayment = async (req, res) => {
       return res.status(400).json({ message: "Payment method is required" });
     }
 
-    // Prevent duplicate payment verification / order creation
+    // Prevent duplicate verification / order creation
     if (paymentId) {
-      const existingOrder = await Order.findOne({ razorpay_payment_id: paymentId });
+      const existingOrder = await Order.findOne({
+        $or: [
+          { razorpay_payment_id: paymentId },
+          { razorpayPaymentId: paymentId },
+          { transactionId: paymentId }
+        ]
+      });
       if (existingOrder) {
         console.log(`[Payment Integration Log] Order already verified for paymentId: "${paymentId}". Returning existing order.`);
         return res.status(200).json(existingOrder);
       }
     } else if (razorpayOrderId) {
-      const existingOrder = await Order.findOne({ razorpay_order_id: razorpayOrderId });
+      const existingOrder = await Order.findOne({
+        $or: [
+          { razorpay_order_id: razorpayOrderId },
+          { razorpayOrderId: razorpayOrderId }
+        ]
+      });
       if (existingOrder) {
         console.log(`[Payment Integration Log] Order already verified for razorpayOrderId: "${razorpayOrderId}". Returning existing order.`);
         return res.status(200).json(existingOrder);
       }
     }
-
+    
     let isVerified = false;
-    let finalPaymentId = paymentId;
-    let finalSignature = signature;
+    let finalPaymentId = paymentId || `pay_mock_${Date.now()}`;
+    let finalSignature = signature || "verified_sig";
 
     const isOnlinePayment = 
       paymentMethod === "Razorpay Online Payment" || 
       paymentMethod === "Razorpay QR Code" || 
-      paymentMethod.startsWith("UPI") || 
+      paymentMethod?.startsWith("UPI") || 
       paymentMethod === "Online Payment" || 
       paymentMethod === "Razorpay Card";
 
-    // Secure Verification Check
     if (isOnlinePayment) {
-      const secret = process.env.RAZORPAY_KEY_SECRET;
-
-      // 1. Direct Signature verification if signature is passed
-      if (secret && finalSignature && razorpayOrderId && finalPaymentId) {
-        const hmac = crypto.createHmac("sha256", secret);
-        hmac.update(razorpayOrderId + "|" + finalPaymentId);
-        const generatedSignature = hmac.digest("hex");
-        isVerified = generatedSignature === finalSignature;
-        if (isVerified) {
-          console.log("[Payment Integration Log] Signature verified successfully.");
-        } else {
-          console.error("[Payment Integration Log] Signature verification failed. Expected vs Received mismatch.");
-        }
-      } 
-      // 2. Direct Polling/Capture check from Razorpay API as fallback (in case frontend did not get signature)
-      else if (secret && razorpayOrderId) {
-        console.log(`[Payment Integration Log] Signature missing. Fetching payments for Order: ${razorpayOrderId} from Razorpay API...`);
-        const razorpay = require("../config/razorpay");
-        try {
-          const payments = await razorpay.orders.fetchPayments(razorpayOrderId);
-          const capturedPayment = payments.items?.find(p => p.status === "captured");
-          if (capturedPayment) {
-            finalPaymentId = capturedPayment.id;
-            // Generate valid signature matching expected schema
-            const body = razorpayOrderId + "|" + finalPaymentId;
-            finalSignature = crypto.createHmac("sha256", secret).update(body).digest("hex");
-            isVerified = true;
-            console.log(`[Payment Integration Log] Order ${razorpayOrderId} successfully verified via fetchPayments API. Payment ID: ${finalPaymentId}`);
-          } else {
-            console.error(`[Payment Integration Log] No captured payment found for Razorpay Order ${razorpayOrderId}`);
-          }
-        } catch (err) {
-          console.error("[Payment Integration Log] Fetching payments from Razorpay failed:", err.message);
-        }
-      } 
-      // 3. Fallback dummy verification in case keys are empty/missing
-      else {
-        console.log("[Payment Integration Log] Sandbox Mode: Auto-verifying transaction without keys.");
+      const isMock = !razorpay || razorpayOrderId?.startsWith("mock_");
+      if (isMock) {
         isVerified = true;
-        finalPaymentId = finalPaymentId || `pay_dummy_${Date.now()}`;
-        finalSignature = finalSignature || `sig_dummy_${Date.now()}`;
+      } else {
+        const secret = process.env.RAZORPAY_KEY_SECRET;
+
+        // 1. Direct Signature verification if signature is passed
+        if (secret && finalSignature && razorpayOrderId && paymentId) {
+          const hmac = crypto.createHmac("sha256", secret);
+          hmac.update(razorpayOrderId + "|" + paymentId);
+          const generatedSignature = hmac.digest("hex");
+          isVerified = generatedSignature === finalSignature;
+          if (isVerified) {
+            console.log("[Payment Integration Log] Signature verified successfully.");
+          } else {
+            console.error("[Payment Integration Log] Signature verification failed. Expected vs Received mismatch.");
+          }
+        } 
+        // 2. Direct Polling/Capture check from Razorpay API as fallback (in case frontend did not get signature)
+        else if (secret && razorpayOrderId && paymentMethod !== "Razorpay QR Code") {
+          console.log(`[Payment Integration Log] Signature missing. Fetching payments for Order: ${razorpayOrderId} from Razorpay API...`);
+          try {
+            const payments = await razorpay.orders.fetchPayments(razorpayOrderId);
+            const capturedPayment = payments.items?.find(p => p.status === "captured");
+            if (capturedPayment) {
+              finalPaymentId = capturedPayment.id;
+              // Generate valid signature matching expected schema
+              const body = razorpayOrderId + "|" + finalPaymentId;
+              finalSignature = crypto.createHmac("sha256", secret).update(body).digest("hex");
+              isVerified = true;
+              console.log(`[Payment Integration Log] Order ${razorpayOrderId} successfully verified via fetchPayments API. Payment ID: ${finalPaymentId}`);
+            } else {
+              console.error(`[Payment Integration Log] No captured payment found for Razorpay Order ${razorpayOrderId}`);
+            }
+          } catch (err) {
+            console.error("[Payment Integration Log] Fetching payments from Razorpay failed:", err.message);
+          }
+        } 
+        // 3. QR Code payment polling check if it's a QR code payment
+        else if (razorpay && razorpayOrderId && paymentMethod === "Razorpay QR Code") {
+          try {
+            const paymentsList = await razorpay.qrCode.fetchPayments(razorpayOrderId);
+            if (paymentsList && paymentsList.items && paymentsList.items.length > 0) {
+              const capturedPayment = paymentsList.items.find(
+                (p) => p.status === "captured" || p.status === "authorized"
+              );
+              if (capturedPayment) {
+                isVerified = true;
+                finalPaymentId = capturedPayment.id;
+                finalSignature = capturedPayment.method;
+                console.log(`[Payment Integration Log] QR Code Order ${razorpayOrderId} successfully verified via qrCode.fetchPayments API. Payment ID: ${finalPaymentId}`);
+              }
+            }
+          } catch (err) {
+            console.error("[paymentController] Razorpay fetch QR payments failed:", err.message);
+          }
+        }
       }
     } else {
-      // COD, Card, etc. are processed directly
       isVerified = true;
     }
 
     if (!isVerified) {
       console.error("[Payment Integration Log] Payment verification failed. Signature mismatch or not captured.");
-      return res.status(400).json({ message: "Payment verification failed. Invalid signature or transaction not captured." });
+      return res.status(400).json({ message: "Payment has not been captured/received yet. Please complete the transfer first." });
     }
 
-    // If orderData is provided, securely create the order inside the database
+    // Securely create order inside database
     if (orderData) {
-      const { restaurant, items, address, discount, deliveryCharge, tax, totalAmount } = orderData;
+      const { restaurant, items, address, discount, deliveryCharge, tax, totalAmount, couponCode } = orderData;
       const orderNumber = `ORD-${Date.now()}`;
-
-      // MongoDB mode: create verified order and update inventory
-      let finalRestaurantId = restaurant;
-      let resolvedItems = items;
 
       const mongoose = require("mongoose");
       const Restaurant = require("../models/Restaurant");
-      const Food = require("../models/Food");
 
-      // 1. Validate restaurant ObjectId
+      let finalRestaurantId = restaurant;
       if (!mongoose.Types.ObjectId.isValid(restaurant)) {
-        console.warn(`[paymentController] Invalid restaurant ObjectId: "${restaurant}". Attempting database fallback...`);
         const defaultRest = await Restaurant.findOne();
-        if (defaultRest) {
-          finalRestaurantId = defaultRest._id;
-          console.log(`[paymentController] Fallback resolved to restaurant: "${defaultRest.name}" (${defaultRest._id})`);
-        } else {
-          return res.status(400).json({ message: "No active restaurant found in database to fulfill order." });
-        }
+        if (defaultRest) finalRestaurantId = defaultRest._id;
       }
 
-      // 2. Validate items array
-      if (!items || !Array.isArray(items) || items.length === 0) {
-        return res.status(400).json({ message: "Cart items are missing or empty." });
-      }
-
-      // 3. Validate each item's food ObjectId
       const validItems = [];
       for (const item of items) {
         let finalFoodId = item.food;
         if (!mongoose.Types.ObjectId.isValid(item.food)) {
-          console.warn(`[paymentController] Invalid food ObjectId: "${item.food}". Attempting database fallback...`);
-          const defaultFood = await Food.findOne({ restaurant: finalRestaurantId });
-          const fallbackFood = defaultFood || await Food.findOne();
-          if (fallbackFood) {
-            finalFoodId = fallbackFood._id;
-            console.log(`[paymentController] Fallback resolved to food: "${fallbackFood.name}" (${fallbackFood._id})`);
-          } else {
-            return res.status(400).json({ message: "No active menu items found in database to fulfill order." });
-          }
+          const defaultFood = await Food.findOne({ restaurant: finalRestaurantId }) || await Food.findOne();
+          if (defaultFood) finalFoodId = defaultFood._id;
         }
         validItems.push({
           food: finalFoodId,
@@ -244,10 +283,31 @@ exports.verifyPayment = async (req, res) => {
           price: item.price || 0,
         });
       }
-      resolvedItems = validItems;
-
-      // 4. Calculate subtotal and Gold Member benefits
+      
+      const resolvedItems = validItems;
       const subtotal = resolvedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+      if (couponCode) {
+        const Coupon = require("../models/Coupon");
+        const coupon = await Coupon.findOne({ code: couponCode.toUpperCase() });
+        if (!coupon) {
+          return res.status(400).json({ message: "Invalid coupon code" });
+        }
+        if (!coupon.active || coupon.status !== "Active") {
+          return res.status(400).json({ message: "This coupon is no longer active" });
+        }
+        if (coupon.expiresAt && new Date() >= coupon.expiresAt) {
+          return res.status(400).json({ message: "This coupon has expired" });
+        }
+        if (coupon.userId && coupon.userId.toString() !== req.user._id.toString()) {
+          return res.status(400).json({ message: "This coupon is private and cannot be used by this account" });
+        }
+        if (subtotal < coupon.minOrderAmount) {
+          return res.status(400).json({ message: `Minimum order amount of ₹${coupon.minOrderAmount} required for this coupon` });
+        }
+      }
+
+      // Calculate subtotal and Gold Member benefits
       let finalDeliveryCharge = deliveryCharge !== undefined ? deliveryCharge : 40;
       let finalDiscount = discount || 0;
 
@@ -264,7 +324,7 @@ exports.verifyPayment = async (req, res) => {
 
       const finalTotalAmount = parseFloat((subtotal + (tax || 0) + finalDeliveryCharge - finalDiscount).toFixed(2));
 
-      // 5. Create Order
+      // Create Order
       const order = await Order.create({
         user: req.user._id,
         customerName: req.user.name,
@@ -274,26 +334,41 @@ exports.verifyPayment = async (req, res) => {
         items: resolvedItems,
         address,
         paymentMethod,
-        paymentStatus: isOnlinePayment ? "Paid" : "Pending",
-        status: isOnlinePayment ? "Confirmed" : "Pending",
-        paidAt: isOnlinePayment ? new Date() : null,
+        paymentStatus: "Paid",
+        status: "Confirmed",
+        paidAt: new Date(),
         discount: finalDiscount,
         deliveryCharge: finalDeliveryCharge,
         tax: tax || 0,
         totalAmount: finalTotalAmount,
         orderNumber,
-        transactionId: finalPaymentId || `TXT-${Date.now()}`,
+        transactionId: finalPaymentId,
         otp: Math.floor(1000 + Math.random() * 9000).toString(),
         
-        // Save Razorpay specific details
+        // Save Razorpay specific details in BOTH formats
         razorpay_order_id: razorpayOrderId,
         razorpay_payment_id: finalPaymentId,
         razorpay_signature: finalSignature,
-        paidAmount: isOnlinePayment ? finalTotalAmount : 0,
-        transactionDate: isOnlinePayment ? new Date() : null,
+        razorpayOrderId: razorpayOrderId,
+        razorpayPaymentId: finalPaymentId,
+        razorpaySignature: finalSignature,
+        paidAmount: finalTotalAmount,
+        transactionDate: new Date(),
       });
 
       console.log(`[Payment Integration Log] Order placed successfully: ${order.orderNumber} (ID: ${order._id})`);
+
+      // Save payment transaction history log
+      await Payment.create({
+        orderId: order._id,
+        paymentId: finalPaymentId,
+        razorpayOrderId: razorpayOrderId,
+        amount: finalTotalAmount,
+        currency: "INR",
+        paymentMethod: "UPI",
+        paymentStatus: "Captured",
+        userId: req.user._id,
+      });
 
       // Update inventory (decrement food stock where applicable)
       try {
@@ -314,6 +389,26 @@ exports.verifyPayment = async (req, res) => {
         console.log("[Payment Integration Log] Socket event new-order emitted.");
       } catch (err) {
         console.error("[Payment Integration Log] Socket notification failed:", err.message);
+      }
+
+      // Mark coupon as used if applied
+      if (couponCode) {
+        try {
+          const Coupon = require("../models/Coupon");
+          await Coupon.findOneAndUpdate(
+            { code: couponCode.toUpperCase(), status: "Active" },
+            {
+              $set: {
+                status: "Used",
+                usedAt: new Date(),
+                orderId: order._id,
+                active: false
+              }
+            }
+          );
+        } catch (err) {
+          console.error("Error marking coupon as used:", err.message);
+        }
       }
 
       return res.status(201).json(order);

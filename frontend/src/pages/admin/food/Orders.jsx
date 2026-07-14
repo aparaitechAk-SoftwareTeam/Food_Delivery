@@ -389,7 +389,19 @@ const Orders = () => {
                 {selectedOrder.transactionId && (
                   <div className="flex justify-between">
                     <span className="text-gray-450 font-medium">Transaction ID:</span>
-                    <span className="font-semibold text-slate-700 select-all">{selectedOrder.transactionId}</span>
+                    <span className="font-mono text-[10px] text-slate-700 font-semibold">{selectedOrder.transactionId}</span>
+                  </div>
+                )}
+                {selectedOrder.razorpayOrderId && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-450 font-medium">Razorpay Order ID:</span>
+                    <span className="font-mono text-[10px] text-slate-700 font-semibold">{selectedOrder.razorpayOrderId}</span>
+                  </div>
+                )}
+                {selectedOrder.paidAt && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-450 font-medium">Paid At:</span>
+                    <span className="text-[10px] text-slate-700 font-semibold">{new Date(selectedOrder.paidAt).toLocaleString()}</span>
                   </div>
                 )}
               </div>

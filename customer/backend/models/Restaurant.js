@@ -13,6 +13,11 @@ const restaurantSchema = new mongoose.Schema({
   vegType: { type: String, enum: ["veg", "non-veg", "both"], default: "both" },
   isOpen: { type: Boolean, default: true },
   isFeatured: { type: Boolean, default: false },
+  isTrending: { type: Boolean, default: false },
+  isNew: { type: Boolean, default: false },
+  isRecommended: { type: Boolean, default: false },
+  priority: { type: Number, default: 0 },
+  isActive: { type: Boolean, default: true },
   restaurantType: {
     type: String,
     enum: ["Pure Veg", "Multi Cuisine", "Cafe", "Bakery", "Cloud Kitchen"],
@@ -42,6 +47,11 @@ const restaurantSchema = new mongoose.Schema({
       sortOrder: { type: Number, default: 0 }
     }
   ],
+  upiId: { type: String, default: "CloudKitchen@okaxis" },
+  cashbackEnabled: { type: Boolean, default: true },
+  cashbackAmount: { type: Number, default: 150 },
+  cashbackRequiredOrders: { type: Number, default: 4 },
+  cashbackExpiryHours: { type: Number, default: 48 },
   createdAt: { type: Date, default: Date.now },
 });
 

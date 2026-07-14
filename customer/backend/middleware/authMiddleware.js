@@ -40,16 +40,21 @@ const protect = async (req, res, next) => {
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     
-    
-    req.user = await User.findById(decoded.id).select("-password");
-    if (!req.user) {
+    let user = await User.findById(decoded.id).select("-password");
+    if (!user) {
+      const Admin = require("../models/Admin");
+      user = await Admin.findById(decoded.id).select("-password");
+    }
+
+    if (!user) {
       res.status(401);
       throw new Error("User not found");
     }
-    if (req.user.isBlocked) {
+    if (user.isBlocked) {
       res.status(401);
       throw new Error("Your account has been blocked. Contact support.");
     }
+    req.user = user;
     next();
   } catch (error) {
     res.status(401);
@@ -74,7 +79,12 @@ const optionalProtect = async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = await User.findById(decoded.id).select("-password");
+    let user = await User.findById(decoded.id).select("-password");
+    if (!user) {
+      const Admin = require("../models/Admin");
+      user = await Admin.findById(decoded.id).select("-password");
+    }
+    req.user = user;
     next();
   } catch (error) {
     next();

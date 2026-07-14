@@ -222,6 +222,7 @@ const FoodItems = () => {
       ...formData,
       tags: tagsArray,
       isVeg: formData.dietType === 'Veg',
+      category: formData.category === '' ? null : formData.category,
     };
 
     try {
