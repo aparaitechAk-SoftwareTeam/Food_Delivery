@@ -3,14 +3,11 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 
 const getBaseURL = () => {
-  if (Platform.OS === "web") {
-    return "http://localhost:5000/api";
-  }
   if (process.env.EXPO_PUBLIC_API_URL) {
     const url = process.env.EXPO_PUBLIC_API_URL;
     return url.endsWith("/api") ? url : `${url}/api`;
   }
-  return "http://192.168.1.26:5000/api";
+  return "https://food-delivery-ywd0.onrender.com/api";
 };
 
 const api = axios.create({
