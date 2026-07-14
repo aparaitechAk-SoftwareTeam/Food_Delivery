@@ -2,7 +2,7 @@ import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 
-const RENDER_API_URL = "https://food-delivery-gtq0.onrender.com";
+const RENDER_API_URL = "http://localhost:5000";
 
 const getBaseURL = () => {
   // Check env variable first — works on all platforms

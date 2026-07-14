@@ -1,6 +1,4 @@
-
-
-const PRODUCTION_RENDER_URL = "https://food-delivery-gtq0.onrender.com";
+const PRODUCTION_RENDER_URL = "http://localhost:5000";
 
 const getApiBaseURL = () => {
   // Explicit env override (highest priority)
@@ -9,13 +7,10 @@ const getApiBaseURL = () => {
     return envUrl.endsWith("/api") ? envUrl : `${envUrl}/api`;
   }
 
-  
-
   if (typeof window !== "undefined" && !window.location.hostname.includes("localhost")) {
     return "/api";
   }
 
-  
   return `${PRODUCTION_RENDER_URL}/api`;
 };
 
