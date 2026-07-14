@@ -173,9 +173,9 @@ const FoodCard = ({ food, navigation }) => {
 
         {/* Info Section */}
         <View style={styles.infoWrapper}>
-          {/* Restaurant Name */}
+          {/* Category / Cuisine Label */}
           <Text style={styles.restaurantName} numberOfLines={1}>
-            {food.restaurant?.name || "FoodExpress Kitchen"}
+            {food.category?.name || food.cuisine || "Specialty"}
           </Text>
 
           {/* Food Name */}

@@ -181,9 +181,8 @@ const Customers = () => {
             </div>
           </div>
 
-          {/* Details Sidebar */}
-          {selectedCustomer && (
-            <div className="w-[320px] bg-white rounded-2xl border border-gray-200 shadow-sm p-6 flex flex-col shrink-0 self-start">
+          {/* Details Sidebar */}          {selectedCustomer && (
+            <div className="w-[320px] bg-white rounded-2xl border border-gray-200 shadow-sm p-6 flex flex-col shrink-0 self-start max-h-[calc(100vh-120px)] overflow-y-auto">
               <div className="flex justify-between items-center border-b border-gray-100 pb-3 mb-4">
                 <h3 className="text-sm font-bold text-gray-900">Customer Profile</h3>
                 <button 
@@ -219,10 +218,10 @@ const Customers = () => {
               </div>
 
               {/* Addresses */}
-              <div className="text-xs pb-4 border-b border-gray-100 mb-4 flex-1">
+              <div className="text-xs pb-4 border-b border-gray-100 mb-4">
                 <h4 className="font-bold text-gray-900 uppercase tracking-wider text-[9px] mb-2 text-slate-400 flex items-center gap-1"><MapPin className="w-3 h-3 text-slate-500" /> Saved Addresses</h4>
                 {selectedCustomer.addresses && selectedCustomer.addresses.length > 0 ? (
-                  <div className="space-y-2 max-h-[150px] overflow-y-auto pr-1">
+                  <div className="space-y-2 max-h-[120px] overflow-y-auto pr-1">
                     {selectedCustomer.addresses.map((addr, idx) => (
                       <div key={idx} className="p-2 border border-gray-150 rounded-xl bg-slate-50 text-[10px] text-slate-600 font-semibold">
                         <span className="font-bold text-slate-800 block mb-0.5">{addr.label} {addr.isDefault && <span className="text-[8px] bg-indigo-50 border border-indigo-105 text-indigo-600 px-1 py-0.2 rounded ml-1 uppercase font-black">Default</span>}</span>
@@ -235,13 +234,13 @@ const Customers = () => {
                 )}
               </div>
 
-              {/* Billing analytics */}
-              <div className="text-xs space-y-3.5">
+              {/* Shopping analytics */}
+              <div className="text-xs pb-4 border-b border-gray-100 mb-4">
                 <h4 className="font-bold text-gray-900 uppercase tracking-wider text-[9px] mb-2 text-slate-400 flex items-center gap-1"><ShoppingBag className="w-3 h-3 text-slate-500" /> Shopping Analytics</h4>
                 {(() => {
                   const stats = getCustomerStats(selectedCustomer._id);
                   return (
-                    <div className="grid grid-cols-2 gap-3.5">
+                    <div className="grid grid-cols-2 gap-3">
                       <div className="p-3 border border-gray-100 rounded-2xl bg-indigo-50/20 text-center">
                         <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">Orders</span>
                         <span className="text-lg font-black text-indigo-750">{stats.orderCount}</span>
@@ -253,7 +252,36 @@ const Customers = () => {
                     </div>
                   );
                 })()}
+              </div>
 
+              {/* Order/Delivery History */}
+              <div className="text-xs pb-4 mb-4">
+                <h4 className="font-bold text-gray-900 uppercase tracking-wider text-[9px] mb-2 text-slate-400 flex items-center gap-1"><ShoppingBag className="w-3 h-3 text-slate-500" /> Delivery History</h4>
+                {(() => {
+                  const userOrders = orders.filter(o => o.user?._id === selectedCustomer._id || o.user === selectedCustomer._id);
+                  return userOrders.length > 0 ? (
+                    <div className="space-y-2 overflow-y-auto pr-1 max-h-[220px]">
+                      {userOrders.map((order) => (
+                        <div key={order._id} className="p-2.5 border border-gray-150 rounded-xl bg-slate-50 text-[10px] text-slate-650 font-semibold flex justify-between items-center">
+                          <div>
+                            <span className="font-bold text-slate-800 block">ID: {order._id.slice(-6).toUpperCase()}</span>
+                            <span className="text-[9px] text-slate-450 block">{new Date(order.createdAt).toLocaleDateString()}</span>
+                          </div>
+                          <div className="text-right">
+                            <span className="font-bold text-slate-800 block">₹{order.totalAmount}</span>
+                            <span className={`text-[8px] font-black uppercase ${order.status === 'Delivered' ? 'text-emerald-600' : order.status === 'Cancelled' ? 'text-rose-500' : 'text-amber-500'}`}>{order.status}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-gray-450 italic">No orders placed yet.</span>
+                  );
+                })()}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="text-xs">
                 <button
                   onClick={() => handleToggleBlock(selectedCustomer._id)}
                   className={`w-full py-2.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer ${selectedCustomer.isBlocked ? 'bg-emerald-650 hover:bg-emerald-600 text-white' : 'bg-rose-600 hover:bg-rose-555 text-white'}`}

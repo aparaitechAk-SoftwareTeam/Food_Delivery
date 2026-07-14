@@ -22,6 +22,13 @@ const Settings = () => {
   const [restaurantCuisine, setRestaurantCuisine] = useState('South Indian, North Indian, Chinese, Desserts, Beverages');
   const [restaurantOfferPercentage, setRestaurantOfferPercentage] = useState(20);
   const [restaurantType, setRestaurantType] = useState('Multi Cuisine');
+  const [restaurantUpiId, setRestaurantUpiId] = useState('CloudKitchen@okaxis');
+
+  // Cashback campaign settings states
+  const [cashbackEnabled, setCashbackEnabled] = useState(true);
+  const [cashbackAmount, setCashbackAmount] = useState(150);
+  const [cashbackRequiredOrders, setCashbackRequiredOrders] = useState(4);
+  const [cashbackExpiryHours, setCashbackExpiryHours] = useState(48);
 
   useEffect(() => {
     // Load local storage values
@@ -52,6 +59,11 @@ const Settings = () => {
           setRestaurantCuisine(Array.isArray(rest.cuisine) ? rest.cuisine.join(', ') : rest.cuisine || '');
           setRestaurantOfferPercentage(rest.offerPercentage || 0);
           setRestaurantType(rest.restaurantType || 'Multi Cuisine');
+          setRestaurantUpiId(rest.upiId || 'CloudKitchen@okaxis');
+          setCashbackEnabled(rest.cashbackEnabled !== false);
+          setCashbackAmount(rest.cashbackAmount || 150);
+          setCashbackRequiredOrders(rest.cashbackRequiredOrders || 4);
+          setCashbackExpiryHours(rest.cashbackExpiryHours || 48);
         }
       } catch (err) {
         console.error('Error fetching restaurant details:', err);
@@ -82,7 +94,12 @@ const Settings = () => {
       isOpen: restaurantIsOpen,
       cuisine: cuisinesArray,
       offerPercentage: Number(restaurantOfferPercentage),
-      restaurantType: restaurantType
+      restaurantType: restaurantType,
+      upiId: restaurantUpiId,
+      cashbackEnabled: cashbackEnabled,
+      cashbackAmount: Number(cashbackAmount),
+      cashbackRequiredOrders: Number(cashbackRequiredOrders),
+      cashbackExpiryHours: Number(cashbackExpiryHours)
     };
 
     try {
@@ -252,6 +269,19 @@ const Settings = () => {
                 />
               </div>
 
+              <div>
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1.5">Merchant UPI ID (For Scan & Pay VPA)</label>
+                <input 
+                  type="text"
+                  required
+                  value={restaurantUpiId}
+                  onChange={(e) => setRestaurantUpiId(e.target.value)}
+                  placeholder="e.g. yourname@ybl"
+                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 bg-gray-50/50 focus:bg-white text-xs font-bold"
+                />
+                <span className="text-[9px] text-gray-450 mt-1 block">Specify your registered VPA UPI address to receive customer payments on scan.</span>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1.5">Cuisines (Comma Separated)</label>
@@ -271,6 +301,60 @@ const Settings = () => {
                     required
                     value={restaurantOfferPercentage}
                     onChange={(e) => setRestaurantOfferPercentage(parseInt(e.target.value) || 0)}
+                    className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 bg-gray-50/50 focus:bg-white text-xs font-bold"
+                  />
+                </div>
+              </div>
+
+              {/* Part 3: Cashback Reward Campaign Settings */}
+              <h3 className="text-sm font-bold text-gray-900 border-b border-gray-150 pb-4 mb-6 pt-4 flex items-center gap-1.5">
+                <Gift className="w-5 h-5 text-indigo-500" /> New User Cashback Reward Rules
+              </h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1.5">Cashback Offer Status</label>
+                  <select 
+                    value={cashbackEnabled ? 'enabled' : 'disabled'}
+                    onChange={(e) => setCashbackEnabled(e.target.value === 'enabled')}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none bg-gray-50/50 font-bold text-xs"
+                  >
+                    <option value="enabled">Active / Enabled</option>
+                    <option value="disabled">Inactive / Disabled</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1.5">Cashback Reward Amount (₹)</label>
+                  <input 
+                    type="number"
+                    required
+                    value={cashbackAmount}
+                    onChange={(e) => setCashbackAmount(parseInt(e.target.value) || 0)}
+                    className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 bg-gray-50/50 focus:bg-white text-xs font-bold"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1.5">Required Orders to Unlock</label>
+                  <input 
+                    type="number"
+                    required
+                    value={cashbackRequiredOrders}
+                    onChange={(e) => setCashbackRequiredOrders(parseInt(e.target.value) || 0)}
+                    className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 bg-gray-50/50 focus:bg-white text-xs font-bold"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1.5">Offer Expiry Period (Hours)</label>
+                  <input 
+                    type="number"
+                    required
+                    value={cashbackExpiryHours}
+                    onChange={(e) => setCashbackExpiryHours(parseInt(e.target.value) || 0)}
                     className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 bg-gray-50/50 focus:bg-white text-xs font-bold"
                   />
                 </div>

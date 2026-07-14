@@ -1,6 +1,14 @@
 require("dotenv").config();
 require("express-async-errors");
 
+// Workaround for querySrv ECONNREFUSED DNS issues (especially on Windows / Atlas)
+const dns = require("dns");
+try {
+  dns.setServers(["8.8.8.8", "8.8.4.4"]);
+} catch (err) {
+  console.warn("Warning: Could not set custom DNS servers:", err.message);
+}
+
 const express = require("express");
 const cors = require("cors");
 const morgan = require("morgan");
@@ -33,7 +41,6 @@ const membershipRoutes   = require("./routes/membershipRoutes");
 const referralRoutes     = require("./routes/referralRoutes");
 const campaignRoutes     = require("./routes/campaignRoutes");
 const errorHandler      = require("./middleware/errorHandler");
-const seedDatabase      = require("./config/seed");
 
 // Rate limiter: maximum 300 requests per 15 minutes per IP
 const limiter = rateLimit({
@@ -64,9 +71,13 @@ app.use(
     origin: (origin, callback) => {
       // Allow requests with no origin (like mobile apps, curl, postman)
       if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) {
+      
+      // Allow local development origins dynamically
+      const isLocal = /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+)(:\d+)?$/.test(origin);
+      if (isLocal || allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
+      
       console.warn(`Origin ${origin} blocked by CORS`);
       return callback(new Error("Not allowed by CORS"));
     },
@@ -97,6 +108,7 @@ app.use("/api/admin",       adminRoutes);
 app.use("/api/delivery",    deliveryRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/sections",      sectionRoutes);
+app.use("/api/home-sections", require("./routes/homeSectionRoutes"));
 app.use("/api/coupons",       couponRoutes);
 app.use("/api/rewards",       rewardRoutes);
 app.use("/api/wallet",        walletRoutes);
@@ -129,21 +141,22 @@ if (!MONGO_URI) {
   process.exit(1);
 }
 
-if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
-  console.error(
-    "\n❌  Missing RAZORPAY_KEY_ID or RAZORPAY_KEY_SECRET in backend/.env\n" +
-    "   Please add them to enable secure online payment integration.\n"
-  );
-  process.exit(1);
-}
-
 // ── Startup ────────────────────────────────────────────────────────────────────
 // Guard against being required as a module (prevents duplicate server instances)
 if (require.main === module) {
   connectDB(MONGO_URI)
-    .then(() => {
-      // Seed / mock data
-      seedDatabase();
+    .then(async () => {
+      // Initialize default admin account if not exists
+      const initializeAdmin = require("./config/initAdmin");
+      await initializeAdmin();
+
+      // Initialize default home screen sections if not exists
+      const initializeHomeSections = require("./config/initHomeSections");
+      await initializeHomeSections();
+
+      // Initialize single restaurant settings and link foods
+      const initializeSingleRestaurant = require("./config/initSingleRestaurant");
+      await initializeSingleRestaurant();
 
       // Start the HTTP server — only once, only after DB is ready
       const server = app.listen(PORT, () => {

@@ -9,7 +9,6 @@ const Payments = () => {
     { id: 'cod', name: 'Cash on Delivery', enabled: true, mode: 'Offline', description: 'Collect physical cash upon doorstep package handover.' },
     { id: 'upi', name: 'Direct UPI Intent', enabled: true, mode: 'Sandbox Integration', description: 'Deep-link directly to customer UPI banking apps.' },
     { id: 'card', name: 'Credit/Debit Card', enabled: false, mode: 'Stripe API Gateway', description: 'Accept global Visa, Mastercard, and RuPay card checkouts.' },
-    { id: 'qr', name: 'Razorpay Dynamic QR Scan', enabled: true, mode: 'Razorpay API Gateway', description: 'Generate live QR codes for verified instant payments.' },
   ]);
 
   const [orders, setOrders] = useState([]);

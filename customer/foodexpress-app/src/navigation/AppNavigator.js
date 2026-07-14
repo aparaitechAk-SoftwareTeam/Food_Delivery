@@ -32,6 +32,7 @@ import OrderSuccessScreen from "../screens/Checkout/OrderSuccessScreen";
 import GoldMembershipScreen from "../screens/Gold/GoldMembershipScreen";
 import ReferralScreen from "../screens/Referral/ReferralScreen";
 import CashbackDealsScreen from "../screens/Cashback/CashbackDealsScreen";
+import CouponsScreen from "../screens/Profile/CouponsScreen";
 
 
 
@@ -292,6 +293,13 @@ const AppNavigator = () => {
             title: "Cashback Deals",
             headerTintColor: "#ff6b00",
             headerTitleStyle: { fontWeight: "bold" },
+          }}
+        />
+        <Stack.Screen
+          name="Coupons"
+          component={CouponsScreen}
+          options={{
+            headerShown: false,
           }}
         />
       </Stack.Navigator>

@@ -562,7 +562,7 @@ const FoodListingScreen = ({ navigation, route }) => {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#ffffff" }}>
-      <CustomScreenHeader title={route.params?.category || "Explore Menu"} navigation={navigation} />
+      <CustomScreenHeader title={route.params?.category || "Explore Menu"} navigation={navigation} showBack={false} />
       <View style={styles.container}>
         {/* Sticky Search Bar */}
         <View style={styles.searchHeader}>

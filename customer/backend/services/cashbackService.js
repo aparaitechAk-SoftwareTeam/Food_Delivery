@@ -16,14 +16,25 @@ exports.createRewardForNewUser = async (userId) => {
     const user = await User.findById(userId);
     if (!user || user.role !== "customer") return null;
 
-    // Expiry date is registration date + 48 hours
-    const expiryDate = new Date(Date.now() + 48 * 60 * 60 * 1000);
+    const Restaurant = require("../models/Restaurant");
+    const restaurant = await Restaurant.findOne();
+
+    // Check if cashback campaign is disabled globally
+    if (restaurant && restaurant.cashbackEnabled === false) {
+      console.log("[CashbackService] Cashback rewards are disabled globally.");
+      return null;
+    }
+
+    const requiredOrders = restaurant?.cashbackRequiredOrders || 4;
+    const cashbackAmount = restaurant?.cashbackAmount || 150;
+    const expiryHours = restaurant?.cashbackExpiryHours || 48;
+    const expiryDate = new Date(Date.now() + expiryHours * 60 * 60 * 1000);
 
     const reward = await CashbackReward.create({
       userId,
-      totalRequiredOrders: 4,
+      totalRequiredOrders: requiredOrders,
       completedOrders: 0,
-      cashbackAmount: 150,
+      cashbackAmount: cashbackAmount,
       expiryDate,
       status: "Pending",
       countedOrders: [],
@@ -276,23 +287,38 @@ exports.claimCashback = async (userId) => {
     reward.updatedAt = new Date();
     await reward.save({ session });
 
-    // Credit user's wallet
-    const user = await User.findById(userId).session(session);
-    if (!user) {
-      throw new Error("User not found");
+    // Generate unique coupon code
+    const crypto = require("crypto");
+    const Coupon = require("../models/Coupon");
+    
+    let uniqueCode = `CB-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
+    let isUnique = false;
+    let attempts = 0;
+    while (!isUnique && attempts < 10) {
+      const existing = await Coupon.findOne({ code: uniqueCode }).session(session);
+      if (!existing) {
+        isUnique = true;
+      } else {
+        uniqueCode = `CB-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
+        attempts++;
+      }
     }
-    user.walletBalance = (user.walletBalance || 0) + reward.cashbackAmount;
-    await user.save({ session });
 
-    // Record wallet transaction log
-    await WalletTransaction.create(
+    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days expiry
+    const newCoupons = await Coupon.create(
       [
         {
-          userId,
-          type: "Cashback",
-          amount: reward.cashbackAmount,
-          description: "New User Cashback Reward",
-        },
+          code: uniqueCode,
+          discountType: "fixed",
+          value: reward.cashbackAmount,
+          active: true,
+          minOrderAmount: 0,
+          maxDiscount: reward.cashbackAmount,
+          expiresAt,
+          userId: userId,
+          status: "Active",
+          relatedRewardId: reward._id,
+        }
       ],
       { session }
     );
@@ -301,8 +327,8 @@ exports.claimCashback = async (userId) => {
     await Notification.create(
       [
         {
-          title: "Cashback Claimed",
-          description: `₹${reward.cashbackAmount} Cashback added to your wallet.`,
+          title: "Cashback Coupon Claimed",
+          description: `₹${reward.cashbackAmount} Cashback Coupon added to your wallet. Code: ${uniqueCode}`,
           type: "Offers",
           audience: "Specific User",
           userId,
@@ -313,10 +339,15 @@ exports.claimCashback = async (userId) => {
 
     await session.commitTransaction();
     session.endSession();
-    console.log(`[CashbackService] User ${userId} successfully claimed ₹${reward.cashbackAmount} cashback`);
+    console.log(`[CashbackService] User ${userId} successfully claimed ₹${reward.cashbackAmount} cashback coupon: ${uniqueCode}`);
+    
     return {
       status: "Claimed",
-      walletBalance: user.walletBalance,
+      coupon: {
+        code: uniqueCode,
+        value: reward.cashbackAmount,
+        expiresAt,
+      }
     };
   } catch (error) {
     await session.abortTransaction();

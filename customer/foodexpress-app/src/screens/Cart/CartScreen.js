@@ -250,11 +250,19 @@ const CartScreen = ({ navigation }) => {
       <CustomScreenHeader
         title="Your Cart"
         navigation={navigation}
+        showBack={false}
         rightAction={
           <TouchableOpacity onPress={() => {
             Alert.alert("Clear Cart", "Remove all items?", [
               { text: "Cancel", style: "cancel" },
-              { text: "Clear", style: "destructive", onPress: () => dispatch(clearCart()) },
+              { 
+                text: "Clear", 
+                style: "destructive", 
+                onPress: () => {
+                  dispatch(clearCart());
+                  navigation.navigate("Main", { screen: "Home" });
+                } 
+              },
             ]);
           }}>
             <Text style={styles.clearText}>Clear</Text>

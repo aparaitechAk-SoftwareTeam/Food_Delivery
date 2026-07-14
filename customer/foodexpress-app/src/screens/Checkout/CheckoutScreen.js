@@ -5,9 +5,10 @@ import { useSelector, useDispatch } from "react-redux";
 import CustomScreenHeader from "../../components/CustomScreenHeader";
 import AppButton from "../../components/AppButton";
 import { placeOrder } from "../../redux/slices/ordersSlice";
-import { clearCart, selectCartBillDetails } from "../../redux/slices/cartSlice";
+import { clearCart, selectCartBillDetails, applyCoupon, removeCoupon } from "../../redux/slices/cartSlice";
 import { isOutsideBaramati } from "../../utils/locationHelper";
 import paymentService from "../../services/paymentService";
+import api from "../../utils/api";
 import { MaterialCommunityIcons, FontAwesome6 } from "@expo/vector-icons";
 
 const { width } = Dimensions.get("window");
@@ -23,6 +24,52 @@ const CheckoutScreen = ({ navigation }) => {
   const [selectedUPI, setSelectedUPI] = useState("Google Pay"); // Google Pay, PhonePe, Paytm, BHIM, Other
   const [isProcessing, setIsProcessing] = useState(false);
   const [showUPIOverlay, setShowUPIOverlay] = useState(false);
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [qrCodeData, setQrCodeData] = useState(null);
+  
+  // Coupons States
+  const [activeCoupons, setActiveCoupons] = useState([]);
+
+  const fetchActiveCoupons = async () => {
+    try {
+      const { data } = await api.get("/coupons/my");
+      setActiveCoupons(data.active || []);
+    } catch (err) {
+      console.log("Error loading active coupons:", err.message);
+    }
+  };
+
+  useEffect(() => {
+    fetchActiveCoupons();
+  }, []);
+
+  const handleApplyCouponPress = async (code) => {
+    try {
+      const { data } = await api.post("/coupons/validate", {
+        code,
+        orderAmount: bill.subtotal,
+      });
+      if (data.valid) {
+        dispatch(applyCoupon(data.coupon));
+        if (Platform.OS === "web") {
+          alert(`Coupon ${code} applied successfully!`);
+        } else {
+          Alert.alert("Coupon Applied", `Coupon ${code} applied successfully!`);
+        }
+      }
+    } catch (err) {
+      const errMsg = err.message || "Failed to apply coupon";
+      if (Platform.OS === "web") {
+        alert(errMsg);
+      } else {
+        Alert.alert("Failed to Apply", errMsg);
+      }
+    }
+  };
+
+  const handleRemoveCouponPress = () => {
+    dispatch(removeCoupon());
+  };
   
   const logAndGetError = (endpoint, payload, err) => {
     const errorMsg = typeof err === "string" ? err : (err?.message || "Failed to place order");
@@ -44,10 +91,7 @@ const CheckoutScreen = ({ navigation }) => {
 
     return errorMsg;
   };
-  // QR Code States
-  const [qrData, setQrData] = useState(null);
-  const [loadingQR, setLoadingQR] = useState(false);
-  const [qrTxnId, setQrTxnId] = useState("");
+
 
   const fallbackAddress = {
     label: "Home",
@@ -61,25 +105,7 @@ const CheckoutScreen = ({ navigation }) => {
 
   const activeAddr = activeAddress || fallbackAddress;
 
-  // Fetch QR Code dynamically when "Scan QR" is selected
-  useEffect(() => {
-    if (paymentMethod === "Scan QR & Pay") {
-      setLoadingQR(true);
-      const txnId = `TXN-${Date.now()}`;
-      setQrTxnId(txnId);
-      paymentService.generateQR(bill.grandTotal, txnId)
-        .then((data) => {
-          setQrData(data);
-          setLoadingQR(false);
-        })
-        .catch((err) => {
-          console.warn("Failed to generate QR:", err.message);
-          setLoadingQR(false);
-        });
-    } else {
-      setQrData(null);
-    }
-  }, [paymentMethod, bill.grandTotal]);
+
 
   const handlePlaceOrder = () => {
     if (isOutsideBaramati(activeAddr)) {
@@ -118,6 +144,7 @@ const CheckoutScreen = ({ navigation }) => {
       deliveryCharge: bill.deliveryFee,
       tax: bill.gst,
       totalAmount: bill.grandTotal,
+      couponCode: bill.appliedCoupon?.code || undefined,
     };
 
     // ─── 1. Cash on Delivery (Existing Flow) ──────────────────────────────────
@@ -196,52 +223,21 @@ const CheckoutScreen = ({ navigation }) => {
       return;
     }
 
-    // ─── 4. Scan QR & Pay (Razorpay QR Backend Verification) ─────────────────
-    if (paymentMethod === "Scan QR & Pay") {
-      if (!qrData) {
-        if (Platform.OS === "web") {
-          alert("Please wait while we generate your payment QR Code.");
-        } else {
-          Alert.alert("QR Code Not Loaded", "Please wait while we generate your payment QR Code.");
-        }
-        return;
-      }
+    // ─── 4. Razorpay UPI QR Flow ──────────────────────────────────────────────
+    if (paymentMethod === "Razorpay QR") {
       setIsProcessing(true);
-      
-      // Perform secure backend signature verification and place order
-      paymentService.verifyPayment({
-        paymentId: `pay_qr_${Date.now()}`,
-        signature: `sig_qr_${Date.now()}`,
-        razorpayOrderId: qrData.razorpay_order_id,
-        amount: bill.grandTotal,
-        paymentMethod: "Razorpay QR Code",
-        orderData: orderPayload
-      })
-        .then((res) => {
-          dispatch(clearCart());
+      paymentService.generateQR(bill.grandTotal)
+        .then((data) => {
+          setQrCodeData(data);
+          setShowQRModal(true);
           setIsProcessing(false);
-          navigation.replace("OrderSuccess", {
-            orderId: res._id || res.id,
-            orderNumber: res.orderNumber,
-            totalAmount: res.totalAmount,
-            paymentMethod: res.paymentMethod || "Razorpay QR Code",
-            address: res.address || orderPayload.address,
-          });
         })
         .catch((err) => {
           setIsProcessing(false);
-          const errorMsg = logAndGetError("/payment/verify", {
-            paymentId: `pay_qr_${Date.now()}`,
-            signature: `sig_qr_${Date.now()}`,
-            razorpayOrderId: qrData.razorpay_order_id,
-            amount: bill.grandTotal,
-            paymentMethod: "Razorpay QR Code",
-            orderData: orderPayload
-          }, err);
           if (Platform.OS === "web") {
-            alert(errorMsg);
+            alert(err.message || "Failed to generate Razorpay QR Code");
           } else {
-            Alert.alert("Verification Failed", errorMsg);
+            Alert.alert("Error", err.message || "Failed to generate Razorpay QR Code");
           }
         });
     }
@@ -268,6 +264,7 @@ const CheckoutScreen = ({ navigation }) => {
       deliveryCharge: bill.deliveryFee,
       tax: bill.gst,
       totalAmount: bill.grandTotal,
+      couponCode: bill.appliedCoupon?.code || undefined,
     };
 
     // Perform secure backend signature verification and place order
@@ -308,6 +305,59 @@ const CheckoutScreen = ({ navigation }) => {
       });
   };
 
+  const handleVerifyQR = () => {
+    setIsProcessing(true);
+    
+    const firstItem = items[0];
+    const restaurantId = firstItem.restaurantId || firstItem.restaurant?._id || firstItem.restaurant?.id || firstItem.restaurant || "r-1";
+    const backendItems = items.map((item) => ({
+      food: (item.id || item._id).toString().split("-")[0],
+      quantity: item.quantity,
+      price: item.price,
+    }));
+
+    const orderPayload = {
+      restaurant: restaurantId,
+      items: backendItems,
+      address: activeAddr,
+      discount: bill.discount,
+      deliveryCharge: bill.deliveryFee,
+      tax: bill.gst,
+      totalAmount: bill.grandTotal,
+      couponCode: bill.appliedCoupon?.code || undefined,
+    };
+
+    paymentService.verifyPayment({
+      paymentId: `pay_${Date.now()}`,
+      signature: `sig_${Date.now()}`,
+      razorpayOrderId: qrCodeData?.razorpay_order_id,
+      amount: bill.grandTotal,
+      paymentMethod: "Razorpay UPI QR",
+      orderData: orderPayload
+    })
+      .then((res) => {
+        setShowQRModal(false);
+        dispatch(clearCart());
+        setIsProcessing(false);
+        navigation.replace("OrderSuccess", {
+          orderId: res._id || res.id,
+          orderNumber: res.orderNumber,
+          totalAmount: res.totalAmount,
+          paymentMethod: res.paymentMethod || "Razorpay UPI QR",
+          address: res.address || orderPayload.address,
+        });
+      })
+      .catch((err) => {
+        setIsProcessing(false);
+        const errorMsg = err.response?.data?.message || err.message || "Payment verification failed. Please ensure the payment is completed.";
+        if (Platform.OS === "web") {
+          alert(errorMsg);
+        } else {
+          Alert.alert("Verification Failed", errorMsg);
+        }
+      });
+  };
+
   const cancelUPIPayment = () => {
     setShowUPIOverlay(false);
     if (Platform.OS === "web") {
@@ -342,7 +392,7 @@ const CheckoutScreen = ({ navigation }) => {
   return (
     <Portal.Host>
       <SafeAreaView style={{ flex: 1, backgroundColor: "#f8f9fa" }}>
-        <CustomScreenHeader title="Checkout" navigation={navigation} />
+        <CustomScreenHeader title="Checkout" navigation={navigation} showBack={false} />
         <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 48 }} showsVerticalScrollIndicator={false}>
         
         {/* Delivery Address Section */}
@@ -353,6 +403,53 @@ const CheckoutScreen = ({ navigation }) => {
             <Text style={styles.addressText}>{activeAddr.line1}</Text>
             {activeAddr.line2 ? <Text style={styles.addressText}>{activeAddr.line2}</Text> : null}
             <Text style={styles.addressText}>{`${activeAddr.city}, ${activeAddr.state} - ${activeAddr.postalCode}`}</Text>
+          </Card.Content>
+        </Card>
+
+        {/* Applied Coupon / Promos Section */}
+        <Card style={styles.section}>
+          <Card.Title title="Apply Coupon / Promo Wallet" titleStyle={styles.sectionTitle} />
+          <Card.Content>
+            {bill.appliedCoupon ? (
+              <View style={styles.appliedCouponContainer}>
+                <View style={styles.appliedCouponLeft}>
+                  <MaterialCommunityIcons name="ticket-percent" size={24} color="#039855" />
+                  <View style={{ marginLeft: 10 }}>
+                    <Text style={styles.appliedCouponCode}>{bill.appliedCoupon.code}</Text>
+                    <Text style={styles.appliedCouponValue}>₹{bill.discount} discount applied</Text>
+                  </View>
+                </View>
+                <TouchableOpacity onPress={handleRemoveCouponPress} style={styles.removeCouponBtn}>
+                  <Text style={styles.removeCouponBtnText}>REMOVE</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View>
+                {activeCoupons.length === 0 ? (
+                  <Text style={{ fontSize: 12, color: "#667085", fontStyle: "italic" }}>
+                    No active coupons available in your wallet.
+                  </Text>
+                ) : (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.couponsScroll}>
+                    {activeCoupons.map((coupon) => (
+                      <TouchableOpacity 
+                        key={coupon._id || coupon.code} 
+                        style={styles.checkoutCouponCard}
+                        onPress={() => handleApplyCouponPress(coupon.code)}
+                        activeOpacity={0.8}
+                      >
+                        <MaterialCommunityIcons name="gift-outline" size={18} color="#FF6F61" />
+                        <View style={{ marginLeft: 8, marginRight: 12 }}>
+                          <Text style={styles.checkoutCouponCode}>{coupon.code}</Text>
+                          <Text style={styles.checkoutCouponVal}>₹{coupon.value} OFF</Text>
+                        </View>
+                        <Text style={styles.applyLabel}>APPLY</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                )}
+              </View>
+            )}
           </Card.Content>
         </Card>
 
@@ -408,46 +505,6 @@ const CheckoutScreen = ({ navigation }) => {
               </View>
             )}
 
-            {/* 3. Scan QR & Pay (Razorpay) */}
-            <TouchableOpacity 
-              style={[styles.paymentMethodRow, paymentMethod === "Scan QR & Pay" && styles.paymentMethodRowSelected]}
-              onPress={() => setPaymentMethod("Scan QR & Pay")}
-              activeOpacity={0.7}
-            >
-              <View style={styles.paymentMethodLeft}>
-                <MaterialCommunityIcons name="qrcode-scan" size={24} color={paymentMethod === "Scan QR & Pay" ? "#ff6b00" : "#475467"} />
-                <Text style={styles.paymentMethodLabel}>Scan QR & Pay (Razorpay)</Text>
-              </View>
-              <RadioButton
-                value="Scan QR & Pay"
-                status={paymentMethod === "Scan QR & Pay" ? "checked" : "unchecked"}
-                onPress={() => setPaymentMethod("Scan QR & Pay")}
-                color="#ff6b00"
-              />
-            </TouchableOpacity>
-
-            {/* QR Code display section */}
-            {paymentMethod === "Scan QR & Pay" && (
-              <View style={styles.qrContainer}>
-                {loadingQR ? (
-                  <View style={styles.qrLoadingBox}>
-                    <ActivityIndicator size="small" color="#ff6b00" />
-                    <Text style={styles.qrLoadingText}>Generating secure QR...</Text>
-                  </View>
-                ) : qrData ? (
-                  <View style={styles.qrContentBox}>
-                    <Image source={{ uri: qrData.qr_code_url }} style={styles.qrImage} resizeMode="contain" />
-                    <Text style={styles.merchantName}>{qrData.merchant_name}</Text>
-                    <Text style={styles.qrAmount}>Amount: ₹{bill.grandTotal.toFixed(2)}</Text>
-                    <Text style={styles.qrTxn}>Order ID: {qrTxnId}</Text>
-                    <Text style={styles.qrInstructions}>Scan this QR using Google Pay, PhonePe, Paytm, or BHIM to pay instantly.</Text>
-                  </View>
-                ) : (
-                  <Text style={styles.qrErrorText}>Error generating payment QR. Please retry.</Text>
-                )}
-              </View>
-            )}
-
             {/* 4. Credit / Debit Card */}
             <TouchableOpacity 
               style={[styles.paymentMethodRow, paymentMethod === "Card" && styles.paymentMethodRowSelected]}
@@ -462,6 +519,24 @@ const CheckoutScreen = ({ navigation }) => {
                 value="Card"
                 status={paymentMethod === "Card" ? "checked" : "unchecked"}
                 onPress={() => setPaymentMethod("Card")}
+                color="#ff6b00"
+              />
+            </TouchableOpacity>
+
+            {/* 5. Razorpay UPI QR */}
+            <TouchableOpacity 
+              style={[styles.paymentMethodRow, paymentMethod === "Razorpay QR" && styles.paymentMethodRowSelected]}
+              onPress={() => setPaymentMethod("Razorpay QR")}
+              activeOpacity={0.7}
+            >
+              <View style={styles.paymentMethodLeft}>
+                <MaterialCommunityIcons name="qrcode" size={24} color={paymentMethod === "Razorpay QR" ? "#ff6b00" : "#475467"} />
+                <Text style={styles.paymentMethodLabel}>Razorpay (UPI QR Code)</Text>
+              </View>
+              <RadioButton
+                value="Razorpay QR"
+                status={paymentMethod === "Razorpay QR" ? "checked" : "unchecked"}
+                onPress={() => setPaymentMethod("Razorpay QR")}
                 color="#ff6b00"
               />
             </TouchableOpacity>
@@ -516,7 +591,7 @@ const CheckoutScreen = ({ navigation }) => {
           disabled={isProcessing}
           contentStyle={{ paddingVertical: 6 }}
         >
-          {paymentMethod === "Scan QR & Pay" ? "Verify Payment & Place Order" : paymentMethod === "UPI" ? `Pay via ${selectedUPI}` : "Place Order"}
+          {paymentMethod === "UPI" ? `Pay via ${selectedUPI}` : "Place Order"}
         </AppButton>
       </ScrollView>
 
@@ -528,7 +603,7 @@ const CheckoutScreen = ({ navigation }) => {
             UPI Payment Portal
           </Dialog.Title>
           <Dialog.Content>
-            <Text style={styles.upiMerchant}>Pay to: Krushna's Restaurant</Text>
+            <Text style={styles.upiMerchant}>Pay to: {items[0]?.restaurantName || "FoodExpress Kitchen"}</Text>
             <View style={styles.upiCardDetails}>
               <Text style={styles.upiAmountLabel}>Amount to Pay</Text>
               <Text style={styles.upiAmountVal}>₹{bill.grandTotal.toFixed(2)}</Text>
@@ -541,6 +616,54 @@ const CheckoutScreen = ({ navigation }) => {
             </AppButton>
             <AppButton mode="contained" buttonColor="#ff6b00" onPress={confirmUPIPayment} style={styles.upiBtnApprove}>
               Approve Payment
+            </AppButton>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
+
+      {/* Razorpay UPI QR Dialog */}
+      <Portal>
+        <Dialog visible={showQRModal} onDismiss={() => setShowQRModal(false)} style={styles.upiDialog}>
+          <Dialog.Title style={styles.upiDialogTitle}>
+            <MaterialCommunityIcons name="qrcode" size={24} color="#ff6b00" style={{ marginRight: 8 }} />
+            Scan Razorpay UPI QR
+          </Dialog.Title>
+          <Dialog.Content style={{ alignItems: "center" }}>
+            <Text style={[styles.upiMerchant, { textAlign: "center", marginBottom: 12 }]}>
+              Pay to: {items[0]?.restaurantName || "FoodExpress Premium Kitchen"}
+            </Text>
+            
+            {qrCodeData?.qr_code_url ? (
+              <Image 
+                source={{ uri: qrCodeData.qr_code_url }} 
+                style={{ width: 220, height: 220, marginBottom: 14, alignSelf: "center", borderRadius: 12 }} 
+                resizeMode="contain"
+              />
+            ) : (
+              <ActivityIndicator color="#ff6b00" style={{ marginVertical: 20 }} />
+            )}
+
+            <View style={[styles.upiCardDetails, { width: "100%", paddingHorizontal: 16 }]}>
+              <Text style={styles.upiAmountLabel}>Amount to Pay</Text>
+              <Text style={styles.upiAmountVal}>₹{bill.grandTotal.toFixed(2)}</Text>
+            </View>
+            <Text style={[styles.upiSub, { textAlign: "center", marginTop: 8 }]}>
+              Scan the QR using GPay, PhonePe, Paytm, or BHIM to pay.
+            </Text>
+          </Dialog.Content>
+          <Dialog.Actions style={styles.upiActions}>
+            <AppButton mode="outlined" onPress={() => setShowQRModal(false)} style={styles.upiBtnCancel}>
+              Cancel
+            </AppButton>
+            <AppButton 
+              mode="contained" 
+              buttonColor="#ff6b00" 
+              loading={isProcessing}
+              disabled={isProcessing}
+              onPress={handleVerifyQR} 
+              style={styles.upiBtnApprove}
+            >
+              Verify Payment
             </AppButton>
           </Dialog.Actions>
         </Dialog>
@@ -796,6 +919,65 @@ const styles = StyleSheet.create({
   },
   upiBtnApprove: {
     flex: 1,
+  },
+  appliedCouponContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#F2F9F5",
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#D1FADF",
+  },
+  appliedCouponLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  appliedCouponCode: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#039855",
+  },
+  appliedCouponValue: {
+    fontSize: 11,
+    color: "#039855",
+  },
+  removeCouponBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  removeCouponBtnText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#D92D20",
+  },
+  couponsScroll: {
+    paddingVertical: 4,
+  },
+  checkoutCouponCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#EAECF0",
+    marginRight: 10,
+  },
+  checkoutCouponCode: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#1D2939",
+  },
+  checkoutCouponVal: {
+    fontSize: 10,
+    color: "#667085",
+  },
+  applyLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#FF6F61",
   },
 });
 

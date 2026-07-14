@@ -31,6 +31,7 @@ import {
   deleteAddress,
 } from "../../redux/slices/authSlice";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { openWhatsAppSupport } from "../../utils/whatsappHelper";
 
 const ProfileScreen = ({ navigation }) => {
   const dispatch = useDispatch();
@@ -255,6 +256,19 @@ My Issue: `;
           </View>
           <MaterialCommunityIcons name="chevron-right" size={20} color="#bbb" />
         </TouchableOpacity>
+
+        <Divider style={styles.menuDivider} />
+
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => navigation.navigate("Coupons")}
+        >
+          <View style={styles.menuItemLeft}>
+            <MaterialCommunityIcons name="ticket-percent-outline" size={22} color="#ff6b00" />
+            <Text style={styles.menuItemText}>My Coupons & Cashback Wallet</Text>
+          </View>
+          <MaterialCommunityIcons name="chevron-right" size={20} color="#bbb" />
+        </TouchableOpacity>
       </Card>
 
       {/* Saved Addresses Section */}
@@ -353,14 +367,13 @@ My Issue: `;
       <Card style={styles.menuCard}>
         <TouchableOpacity
           style={styles.menuItem}
-          onPress={openWhatsAppSupport}
-          activeOpacity={0.7}
+          onPress={() => openWhatsAppSupport(userProfile)}
         >
           <View style={styles.menuItemLeft}>
             <MaterialCommunityIcons name="headset" size={22} color="#ff6b00" />
-            <View style={{ marginLeft: 12, flexShrink: 1 }}>
-              <Text style={{ fontSize: 14, fontWeight: "600", color: "#333" }}>Help & Support</Text>
-              <Text style={{ fontSize: 11, color: "#666", marginTop: 2 }}>Chat with our support team on WhatsApp</Text>
+            <View style={{ marginLeft: 12 }}>
+              <Text style={styles.menuItemTitleText}>Help & Support</Text>
+              <Text style={styles.menuItemSubtitle}>Chat with our support team on WhatsApp</Text>
             </View>
           </View>
           <MaterialCommunityIcons name="chevron-right" size={20} color="#bbb" />
@@ -829,6 +842,16 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#444",
     fontWeight: "600",
+  },
+  menuItemTitleText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#333",
+  },
+  menuItemSubtitle: {
+    fontSize: 11,
+    color: "#666",
+    marginTop: 2,
   },
 });
 

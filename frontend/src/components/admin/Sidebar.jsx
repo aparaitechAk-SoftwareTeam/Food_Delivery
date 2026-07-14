@@ -1,5 +1,6 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
+import { API_BASE_URL } from '../../config';
 import { 
   LayoutDashboard, 
   FolderHeart, 
@@ -21,13 +22,15 @@ import {
   Bell,
   LogOut,
   Gift,
-  Percent
+  Percent,
+  Home
 } from 'lucide-react';
 
 const Sidebar = () => {
   const navigate = useNavigate();
   const menuItems = [
     { name: 'Dashboard', icon: <LayoutDashboard className="w-4 h-4" />, path: '/admin/food-management' },
+    { name: 'Home Layout', icon: <Home className="w-4 h-4" />, path: '/admin/food-management/home' },
     { name: 'Orders', icon: <ClipboardList className="w-4 h-4" />, path: '/admin/food-management/orders' },
     { name: 'Categories', icon: <FolderHeart className="w-4 h-4" />, path: '/admin/food-management/categories' },
     { name: 'Food Items', icon: <ListCollapse className="w-4 h-4" />, path: '/admin/food-management/foods' },
@@ -50,10 +53,19 @@ const Sidebar = () => {
     { name: 'Settings', icon: <SettingsIcon className="w-4 h-4" />, path: '/admin/food-management/settings' },
   ];
 
-  const handleSignOut = () => {
-    localStorage.removeItem('admin_token');
-    localStorage.removeItem('admin_user');
-    navigate('/admin/login');
+  const handleSignOut = async () => {
+    try {
+      await fetch(`${API_BASE_URL}/admin/logout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+    } catch (err) {
+      console.warn("Backend logout failed:", err.message);
+    } finally {
+      localStorage.removeItem('admin_token');
+      localStorage.removeItem('admin_user');
+      navigate('/admin/login');
+    }
   };
 
   return (

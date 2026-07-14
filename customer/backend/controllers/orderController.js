@@ -6,7 +6,7 @@ exports.createOrder = async (req, res) => {
   console.log("[DEBUG BACKEND] createOrder received body:", JSON.stringify(req.body, null, 2));
   console.log("[DEBUG BACKEND] createOrder user:", req.user ? req.user._id : "no user");
   try {
-    const { restaurant, items, address, paymentMethod, discount, deliveryCharge, tax, totalAmount } = req.body;
+    const { restaurant, items, address, paymentMethod, discount, deliveryCharge, tax, totalAmount, couponCode } = req.body;
     
     
 
@@ -61,6 +61,28 @@ exports.createOrder = async (req, res) => {
 
     // Calculate subtotal from resolvedItems
     const subtotal = resolvedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+    // Validate coupon code if passed
+    if (couponCode) {
+      const Coupon = require("../models/Coupon");
+      const coupon = await Coupon.findOne({ code: couponCode.toUpperCase() });
+      if (!coupon) {
+        return res.status(400).json({ message: "Invalid coupon code" });
+      }
+      if (!coupon.active || coupon.status !== "Active") {
+        return res.status(400).json({ message: "This coupon is no longer active" });
+      }
+      if (coupon.expiresAt && new Date() >= coupon.expiresAt) {
+        return res.status(400).json({ message: "This coupon has expired" });
+      }
+      if (coupon.userId && coupon.userId.toString() !== req.user._id.toString()) {
+        return res.status(400).json({ message: "This coupon is private and cannot be used by this account" });
+      }
+      if (subtotal < coupon.minOrderAmount) {
+        return res.status(400).json({ message: `Minimum order amount of ₹${coupon.minOrderAmount} required for this coupon` });
+      }
+    }
+
     let finalDeliveryCharge = deliveryCharge !== undefined ? deliveryCharge : 40;
     let finalDiscount = discount || 0;
 
@@ -96,6 +118,25 @@ exports.createOrder = async (req, res) => {
       otp: Math.floor(1000 + Math.random() * 9000).toString(),
     });
     console.log("[DEBUG BACKEND] After database save success:", order._id);
+
+    if (couponCode) {
+      try {
+        const Coupon = require("../models/Coupon");
+        await Coupon.findOneAndUpdate(
+          { code: couponCode.toUpperCase(), status: "Active" },
+          {
+            $set: {
+              status: "Used",
+              usedAt: new Date(),
+              orderId: order._id,
+              active: false
+            }
+          }
+        );
+      } catch (err) {
+        console.error("Error marking coupon as used:", err.message);
+      }
+    }
 
     const { emitOrderUpdate } = require("../config/socket");
     await emitOrderUpdate(order._id, "new-order");

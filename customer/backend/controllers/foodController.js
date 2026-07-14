@@ -18,7 +18,6 @@ exports.getFoods = async (req, res) => {
     limit = 20,
   } = req.query;
 
-  
 
   try {
     const pageNum = parseInt(page);
