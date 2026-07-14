@@ -174,11 +174,11 @@ const HomeScreen = ({ navigation }) => {
     setLoadingSections(true);
     try {
       const results = await Promise.allSettled([
-        api.get("/products/bestsellers"),
-        api.get("/products/new-arrivals"),
-        api.get("/products/healthy"),
-        api.get("/products/combos"),
-        api.get("/products/categorized")
+        api.get("/foods/bestsellers"),
+        api.get("/foods/new-arrivals"),
+        api.get("/foods/healthy"),
+        api.get("/foods/combos"),
+        api.get("/foods/categorized")
       ]);
 
       const bestsellersData = results[0].status === "fulfilled" ? (results[0].value.data.foods || []) : [];
