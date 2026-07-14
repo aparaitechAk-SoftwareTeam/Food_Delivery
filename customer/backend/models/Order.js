@@ -38,6 +38,7 @@ const orderSchema = new mongoose.Schema({
       "Pending",
       "Confirmed",
       "Preparing",
+      "Ready For Pickup",
       "Out For Delivery",
       "Delivered",
       "Completed",

@@ -289,9 +289,12 @@ exports.getProductsByCuisine = async (req, res) => {
 };
 
 exports.getBestsellers = async (req, res) => {
-  
   try {
-    const filtered = await Food.find({ isBestSeller: true }).populate("category restaurant").limit(30);
+    let filtered = await Food.find({ isBestSeller: true }).populate("category restaurant").limit(30);
+    // Fallback: if no bestsellers flagged, return highest-rated foods
+    if (filtered.length === 0) {
+      filtered = await Food.find({ isAvailable: true }).populate("category restaurant").sort({ rating: -1, popularityScore: -1 }).limit(20);
+    }
     res.json({ foods: filtered });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -309,9 +312,12 @@ exports.getNewArrivals = async (req, res) => {
 };
 
 exports.getHealthy = async (req, res) => {
-  
   try {
-    const filtered = await Food.find({ isHealthy: true }).populate("category restaurant").limit(30);
+    let filtered = await Food.find({ isHealthy: true }).populate("category restaurant").limit(30);
+    // Fallback: if no healthy items flagged, return low-calorie foods
+    if (filtered.length === 0) {
+      filtered = await Food.find({ isAvailable: true }).populate("category restaurant").sort({ calories: 1 }).limit(20);
+    }
     res.json({ foods: filtered });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -319,9 +325,16 @@ exports.getHealthy = async (req, res) => {
 };
 
 exports.getCombos = async (req, res) => {
-  
   try {
-    const filtered = await Food.find({ isCombo: true }).populate("category restaurant").limit(30);
+    let filtered = await Food.find({ isCombo: true }).populate("category restaurant").limit(30);
+    // Fallback: if no combos flagged, return discounted foods
+    if (filtered.length === 0) {
+      filtered = await Food.find({ isAvailable: true, discountPercentage: { $gt: 0 } }).populate("category restaurant").sort({ discountPercentage: -1 }).limit(20);
+      // Second fallback: any available foods
+      if (filtered.length === 0) {
+        filtered = await Food.find({ isAvailable: true }).populate("category restaurant").limit(20);
+      }
+    }
     res.json({ foods: filtered });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -334,9 +347,12 @@ exports.getTrending = async (req, res) => {
 };
 
 exports.getPopular = async (req, res) => {
-  
   try {
-    const filtered = await Food.find({ isPopular: true }).populate("category restaurant").limit(30);
+    let filtered = await Food.find({ isPopular: true }).populate("category restaurant").limit(30);
+    // Fallback: if no popular items flagged, return highest popularity score
+    if (filtered.length === 0) {
+      filtered = await Food.find({ isAvailable: true }).populate("category restaurant").sort({ popularityScore: -1, rating: -1 }).limit(20);
+    }
     res.json({ foods: filtered });
   } catch (error) {
     res.status(500).json({ message: error.message });

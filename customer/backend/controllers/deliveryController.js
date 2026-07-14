@@ -7,7 +7,7 @@ exports.toggleOnlineStatus = async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
     if (!user) {
-      return res.status(450).json({ message: "Rider profile not found" });
+      return res.status(404).json({ message: "Rider profile not found" });
     }
     user.isOnline = !user.isOnline;
     await user.save();
@@ -31,7 +31,7 @@ exports.updateLocation = async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
     if (!user) {
-      return res.status(450).json({ message: "Rider profile not found" });
+      return res.status(404).json({ message: "Rider profile not found" });
     }
 
     user.location = {

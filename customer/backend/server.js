@@ -45,6 +45,7 @@ const limiter = rateLimit({
 });
 
 const app = express();
+app.set("trust proxy", 1); // Required for Render/Heroku proxy — correct IP for rate limiting
 app.use(helmet());
 app.use(limiter);
 
@@ -154,11 +155,10 @@ if (!MONGO_URI) {
 }
 
 if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
-  console.error(
-    "\n❌  Missing RAZORPAY_KEY_ID or RAZORPAY_KEY_SECRET in backend/.env\n" +
-    "   Please add them to enable secure online payment integration.\n"
+  console.warn(
+    "\n⚠️   RAZORPAY_KEY_ID or RAZORPAY_KEY_SECRET not found in .env\n" +
+    "   Payment features will run in sandbox/dummy mode.\n"
   );
-  process.exit(1);
 }
 
 // ── Startup ────────────────────────────────────────────────────────────────────
