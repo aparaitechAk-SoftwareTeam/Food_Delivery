@@ -262,29 +262,38 @@ const CheckoutScreen = ({ navigation }) => {
         couponCode: bill.appliedCoupon?.code || undefined,
       };
 
-      paymentService.generateQR(bill.grandTotal)
+      paymentService.createOrder(bill.grandTotal)
         .then(async (data) => {
-          setQrCodeData(data);
+          const orderId = data.order?.id;
+          const isMock = !orderId || orderId.startsWith("mock_");
+
+          // Formulate mock QR data locally if running in simulated mode
+          const mockData = { ...data };
+          if (isMock) {
+            const upiUri = `upi://pay?pa=CloudKitchen@okaxis&pn=Krushna's%20Restaurant&tr=${orderId}&am=${bill.grandTotal}&cu=INR&tn=Order%20${orderId}`;
+            mockData.qr_code_url = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(upiUri)}`;
+            mockData.razorpay_order_id = orderId;
+          }
+          setQrCodeData(mockData);
           
           if (Platform.OS === "web") {
-            const isMock = !data.razorpay_order_id || data.razorpay_order_id.startsWith("mock_");
             const scriptLoaded = await loadRazorpayScript();
             if (!isMock && scriptLoaded && window.Razorpay) {
-              const razorpayKey = process.env.EXPO_PUBLIC_RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID || "rzp_live_SuiX1JeqCYs1KX";
+              const razorpayKey = data.key || process.env.EXPO_PUBLIC_RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID || "rzp_live_SuiX1JeqCYs1KX";
               
               const options = {
                 key: razorpayKey,
-                amount: Math.round(bill.grandTotal * 100),
-                currency: "INR",
+                amount: data.order?.amount || Math.round(bill.grandTotal * 100),
+                currency: data.order?.currency || "INR",
                 name: items[0]?.restaurantName || "FoodExpress Premium Kitchen",
                 description: "Payment for Order",
-                order_id: data.razorpay_order_id,
+                order_id: orderId,
                 handler: function (response) {
                   setIsProcessing(true);
                   paymentService.verifyPayment({
-                    paymentId: response.razorpay_payment_id || `pay_${Date.now()}`,
-                    signature: response.razorpay_signature || `sig_${Date.now()}`,
-                    razorpayOrderId: response.razorpay_order_id || data.razorpay_order_id,
+                    razorpay_payment_id: response.razorpay_payment_id || `pay_${Date.now()}`,
+                    razorpay_signature: response.razorpay_signature || `sig_${Date.now()}`,
+                    razorpay_order_id: response.razorpay_order_id || orderId,
                     amount: bill.grandTotal,
                     paymentMethod: "Razorpay Online Payment",
                     orderData: orderPayload
@@ -372,9 +381,9 @@ const CheckoutScreen = ({ navigation }) => {
 
     // Perform secure backend signature verification and place order
     paymentService.verifyPayment({
-      paymentId: `pay_upi_${Date.now()}`,
-      signature: `sig_upi_${Date.now()}`,
-      razorpayOrderId: `rzp_order_upi_${Date.now()}`,
+      razorpay_payment_id: `pay_upi_${Date.now()}`,
+      razorpay_signature: `sig_upi_${Date.now()}`,
+      razorpay_order_id: `mock_order_upi_${Date.now()}`,
       amount: bill.grandTotal,
       paymentMethod: `UPI - ${selectedUPI}`,
       orderData: orderPayload
@@ -393,9 +402,9 @@ const CheckoutScreen = ({ navigation }) => {
       .catch((err) => {
         setIsProcessing(false);
         const errorMsg = logAndGetError("/payment/verify", {
-          paymentId: `pay_upi_${Date.now()}`,
-          signature: `sig_upi_${Date.now()}`,
-          razorpayOrderId: `rzp_order_upi_${Date.now()}`,
+          razorpay_payment_id: `pay_upi_${Date.now()}`,
+          razorpay_signature: `sig_upi_${Date.now()}`,
+          razorpay_order_id: `mock_order_upi_${Date.now()}`,
           amount: bill.grandTotal,
           paymentMethod: `UPI - ${selectedUPI}`,
           orderData: orderPayload
@@ -431,9 +440,9 @@ const CheckoutScreen = ({ navigation }) => {
     };
 
     paymentService.verifyPayment({
-      paymentId: `pay_${Date.now()}`,
-      signature: `sig_${Date.now()}`,
-      razorpayOrderId: qrCodeData?.razorpay_order_id,
+      razorpay_payment_id: `pay_${Date.now()}`,
+      razorpay_signature: `sig_${Date.now()}`,
+      razorpay_order_id: qrCodeData?.razorpay_order_id,
       amount: bill.grandTotal,
       paymentMethod: "Razorpay Online Payment",
       orderData: orderPayload
