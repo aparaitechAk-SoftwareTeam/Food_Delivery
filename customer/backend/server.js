@@ -150,6 +150,10 @@ if (require.main === module) {
       const initializeAdmin = require("./config/initAdmin");
       await initializeAdmin();
 
+      // Initialize default user accounts if not exists
+      const initializeDefaultUsers = require("./config/initDefaultUsers");
+      await initializeDefaultUsers();
+
       // Initialize default home screen sections if not exists
       const initializeHomeSections = require("./config/initHomeSections");
       await initializeHomeSections();

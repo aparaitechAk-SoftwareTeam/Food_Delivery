@@ -6,6 +6,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { getSocket } from "../../utils/socket";
 import CustomScreenHeader from "../../components/CustomScreenHeader";
 import { Platform } from "react-native";
+import Constants from "expo-constants";
 
 let MapView, Marker, Polyline;
 if (Platform.OS !== "web") {
@@ -19,8 +20,31 @@ if (Platform.OS !== "web") {
   }
 }
 
+// React Error Boundary to capture any native MapView crashes
+class MapErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.warn("Google Maps render failed on Android (e.g., API key, system, or library mismatch). Recovering via fallback visualizer. Error:", error);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback;
+    }
+    return this.props.children;
+  }
+}
+
 const OrderTrackingScreen = ({ route, navigation }) => {
-  const { orderId } = route.params;
+  const { orderId } = route.params || {};
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showCancelInput, setShowCancelInput] = useState(false);
@@ -206,47 +230,63 @@ const OrderTrackingScreen = ({ route, navigation }) => {
   };
 
   const renderMap = () => {
-    const restCoords = order.mapCoordinates?.restaurant || { latitude: 18.1560, longitude: 74.5775 };
-    const custCoords = order.mapCoordinates?.customer || { latitude: 18.1510, longitude: 74.5780 };
-    const riderCoords = order.currentLocation || order.mapCoordinates?.deliveryBoy;
+    const sanitize = (coords, def) => {
+      if (!coords) return def;
+      const lat = Number(coords.latitude);
+      const lng = Number(coords.longitude);
+      if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) {
+        return def;
+      }
+      return { latitude: lat, longitude: lng };
+    };
 
-    const hasRider = !!riderCoords && Number(riderCoords.latitude) !== 0;
+    const restCoords = sanitize(order.mapCoordinates?.restaurant, { latitude: 18.1560, longitude: 74.5775 });
+    const custCoords = sanitize(order.mapCoordinates?.customer, { latitude: 18.1510, longitude: 74.5780 });
+    const riderCoords = sanitize(order.currentLocation || order.mapCoordinates?.deliveryBoy, null);
 
-    if (Platform.OS === "web" || !MapView) {
-      return (
-        <View style={styles.webMapCard}>
-          <Text style={styles.mapTitle}>Live Delivery Route GPS Tracker</Text>
-          <View style={styles.webMapBackground}>
-            <View style={styles.svgContainer}>
-              {/* Restaurant */}
-              <View style={[styles.mapWebMarker, { left: "15%", top: "30%" }]}>
-                <MaterialCommunityIcons name="store" size={28} color="#ff6b00" />
-                <Text style={styles.webMarkerLabel}>Store</Text>
+    const hasRider = !!riderCoords;
+
+    const renderWebFallbackMap = () => (
+      <View style={styles.webMapCard}>
+        <Text style={styles.mapTitle}>Live Delivery Route GPS Tracker</Text>
+        <View style={styles.webMapBackground}>
+          <View style={styles.svgContainer}>
+            {/* Restaurant */}
+            <View style={[styles.mapWebMarker, { left: "15%", top: "30%" }]}>
+              <MaterialCommunityIcons name="store" size={28} color="#ff6b00" />
+              <Text style={styles.webMarkerLabel}>Store</Text>
+            </View>
+
+            {/* Rider */}
+            {hasRider && (
+              <View style={[styles.mapWebMarker, { left: "45%", top: "50%" }]}>
+                <MaterialCommunityIcons name="moped" size={28} color="#0288d1" />
+                <Text style={[styles.webMarkerLabel, { color: "#0288d1", fontWeight: "bold" }]}>
+                  Rider ({order.status === "Out For Delivery" ? "On The Way" : order.status})
+                </Text>
               </View>
+            )}
 
-              {/* Rider */}
-              {hasRider && (
-                <View style={[styles.mapWebMarker, { left: "45%", top: "50%" }]}>
-                  <MaterialCommunityIcons name="moped" size={28} color="#0288d1" />
-                  <Text style={[styles.webMarkerLabel, { color: "#0288d1", fontWeight: "bold" }]}>
-                    Rider ({order.timeline?.status || "On The Way"})
-                  </Text>
-                </View>
-              )}
-
-              {/* Home */}
-              <View style={[styles.mapWebMarker, { left: "80%", top: "70%" }]}>
-                <MaterialCommunityIcons name="home-map-marker" size={28} color="#2e7d32" />
-                <Text style={[styles.webMarkerLabel, { color: "#2e7d32" }]}>Home</Text>
-              </View>
+            {/* Home */}
+            <View style={[styles.mapWebMarker, { left: "80%", top: "70%" }]}>
+              <MaterialCommunityIcons name="home-map-marker" size={28} color="#2e7d32" />
+              <Text style={[styles.webMarkerLabel, { color: "#2e7d32" }]}>Home</Text>
             </View>
           </View>
-          <View style={styles.mapDetailsRow}>
-            <Text style={styles.mapDetailsText}>Distance: {order.eta?.distance || "~1.8 km"}</Text>
-            <Text style={styles.mapDetailsText}>Estimated Time: {order.eta?.duration || "~12 mins"}</Text>
-          </View>
         </View>
-      );
+        <View style={styles.mapDetailsRow}>
+          <Text style={styles.mapDetailsText}>Distance: {order.eta?.distance || "~1.8 km"}</Text>
+          <Text style={styles.mapDetailsText}>Estimated Time: {order.eta?.duration || "~12 mins"}</Text>
+        </View>
+      </View>
+    );
+
+    const hasGoogleMapsKey = !!Constants.expoConfig?.android?.config?.googleMaps?.apiKey;
+    const isExpoGo = Constants.appOwnership === "expo" || Constants.executionEnvironment === "store-client";
+    const canUseNativeMap = isExpoGo || hasGoogleMapsKey;
+
+    if (Platform.OS === "web" || !MapView || !canUseNativeMap) {
+      return renderWebFallbackMap();
     }
 
     const initialRegion = {
@@ -257,62 +297,64 @@ const OrderTrackingScreen = ({ route, navigation }) => {
     };
 
     return (
-      <View style={styles.webMapCard}>
-        <MapView style={styles.nativeMap} initialRegion={initialRegion}>
-          {/* Restaurant Marker */}
-          <Marker
-            coordinate={{ latitude: Number(restCoords.latitude), longitude: Number(restCoords.longitude) }}
-            title={order.restaurant?.name || "Restaurant"}
-            description="Pick up point"
-          >
-            <View style={styles.nativeMarkerContainer}>
-              <MaterialCommunityIcons name="store" size={26} color="#ff6b00" />
-            </View>
-          </Marker>
-
-          {/* Customer Marker */}
-          <Marker
-            coordinate={{ latitude: Number(custCoords.latitude), longitude: Number(custCoords.longitude) }}
-            title="Your Address"
-            description="Drop off point"
-          >
-            <View style={styles.nativeMarkerContainer}>
-              <MaterialCommunityIcons name="home-map-marker" size={26} color="#2e7d32" />
-            </View>
-          </Marker>
-
-          {/* Rider Marker */}
-          {hasRider && (
+      <MapErrorBoundary fallback={renderWebFallbackMap()}>
+        <View style={styles.webMapCard}>
+          <MapView style={styles.nativeMap} initialRegion={initialRegion}>
+            {/* Restaurant Marker */}
             <Marker
-              coordinate={{ latitude: Number(riderCoords.latitude), longitude: Number(riderCoords.longitude) }}
-              title={typeof order.deliveryBoy === "object" ? order.deliveryBoy.name : "Rider"}
-              description="Delivery executive"
+              coordinate={{ latitude: Number(restCoords.latitude), longitude: Number(restCoords.longitude) }}
+              title={order.restaurant?.name || "Restaurant"}
+              description="Pick up point"
             >
-              <View style={[styles.nativeMarkerContainer, { backgroundColor: "#e0f2fe" }]}>
-                <MaterialCommunityIcons name="moped" size={26} color="#0288d1" />
+              <View style={styles.nativeMarkerContainer}>
+                <MaterialCommunityIcons name="store" size={26} color="#ff6b00" />
               </View>
             </Marker>
-          )}
 
-          {/* Polyline Route */}
-          <Polyline
-            coordinates={
-              hasRider
-                ? [
-                    { latitude: Number(restCoords.latitude), longitude: Number(restCoords.longitude) },
-                    { latitude: Number(riderCoords.latitude), longitude: Number(riderCoords.longitude) },
-                    { latitude: Number(custCoords.latitude), longitude: Number(custCoords.longitude) },
-                  ]
-                : [
-                    { latitude: Number(restCoords.latitude), longitude: Number(restCoords.longitude) },
-                    { latitude: Number(custCoords.latitude), longitude: Number(custCoords.longitude) },
-                  ]
-            }
-            strokeColor="#ff6b00"
-            strokeWidth={4}
-          />
-        </MapView>
-      </View>
+            {/* Customer Marker */}
+            <Marker
+              coordinate={{ latitude: Number(custCoords.latitude), longitude: Number(custCoords.longitude) }}
+              title="Your Address"
+              description="Drop off point"
+            >
+              <View style={styles.nativeMarkerContainer}>
+                <MaterialCommunityIcons name="home-map-marker" size={26} color="#2e7d32" />
+              </View>
+            </Marker>
+
+            {/* Rider Marker */}
+            {hasRider && (
+              <Marker
+                coordinate={{ latitude: Number(riderCoords.latitude), longitude: Number(riderCoords.longitude) }}
+                title={typeof order.deliveryBoy === "object" ? order.deliveryBoy.name : "Rider"}
+                description="Delivery executive"
+              >
+                <View style={[styles.nativeMarkerContainer, { backgroundColor: "#e0f2fe" }]}>
+                  <MaterialCommunityIcons name="moped" size={26} color="#0288d1" />
+                </View>
+              </Marker>
+            )}
+
+            {/* Polyline Route */}
+            <Polyline
+              coordinates={
+                hasRider
+                  ? [
+                      { latitude: Number(restCoords.latitude), longitude: Number(restCoords.longitude) },
+                      { latitude: Number(riderCoords.latitude), longitude: Number(riderCoords.longitude) },
+                      { latitude: Number(custCoords.latitude), longitude: Number(custCoords.longitude) },
+                    ]
+                  : [
+                      { latitude: Number(restCoords.latitude), longitude: Number(restCoords.longitude) },
+                      { latitude: Number(custCoords.latitude), longitude: Number(custCoords.longitude) },
+                    ]
+              }
+              strokeColor="#ff6b00"
+              strokeWidth={4}
+            />
+          </MapView>
+        </View>
+      </MapErrorBoundary>
     );
   };
 
@@ -485,7 +527,7 @@ const OrderTrackingScreen = ({ route, navigation }) => {
       )}
 
       {/* Verification OTP display */}
-      {order.status !== "Cancelled" && order.status !== "Delivered" && order.status !== "Completed" && order.orderDetails?.otp && (
+      {order.status !== "Cancelled" && order.status !== "Delivered" && order.status !== "Completed" && (order.orderDetails?.otp || order.otp) && (
         <View style={styles.otpCard}>
           <MaterialCommunityIcons name="shield-lock-outline" size={24} color="#ff6b00" />
           <View style={styles.otpInfo}>
@@ -493,7 +535,7 @@ const OrderTrackingScreen = ({ route, navigation }) => {
             <Text style={styles.otpSubtitle}>Share this OTP with the rider when they arrive to confirm delivery.</Text>
           </View>
           <View style={styles.otpCodeContainer}>
-            <Text style={styles.otpCodeText}>{order.orderDetails.otp}</Text>
+            <Text style={styles.otpCodeText}>{order.orderDetails?.otp || order.otp}</Text>
           </View>
         </View>
       )}
