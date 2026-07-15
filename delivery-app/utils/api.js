@@ -14,7 +14,7 @@ const getBaseURL = () => {
   if (Platform.OS === "web") {
     return "http://localhost:5000/api";
   }
-  return "http://192.168.1.26:5000/api";
+  return "https://food-delivery-4589.onrender.com/api";
 };
 
 const api = axios.create({
