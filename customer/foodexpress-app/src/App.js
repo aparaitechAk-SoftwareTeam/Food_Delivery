@@ -1,6 +1,6 @@
 import "./patchStyles";
 import React, { useEffect } from "react";
-import { Animated, Platform } from "react-native";
+import { Platform } from "react-native";
 
 import { LogBox } from "react-native";
 LogBox.ignoreLogs([
