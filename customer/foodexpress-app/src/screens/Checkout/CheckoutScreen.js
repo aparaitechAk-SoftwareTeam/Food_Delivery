@@ -11,7 +11,23 @@ import paymentService from "../../services/paymentService";
 import api from "../../utils/api";
 import { MaterialCommunityIcons, FontAwesome6 } from "@expo/vector-icons";
 
-const { width } = Dimensions.get("window");
+const loadRazorpayScript = () => {
+  return new Promise((resolve) => {
+    if (Platform.OS !== "web") {
+      resolve(false);
+      return;
+    }
+    if (window.Razorpay) {
+      resolve(true);
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+};
 
 const CheckoutScreen = ({ navigation }) => {
   const dispatch = useDispatch();
@@ -226,9 +242,95 @@ const CheckoutScreen = ({ navigation }) => {
     // ─── 4. Razorpay Online Payment Flow ──────────────────────────────────────
     if (paymentMethod === "Razorpay") {
       setIsProcessing(true);
+      
+      const firstItem = items[0];
+      const restaurantId = firstItem.restaurantId || firstItem.restaurant?._id || firstItem.restaurant?.id || firstItem.restaurant || "r-1";
+      const backendItems = items.map((item) => ({
+        food: (item.id || item._id).toString().split("-")[0],
+        quantity: item.quantity,
+        price: item.price,
+      }));
+
+      const orderPayload = {
+        restaurant: restaurantId,
+        items: backendItems,
+        address: activeAddr,
+        discount: bill.discount,
+        deliveryCharge: bill.deliveryFee,
+        tax: bill.gst,
+        totalAmount: bill.grandTotal,
+        couponCode: bill.appliedCoupon?.code || undefined,
+      };
+
       paymentService.generateQR(bill.grandTotal)
-        .then((data) => {
+        .then(async (data) => {
           setQrCodeData(data);
+          
+          if (Platform.OS === "web") {
+            const scriptLoaded = await loadRazorpayScript();
+            if (scriptLoaded && window.Razorpay) {
+              const razorpayKey = process.env.EXPO_PUBLIC_RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID || "rzp_live_SuiX1JeqCYs1KX";
+              
+              const options = {
+                key: razorpayKey,
+                amount: Math.round(bill.grandTotal * 100),
+                currency: "INR",
+                name: items[0]?.restaurantName || "FoodExpress Premium Kitchen",
+                description: "Payment for Order",
+                order_id: data.razorpay_order_id,
+                handler: function (response) {
+                  setIsProcessing(true);
+                  paymentService.verifyPayment({
+                    paymentId: response.razorpay_payment_id || `pay_${Date.now()}`,
+                    signature: response.razorpay_signature || `sig_${Date.now()}`,
+                    razorpayOrderId: response.razorpay_order_id || data.razorpay_order_id,
+                    amount: bill.grandTotal,
+                    paymentMethod: "Razorpay Online Payment",
+                    orderData: orderPayload
+                  })
+                    .then((res) => {
+                      dispatch(clearCart());
+                      setIsProcessing(false);
+                      navigation.replace("OrderSuccess", {
+                        orderId: res._id || res.id,
+                        orderNumber: res.orderNumber,
+                        totalAmount: res.totalAmount,
+                        paymentMethod: res.paymentMethod || "Razorpay Online Payment",
+                        address: res.address || orderPayload.address,
+                      });
+                    })
+                    .catch((err) => {
+                      setIsProcessing(false);
+                      const errorMsg = err.response?.data?.message || err.message || "Payment verification failed.";
+                      alert(errorMsg);
+                    });
+                },
+                prefill: {
+                  name: "",
+                  email: "",
+                  contact: "",
+                },
+                theme: {
+                  color: "#ff6b00",
+                },
+                modal: {
+                  ondismiss: () => {
+                    setIsProcessing(false);
+                  }
+                }
+              };
+              
+              const rzp = new window.Razorpay(options);
+              rzp.on("payment.failed", function (response) {
+                setIsProcessing(false);
+                alert(response.error?.description || "Payment failed. Please try again.");
+              });
+              rzp.open();
+              return;
+            }
+          }
+          
+          // Fallback to QR modal on Mobile
           setShowQRModal(true);
           setIsProcessing(false);
         })
