@@ -4,7 +4,7 @@ exports.getRewardStatus = async (req, res) => {
   try {
     const data = await cashbackService.getRewardStatus(req.user._id);
     if (!data) {
-      return res.json(null);
+      return res.status(404).json({ message: "No cashback reward found for user" });
     }
     res.json(data);
   } catch (error) {

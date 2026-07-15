@@ -1,4 +1,5 @@
-import { Platform, StyleSheet, Animated } from "react-native";
+import { Platform, StyleSheet } from "react-native";
+const { Animated } = require("react-native");
 
 if (Platform.OS === "web") {
   // Suppress specific annoying react-native-web logs

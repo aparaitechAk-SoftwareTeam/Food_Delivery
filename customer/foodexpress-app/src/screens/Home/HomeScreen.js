@@ -256,7 +256,7 @@ const HomeScreen = ({ navigation }) => {
   };
 
   const loadData = (initial = false) => {
-    dispatch(fetchFoods());
+    dispatch(fetchFoods({ limit: 1000 }));
     fetchBanners();
     fetchFeaturedSections();
     fetchCoupons();
@@ -279,7 +279,7 @@ const HomeScreen = ({ navigation }) => {
   const handleRefresh = async () => {
     setRefreshing(true);
     await Promise.all([
-      dispatch(fetchFoods()),
+      dispatch(fetchFoods({ limit: 1000 })),
       fetchBanners(),
       fetchFeaturedSections(),
       fetchHomeSections()
@@ -648,7 +648,7 @@ const HomeScreen = ({ navigation }) => {
                       }
 
                       case "new_arrivals": {
-                        const newRests = restaurants.filter(r => r.isNew && r.isActive !== false);
+                        const newRests = restaurants.filter(r => r.isNewRestaurant && r.isActive !== false);
                         if (newRests.length === 0) return null;
                         return (
                           <View key={sec.key} style={styles.premiumSection}>

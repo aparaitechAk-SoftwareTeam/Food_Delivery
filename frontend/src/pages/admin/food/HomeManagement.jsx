@@ -585,10 +585,10 @@ const HomeManagement = () => {
                           </td>
                           <td className="py-3 text-center">
                             <button
-                              onClick={() => handleToggleRestaurantField(rest._id, 'isNew', rest.isNew)}
-                              className={`px-2 py-0.5 rounded-full text-[9px] font-bold border transition-colors mx-auto ${rest.isNew ? 'bg-teal-50 border-teal-100 text-teal-600' : 'bg-slate-50 border-slate-200 text-slate-400'}`}
+                              onClick={() => handleToggleRestaurantField(rest._id, 'isNewRestaurant', rest.isNewRestaurant)}
+                              className={`px-2 py-0.5 rounded-full text-[9px] font-bold border transition-colors mx-auto ${rest.isNewRestaurant ? 'bg-teal-50 border-teal-100 text-teal-600' : 'bg-slate-50 border-slate-200 text-slate-400'}`}
                             >
-                              {rest.isNew ? 'New' : 'No'}
+                              {rest.isNewRestaurant ? 'New' : 'No'}
                             </button>
                           </td>
                           <td className="py-3 text-center">

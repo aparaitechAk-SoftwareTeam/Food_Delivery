@@ -15,8 +15,8 @@ if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
   console.warn("[paymentController] RAZORPAY_KEY_ID or RAZORPAY_KEY_SECRET missing. Running in simulated payment mode.");
 }
 
-// Generate Razorpay UPI QR Code URL
-exports.generateQR = async (req, res) => {
+// Create Razorpay Order
+exports.createOrder = async (req, res) => {
   try {
     const { amount, orderId = `TXN-${Date.now()}` } = req.body;
     
@@ -24,63 +24,40 @@ exports.generateQR = async (req, res) => {
       return res.status(400).json({ message: "Amount is required" });
     }
 
-    let qrCodeUrl = "";
-    let upiUri = "";
     let razorpayOrderId = "";
+    const isMock = !razorpay;
 
-    const Restaurant = require("../models/Restaurant");
-    const restaurant = await Restaurant.findOne();
-    const merchantUpi = restaurant?.upiId || "CloudKitchen@okaxis";
-    const merchantName = restaurant?.name || "FoodExpress Premium Kitchen";
-
-    if (razorpay) {
+    if (isMock) {
+      razorpayOrderId = `mock_order_${Date.now()}`;
+      console.log(`[paymentController] Running in mock mode. Generated order ID: ${razorpayOrderId}`);
+    } else {
       try {
         const amountInPaise = Math.round(parseFloat(amount) * 100);
-        
-        // 1. Create a Razorpay Order
         const razorpayOrder = await razorpay.orders.create({
           amount: amountInPaise,
           currency: "INR",
-          receipt: orderId
-        });
-
-        // 2. Generate UPI QR Code associated with this order
-        const qrCode = await razorpay.qrCode.create({
-          type: "upi_qr",
-          name: merchantName,
-          usage: "single_use",
-          fixed_amount: true,
-          amount: amountInPaise,
-          description: `Order receipt: ${orderId}`,
-          close_by: Math.floor(Date.now() / 1000) + 900, // 15 mins expiry
+          receipt: orderId,
           notes: {
-            order_id: orderId,
-            razorpay_order_id: razorpayOrder.id
+            orderId,
+            userId: req.user._id.toString()
           }
         });
-
-        qrCodeUrl = qrCode.image_url;
-        razorpayOrderId = qrCode.id;
-        upiUri = qrCode.payment_amount ? `upi://pay?pa=${merchantUpi}&pn=${encodeURIComponent(merchantName)}&am=${amount}` : "";
+        razorpayOrderId = razorpayOrder.id;
+        console.log(`[paymentController] Razorpay Order created successfully: ${razorpayOrderId}`);
       } catch (err) {
-        console.warn("[paymentController] Razorpay API failed to generate QR, falling back to merchant UPI:", err.message);
+        console.error("[paymentController] Razorpay Order creation failed:", err.message);
+        return res.status(400).json({ message: `Razorpay Order creation failed: ${err.message}` });
       }
     }
 
-    // Fallback: scannable merchant UPI code (uses actual settings from admin)
-    if (!qrCodeUrl) {
-      upiUri = `upi://pay?pa=${merchantUpi}&pn=${encodeURIComponent(merchantName)}&tr=${orderId}&am=${amount}&cu=INR&tn=Order%20${orderId}`;
-      qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(upiUri)}`;
-      razorpayOrderId = `mock_qr_${Date.now()}`;
-    }
-
     res.status(200).json({
-      qr_code_url: qrCodeUrl,
-      upi_uri: upiUri,
-      razorpay_order_id: razorpayOrderId,
-      merchant_name: merchantName,
-      amount: parseFloat(amount),
-      orderId: orderId,
+      success: true,
+      key: process.env.RAZORPAY_KEY_ID || "rzp_test_mockkeyid12345",
+      order: {
+        id: razorpayOrderId,
+        amount: Math.round(parseFloat(amount) * 100),
+        currency: "INR"
+      }
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -91,9 +68,9 @@ exports.generateQR = async (req, res) => {
 exports.verifyPayment = async (req, res) => {
   try {
     const { 
-      paymentId, 
-      signature, 
-      razorpayOrderId, 
+      razorpay_payment_id, 
+      razorpay_order_id, 
+      razorpay_signature,
       amount, 
       paymentMethod,
       orderData 
@@ -104,43 +81,44 @@ exports.verifyPayment = async (req, res) => {
     }
 
     // Prevent duplicate verification
-    if (paymentId) {
-      const existingOrder = await Order.findOne({ transactionId: paymentId });
+    if (razorpay_payment_id) {
+      const existingOrder = await Order.findOne({ transactionId: razorpay_payment_id });
       if (existingOrder) {
-        console.log(`[paymentController] Order already verified for paymentId: "${paymentId}". Returning existing order.`);
+        console.log(`[paymentController] Order already verified for paymentId: "${razorpay_payment_id}". Returning existing order.`);
         return res.status(200).json(existingOrder);
       }
     }
     
     let isVerified = false;
-    let actualPaymentId = paymentId || `pay_mock_${Date.now()}`;
-    let actualSignature = signature || "verified_sig";
+    let actualPaymentId = razorpay_payment_id || `pay_mock_${Date.now()}`;
+    let actualSignature = razorpay_signature || "verified_sig";
 
-    const isMock = !razorpay || razorpayOrderId?.startsWith("mock_");
+    const isMock = !razorpay || razorpay_order_id?.startsWith("mock_");
 
     if (isMock) {
       isVerified = true;
+      console.log("[paymentController] Mock order signature bypass verified.");
     } else {
       try {
-        // Retrieve payments made to the specific Razorpay QR Code
-        const paymentsList = await razorpay.qrCode.fetchPayments(razorpayOrderId);
-        if (paymentsList && paymentsList.items && paymentsList.items.length > 0) {
-          const capturedPayment = paymentsList.items.find(
-            (p) => p.status === "captured" || p.status === "authorized"
-          );
-          if (capturedPayment) {
-            isVerified = true;
-            actualPaymentId = capturedPayment.id;
-            actualSignature = capturedPayment.method;
-          }
+        const body = razorpay_order_id + "|" + razorpay_payment_id;
+        const expectedSignature = crypto
+          .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+          .update(body)
+          .digest("hex");
+        
+        isVerified = expectedSignature === razorpay_signature;
+        if (isVerified) {
+          console.log(`[paymentController] HMAC signature verification succeeded for payment: ${razorpay_payment_id}`);
+        } else {
+          console.error(`[paymentController] HMAC signature verification failed for payment: ${razorpay_payment_id}`);
         }
       } catch (err) {
-        console.error("[paymentController] Razorpay fetch QR payments failed:", err.message);
+        console.error("[paymentController] Signature verification failed:", err.message);
       }
     }
 
     if (!isVerified) {
-      return res.status(400).json({ message: "Payment has not been captured/received yet. Please complete the transfer first." });
+      return res.status(400).json({ message: "Payment verification failed. Invalid signature." });
     }
 
     // Securely create order inside database
@@ -170,6 +148,7 @@ exports.verifyPayment = async (req, res) => {
           price: item.price || 0,
         });
       }
+      
       const subtotal = validItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
       if (couponCode) {
         const Coupon = require("../models/Coupon");
@@ -209,7 +188,7 @@ exports.verifyPayment = async (req, res) => {
         totalAmount: totalAmount || amount,
         orderNumber,
         transactionId: actualPaymentId,
-        razorpayOrderId: razorpayOrderId,
+        razorpayOrderId: razorpay_order_id,
         razorpayPaymentId: actualPaymentId,
         razorpaySignature: actualSignature,
       });
@@ -218,10 +197,10 @@ exports.verifyPayment = async (req, res) => {
       await Payment.create({
         orderId: order._id,
         paymentId: actualPaymentId,
-        razorpayOrderId: razorpayOrderId,
+        razorpayOrderId: razorpay_order_id,
         amount: totalAmount || amount,
         currency: "INR",
-        paymentMethod: "UPI",
+        paymentMethod: "Razorpay Online",
         paymentStatus: "Captured",
         userId: req.user._id,
       });
@@ -257,10 +236,33 @@ exports.verifyPayment = async (req, res) => {
         }
       }
 
+      console.log(`[paymentController] Order placed successfully: ${order.orderNumber} for user: ${req.user.email}`);
       return res.status(201).json(order);
     }
 
     res.status(200).json({ status: "success", verified: true });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Retrieve Payment Status
+exports.getPaymentStatus = async (req, res) => {
+  try {
+    const { paymentId } = req.params;
+    const payment = await Payment.findOne({ paymentId }).populate("orderId");
+    if (!payment) {
+      if (razorpay) {
+        try {
+          const rzpPayment = await razorpay.payments.fetch(paymentId);
+          return res.json({ success: true, status: rzpPayment.status, details: rzpPayment });
+        } catch (e) {
+          return res.status(404).json({ success: false, message: "Payment not found in DB or Razorpay" });
+        }
+      }
+      return res.status(404).json({ success: false, message: "Payment record not found" });
+    }
+    res.json({ success: true, status: payment.paymentStatus, details: payment });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
