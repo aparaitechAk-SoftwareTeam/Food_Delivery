@@ -146,10 +146,6 @@ if (!MONGO_URI) {
 if (require.main === module) {
   connectDB(MONGO_URI)
     .then(async () => {
-      // Clear database (one-time wipe)
-      const clearDatabase = require("./config/clearDatabase");
-      await clearDatabase();
-
       // Initialize default admin account if not exists
       const initializeAdmin = require("./config/initAdmin");
       await initializeAdmin();
