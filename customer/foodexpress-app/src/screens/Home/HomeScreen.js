@@ -648,7 +648,7 @@ const HomeScreen = ({ navigation }) => {
                       }
 
                       case "new_arrivals": {
-                        const newRests = restaurants.filter(r => r.isNew && r.isActive !== false);
+                        const newRests = restaurants.filter(r => r.isNewRestaurant && r.isActive !== false);
                         if (newRests.length === 0) return null;
                         return (
                           <View key={sec.key} style={styles.premiumSection}>
