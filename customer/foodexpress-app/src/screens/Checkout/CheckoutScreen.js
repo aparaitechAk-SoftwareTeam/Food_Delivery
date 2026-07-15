@@ -223,8 +223,8 @@ const CheckoutScreen = ({ navigation }) => {
       return;
     }
 
-    // ─── 4. Razorpay UPI QR Flow ──────────────────────────────────────────────
-    if (paymentMethod === "Razorpay QR") {
+    // ─── 4. Razorpay Online Payment Flow ──────────────────────────────────────
+    if (paymentMethod === "Razorpay") {
       setIsProcessing(true);
       paymentService.generateQR(bill.grandTotal)
         .then((data) => {
@@ -235,9 +235,9 @@ const CheckoutScreen = ({ navigation }) => {
         .catch((err) => {
           setIsProcessing(false);
           if (Platform.OS === "web") {
-            alert(err.message || "Failed to generate Razorpay QR Code");
+            alert(err.message || "Failed to load Razorpay Payment Gateway");
           } else {
-            Alert.alert("Error", err.message || "Failed to generate Razorpay QR Code");
+            Alert.alert("Error", err.message || "Failed to load Razorpay Payment Gateway");
           }
         });
     }
@@ -332,7 +332,7 @@ const CheckoutScreen = ({ navigation }) => {
       signature: `sig_${Date.now()}`,
       razorpayOrderId: qrCodeData?.razorpay_order_id,
       amount: bill.grandTotal,
-      paymentMethod: "Razorpay UPI QR",
+      paymentMethod: "Razorpay Online Payment",
       orderData: orderPayload
     })
       .then((res) => {
@@ -343,7 +343,7 @@ const CheckoutScreen = ({ navigation }) => {
           orderId: res._id || res.id,
           orderNumber: res.orderNumber,
           totalAmount: res.totalAmount,
-          paymentMethod: res.paymentMethod || "Razorpay UPI QR",
+          paymentMethod: res.paymentMethod || "Razorpay Online Payment",
           address: res.address || orderPayload.address,
         });
       })
@@ -476,67 +476,20 @@ const CheckoutScreen = ({ navigation }) => {
               />
             </TouchableOpacity>
 
-            {/* 2. UPI */}
+            {/* 2. Razorpay Online Payment */}
             <TouchableOpacity 
-              style={[styles.paymentMethodRow, paymentMethod === "UPI" && styles.paymentMethodRowSelected]}
-              onPress={() => setPaymentMethod("UPI")}
+              style={[styles.paymentMethodRow, paymentMethod === "Razorpay" && styles.paymentMethodRowSelected]}
+              onPress={() => setPaymentMethod("Razorpay")}
               activeOpacity={0.7}
             >
               <View style={styles.paymentMethodLeft}>
-                <MaterialCommunityIcons name="bank" size={24} color={paymentMethod === "UPI" ? "#ff6b00" : "#475467"} />
-                <Text style={styles.paymentMethodLabel}>UPI Payments (Instant)</Text>
+                <MaterialCommunityIcons name="credit-card-outline" size={24} color={paymentMethod === "Razorpay" ? "#ff6b00" : "#475467"} />
+                <Text style={styles.paymentMethodLabel}>Razorpay Online Payment</Text>
               </View>
               <RadioButton
-                value="UPI"
-                status={paymentMethod === "UPI" ? "checked" : "unchecked"}
-                onPress={() => setPaymentMethod("UPI")}
-                color="#ff6b00"
-              />
-            </TouchableOpacity>
-
-            {/* Sub-Selection for UPI apps */}
-            {paymentMethod === "UPI" && (
-              <View style={styles.upiAppsContainer}>
-                {renderUPIAppItem("Google Pay", "google")}
-                {renderUPIAppItem("PhonePe", "cellphone-arrow-down")}
-                {renderUPIAppItem("Paytm", "wallet")}
-                {renderUPIAppItem("BHIM UPI", "qrcode")}
-                {renderUPIAppItem("Other UPI Apps", "open-in-new")}
-              </View>
-            )}
-
-            {/* 4. Credit / Debit Card */}
-            <TouchableOpacity 
-              style={[styles.paymentMethodRow, paymentMethod === "Card" && styles.paymentMethodRowSelected]}
-              onPress={() => setPaymentMethod("Card")}
-              activeOpacity={0.7}
-            >
-              <View style={styles.paymentMethodLeft}>
-                <MaterialCommunityIcons name="card-outline" size={24} color={paymentMethod === "Card" ? "#ff6b00" : "#475467"} />
-                <Text style={styles.paymentMethodLabel}>Credit / Debit Card</Text>
-              </View>
-              <RadioButton
-                value="Card"
-                status={paymentMethod === "Card" ? "checked" : "unchecked"}
-                onPress={() => setPaymentMethod("Card")}
-                color="#ff6b00"
-              />
-            </TouchableOpacity>
-
-            {/* 5. Razorpay UPI QR */}
-            <TouchableOpacity 
-              style={[styles.paymentMethodRow, paymentMethod === "Razorpay QR" && styles.paymentMethodRowSelected]}
-              onPress={() => setPaymentMethod("Razorpay QR")}
-              activeOpacity={0.7}
-            >
-              <View style={styles.paymentMethodLeft}>
-                <MaterialCommunityIcons name="qrcode" size={24} color={paymentMethod === "Razorpay QR" ? "#ff6b00" : "#475467"} />
-                <Text style={styles.paymentMethodLabel}>Razorpay (UPI QR Code)</Text>
-              </View>
-              <RadioButton
-                value="Razorpay QR"
-                status={paymentMethod === "Razorpay QR" ? "checked" : "unchecked"}
-                onPress={() => setPaymentMethod("Razorpay QR")}
+                value="Razorpay"
+                status={paymentMethod === "Razorpay" ? "checked" : "unchecked"}
+                onPress={() => setPaymentMethod("Razorpay")}
                 color="#ff6b00"
               />
             </TouchableOpacity>
