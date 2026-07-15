@@ -8,7 +8,7 @@ export const getSocket = () => {
     const socketURL = API_BASE_URL.replace("/api", "");
     console.log(`[SocketIO] Connecting Admin Panel to: ${socketURL}`);
     socket = io(socketURL, {
-      transports: ["websocket"],
+      transports: ["polling", "websocket"],
       autoConnect: true,
     });
   }

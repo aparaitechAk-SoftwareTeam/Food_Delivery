@@ -6,7 +6,11 @@
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.foodexpress.rider",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.foodexpress.rider"
@@ -14,7 +18,7 @@
     "web": {},
     "extra": {
       "eas": {
-        "projectId": "1212c36b-05c7-4476-90cb-817839e98c30"
+        "projectId": "65e4fb0c-a013-40bb-b514-8bfe24147998"
       }
     }
   }

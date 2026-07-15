@@ -11,9 +11,6 @@ const getBaseURL = () => {
     const url = process.env.VITE_API_URL;
     return url.endsWith("/api") ? url : `${url}/api`;
   }
-  if (Platform.OS === "web") {
-    return "http://localhost:5000/api";
-  }
   return "https://food-delivery-4589.onrender.com/api";
 };
 
