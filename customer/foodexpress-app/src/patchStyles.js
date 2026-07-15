@@ -24,7 +24,7 @@ if (Platform.OS === "web") {
     const newStyles = {};
     for (const key in styles) {
       if (Object.prototype.hasOwnProperty.call(styles, key)) {
-        const style = styles[key];
+        let style = styles[key];
         if (style && typeof style === "object") {
           if (
             style.shadowColor !== undefined ||
@@ -32,6 +32,8 @@ if (Platform.OS === "web") {
             style.shadowRadius !== undefined ||
             style.shadowOffset !== undefined
           ) {
+            // Shallow clone the style object to allow modification of frozen/read-only styles in React Native
+            style = { ...style };
             const shadowColor = style.shadowColor || "rgba(0,0,0,0.2)";
             const shadowOpacity = style.shadowOpacity !== undefined ? style.shadowOpacity : 1;
             let offsetX = 0;
