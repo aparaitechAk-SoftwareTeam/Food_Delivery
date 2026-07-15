@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "FoodExpress",
-    "slug": "food-express",
+    "slug": "food-delivery",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
@@ -27,9 +27,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "6af3a9dc-5d39-4fe1-8a7d-664512636fe2"
+        "projectId": "97c187fd-5f6a-41d5-8387-c2ff725a3352"
       }
     },
-    "owner": "atharvatole4s-team"
+    "owner": "sandykamble"
   }
 }
