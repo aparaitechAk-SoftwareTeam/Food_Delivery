@@ -256,7 +256,7 @@ const HomeScreen = ({ navigation }) => {
   };
 
   const loadData = (initial = false) => {
-    dispatch(fetchFoods());
+    dispatch(fetchFoods({ limit: 1000 }));
     fetchBanners();
     fetchFeaturedSections();
     fetchCoupons();
@@ -279,7 +279,7 @@ const HomeScreen = ({ navigation }) => {
   const handleRefresh = async () => {
     setRefreshing(true);
     await Promise.all([
-      dispatch(fetchFoods()),
+      dispatch(fetchFoods({ limit: 1000 })),
       fetchBanners(),
       fetchFeaturedSections(),
       fetchHomeSections()
