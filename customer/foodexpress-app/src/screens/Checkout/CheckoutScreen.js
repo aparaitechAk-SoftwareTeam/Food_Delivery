@@ -267,8 +267,9 @@ const CheckoutScreen = ({ navigation }) => {
           setQrCodeData(data);
           
           if (Platform.OS === "web") {
+            const isMock = !data.razorpay_order_id || data.razorpay_order_id.startsWith("mock_");
             const scriptLoaded = await loadRazorpayScript();
-            if (scriptLoaded && window.Razorpay) {
+            if (!isMock && scriptLoaded && window.Razorpay) {
               const razorpayKey = process.env.EXPO_PUBLIC_RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID || "rzp_live_SuiX1JeqCYs1KX";
               
               const options = {
