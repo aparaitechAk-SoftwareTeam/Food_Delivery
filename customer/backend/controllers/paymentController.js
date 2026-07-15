@@ -37,33 +37,40 @@ exports.generateQR = async (req, res) => {
       try {
         const amountInPaise = Math.round(parseFloat(amount) * 100);
         
-        // 1. Create a Razorpay Order
+        // 1. Create a Razorpay Order (Critical for checkout popup)
         const razorpayOrder = await razorpay.orders.create({
           amount: amountInPaise,
           currency: "INR",
           receipt: orderId
         });
+        razorpayOrderId = razorpayOrder.id;
 
-        // 2. Generate UPI QR Code associated with this order
-        const qrCode = await razorpay.qrCode.create({
-          type: "upi_qr",
-          name: merchantName,
-          usage: "single_use",
-          fixed_amount: true,
-          amount: amountInPaise,
-          description: `Order receipt: ${orderId}`,
-          close_by: Math.floor(Date.now() / 1000) + 900, // 15 mins expiry
-          notes: {
-            order_id: orderId,
-            razorpay_order_id: razorpayOrder.id
-          }
-        });
-
-        qrCodeUrl = qrCode.image_url;
-        razorpayOrderId = qrCode.id;
-        upiUri = qrCode.payment_amount ? `upi://pay?pa=${merchantUpi}&pn=${encodeURIComponent(merchantName)}&am=${amount}` : "";
+        // 2. Try to generate UPI QR Code associated with this order
+        try {
+          const qrCode = await razorpay.qrCode.create({
+            type: "upi_qr",
+            name: merchantName,
+            usage: "single_use",
+            fixed_amount: true,
+            amount: amountInPaise,
+            description: `Order receipt: ${orderId}`,
+            close_by: Math.floor(Date.now() / 1000) + 900, // 15 mins expiry
+            notes: {
+              order_id: orderId,
+              razorpay_order_id: razorpayOrder.id
+            }
+          });
+          qrCodeUrl = qrCode.image_url;
+          upiUri = qrCode.payment_amount ? `upi://pay?pa=${merchantUpi}&pn=${encodeURIComponent(merchantName)}&am=${amount}` : "";
+        } catch (qrErr) {
+          console.warn("[paymentController] Razorpay QR Code API failed (standard for many merchant accounts):", qrErr.message);
+          // Fallback to merchant UPI QR but KEEP the valid razorpayOrderId
+          upiUri = `upi://pay?pa=${merchantUpi}&pn=${encodeURIComponent(merchantName)}&tr=${orderId}&am=${amount}&cu=INR&tn=Order%20${orderId}`;
+          qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(upiUri)}`;
+        }
       } catch (err) {
-        console.warn("[paymentController] Razorpay API failed to generate QR, falling back to merchant UPI:", err.message);
+        console.error("[paymentController] Razorpay Order creation failed:", err.message);
+        return res.status(400).json({ message: `Razorpay Order creation failed: ${err.message}` });
       }
     }
 
