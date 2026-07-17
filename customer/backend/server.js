@@ -1,14 +1,7 @@
 require("dotenv").config();
 require("express-async-errors");
 
-// Workaround for querySrv ECONNREFUSED DNS issues (especially on Windows / Atlas)
-const dns = require("dns");
-try {
-  dns.setServers(["8.8.8.8", "8.8.4.4"]);
-} catch (err) {
-  console.warn("Warning: Could not set custom DNS servers:", err.message);
-}
-
+// ── Express Setup ──────────────────────────────────────────────────────────────
 const express = require("express");
 const cors = require("cors");
 const morgan = require("morgan");
@@ -144,75 +137,93 @@ if (!MONGO_URI) {
 // ── Startup ────────────────────────────────────────────────────────────────────
 // Guard against being required as a module (prevents duplicate server instances)
 if (require.main === module) {
-  connectDB(MONGO_URI)
-    .then(async () => {
-      // Initialize default admin account if not exists
-      const initializeAdmin = require("./config/initAdmin");
-      await initializeAdmin();
+  const startServer = () => {
+    connectDB(MONGO_URI)
+      .then(async () => {
+        // Initialize default admin account if not exists
+        const initializeAdmin = require("./config/initAdmin");
+        await initializeAdmin();
 
-      // Initialize default user accounts if not exists
-      const initializeDefaultUsers = require("./config/initDefaultUsers");
-      await initializeDefaultUsers();
+        // Initialize default user accounts if not exists
+        const initializeDefaultUsers = require("./config/initDefaultUsers");
+        await initializeDefaultUsers();
 
-      // Initialize default home screen sections if not exists
-      const initializeHomeSections = require("./config/initHomeSections");
-      await initializeHomeSections();
+        // Initialize default home screen sections if not exists
+        const initializeHomeSections = require("./config/initHomeSections");
+        await initializeHomeSections();
 
-      // Initialize single restaurant settings and link foods
-      const initializeSingleRestaurant = require("./config/initSingleRestaurant");
-      await initializeSingleRestaurant();
+        // Initialize single restaurant settings and link foods
+        const initializeSingleRestaurant = require("./config/initSingleRestaurant");
+        await initializeSingleRestaurant();
 
-      // Start the HTTP server — only once, only after DB is ready
-      const server = app.listen(PORT, () => {
-        console.log(`\n✅  Server running on port ${PORT}\n`);
-      });
+        // Sync combos to the Food collection for customer app order compatibility
+        const syncExistingCombos = require("./config/syncExistingCombos");
+        await syncExistingCombos();
 
-      // Initialize Socket.IO
-      const { initSocket } = require("./config/socket");
-      initSocket(server);
-
-      // ── Graceful EADDRINUSE handler ─────────────────────────────────────────
-      // process.exit(1) stops nodemon from restarting (nodemon exits on code 1
-      // only when exitcrash is configured — see nodemon.json).
-      server.on("error", (err) => {
-        if (err.code === "EADDRINUSE") {
-          console.error(
-            `\n❌  Port ${PORT} is already in use.\n\n` +
-            `   Another process is holding this port.\n` +
-            `   Run these commands to free it:\n\n` +
-            `   Windows:\n` +
-            `     netstat -ano | findstr :${PORT}\n` +
-            `     taskkill /F /PID <PID>\n\n` +
-            `   Mac / Linux:\n` +
-            `     lsof -ti:${PORT} | xargs kill -9\n\n` +
-            `   Then restart the server.\n`
-          );
-          // Exit with code 1 so nodemon does NOT auto-restart (exitcrash: false in nodemon.json)
-          process.exit(1);
-        } else {
-          console.error("Server error:", err);
-          process.exit(1);
-        }
-      });
-
-      // ── Graceful shutdown on SIGTERM / SIGINT ────────────────────────────────
-      const shutdown = (signal) => {
-        console.log(`\n[${signal}] Shutting down server gracefully...`);
-        server.close(() => {
-          console.log("Server closed.");
-          process.exit(0);
+        // Start the HTTP server — only once, only after DB is ready
+        const server = app.listen(PORT, () => {
+          console.log(`\n✅  Server running on port ${PORT}\n`);
         });
-        // Force-exit after 5 s if connections don't drain
-        setTimeout(() => process.exit(0), 5000).unref();
-      };
 
-      process.on("SIGTERM", () => shutdown("SIGTERM"));
-      process.on("SIGINT",  () => shutdown("SIGINT"));
-    })
-    .catch((err) => {
-      console.error("Failed to connect to MongoDB:", err.message);
-      process.exit(1);
-    });
+        // Initialize Socket.IO
+        const { initSocket } = require("./config/socket");
+        initSocket(server);
+
+        // ── Graceful EADDRINUSE handler ─────────────────────────────────────────
+        server.on("error", (err) => {
+          if (err.code === "EADDRINUSE") {
+            console.error(
+              `\n❌  Port ${PORT} is already in use.\n\n` +
+              `   Another process is holding this port.\n` +
+              `   Run these commands to free it:\n\n` +
+              `   Windows:\n` +
+              `     netstat -ano | findstr :${PORT}\n` +
+              `     taskkill /F /PID <PID>\n\n` +
+              `   Mac / Linux:\n` +
+              `     lsof -ti:${PORT} | xargs kill -9\n\n` +
+              `   Then restart the server.\n`
+            );
+            process.exit(1);
+          } else {
+            console.error("Server error:", err);
+            process.exit(1);
+          }
+        });
+
+        // ── Graceful shutdown on SIGTERM / SIGINT ────────────────────────────────
+        const shutdown = (signal) => {
+          console.log(`\n[${signal}] Shutting down server gracefully...`);
+          server.close(() => {
+            console.log("Server closed.");
+            process.exit(0);
+          });
+          setTimeout(() => process.exit(0), 5000).unref();
+        };
+
+        process.on("SIGTERM", () => shutdown("SIGTERM"));
+        process.on("SIGINT",  () => shutdown("SIGINT"));
+      })
+      .catch((err) => {
+        console.error("Failed to connect to MongoDB:", err.message);
+        process.exit(1);
+      });
+  };
+
+  const dns = require("dns");
+  console.log("Checking DNS resolution for MongoDB Atlas...");
+  dns.resolveSrv("_mongodb._tcp.cluster0.bxevqzc.mongodb.net", (err) => {
+    if (err) {
+      console.log("ℹ️  Default DNS failed to resolve MongoDB SRV. Applying custom Google DNS (8.8.8.8)...");
+      try {
+        dns.setServers(["8.8.8.8", "8.8.4.4"]);
+      } catch (dnsErr) {
+        console.warn("⚠️  Could not set custom DNS servers:", dnsErr.message);
+      }
+    } else {
+      console.log("✅  Default DNS successfully resolved MongoDB SRV. Skipping DNS override.");
+    }
+    startServer();
+  });
 }
 
 module.exports = app;

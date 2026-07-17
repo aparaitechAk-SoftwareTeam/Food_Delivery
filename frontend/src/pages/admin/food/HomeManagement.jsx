@@ -298,7 +298,7 @@ const HomeManagement = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer border ${activeTab === tab.id ? 'bg-indigo-650 text-white border-indigo-650 shadow-sm' : 'bg-white hover:bg-slate-50 text-gray-600 border-gray-200/80'}`}
+                className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer border ${activeTab === tab.id ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-white hover:bg-slate-50 text-gray-600 border-gray-200/80'}`}
               >
                 {tab.icon}
                 <span>{tab.label}</span>
@@ -397,7 +397,7 @@ const HomeManagement = () => {
                         <div 
                           key={b._id} 
                           onClick={() => handleSelectBanner(b)}
-                          className={`p-4 border rounded-2xl cursor-pointer hover:border-indigo-150 transition-all flex flex-col md:flex-row gap-4 ${selectedBanner?._id === b._id ? 'border-indigo-650 bg-indigo-50/10' : 'border-gray-200 bg-white'} ${!b.isActive ? 'opacity-60 bg-gray-50' : ''}`}
+                          className={`p-4 border rounded-2xl cursor-pointer hover:border-indigo-300 transition-all flex flex-col md:flex-row gap-4 ${selectedBanner?._id === b._id ? 'border-indigo-600 bg-indigo-50' : 'border-gray-200 bg-white'} ${!b.isActive ? 'opacity-60 bg-gray-50' : ''}`}
                         >
                           <img src={b.image} className="w-24 h-16 rounded-xl object-cover bg-slate-100 border border-slate-100 shrink-0" alt="" />
                           <div className="flex-1">
@@ -502,7 +502,7 @@ const HomeManagement = () => {
                       <div className="flex items-center gap-2 pt-5">
                         <input 
                           type="checkbox" id="bannerIsActive" checked={bannerIsActive} onChange={(e) => setBannerIsActive(e.target.checked)}
-                          className="rounded border-gray-300 text-indigo-650 focus:ring-indigo-500"
+                          className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                         />
                         <label htmlFor="bannerIsActive" className="text-xs font-semibold text-slate-700 cursor-pointer select-none">Is Active</label>
                       </div>
@@ -525,7 +525,7 @@ const HomeManagement = () => {
                     </div>
                     <button
                       type="submit" disabled={saving}
-                      className="w-full py-2.5 bg-indigo-650 hover:bg-indigo-600 text-white rounded-xl font-bold cursor-pointer transition-colors shadow-sm active:scale-95 flex items-center justify-center gap-1.5"
+                      className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold cursor-pointer transition-colors shadow-sm active:scale-95 flex items-center justify-center gap-1.5"
                     >
                       <Save className="w-4 h-4" />
                       <span>{saving ? 'Saving...' : selectedBanner ? 'Update Banner Slot' : 'Add Banner Slot'}</span>
@@ -570,7 +570,7 @@ const HomeManagement = () => {
                           <td className="py-3 text-center">
                             <button
                               onClick={() => handleToggleRestaurantField(rest._id, 'isFeatured', rest.isFeatured)}
-                              className={`w-5 h-5 rounded-md border flex items-center justify-center mx-auto transition-colors ${rest.isFeatured ? 'bg-indigo-50 border-indigo-200 text-indigo-650' : 'border-gray-200 text-gray-300 hover:text-gray-400'}`}
+                              className={`w-5 h-5 rounded-md border flex items-center justify-center mx-auto transition-colors ${rest.isFeatured ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'border-gray-200 text-gray-300 hover:text-gray-400'}`}
                             >
                               <Star className={`w-3.5 h-3.5 ${rest.isFeatured ? 'fill-indigo-500' : ''}`} />
                             </button>
@@ -686,7 +686,7 @@ const HomeManagement = () => {
                           <td className="py-3 text-center">
                             <button
                               onClick={() => handleToggleFoodField(item._id, 'isFeatured', item.isFeatured)}
-                              className={`w-5 h-5 rounded-md border flex items-center justify-center mx-auto transition-colors ${item.isFeatured ? 'bg-indigo-50 border-indigo-200 text-indigo-650' : 'border-gray-200 text-gray-300 hover:text-gray-400'}`}
+                              className={`w-5 h-5 rounded-md border flex items-center justify-center mx-auto transition-colors ${item.isFeatured ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'border-gray-200 text-gray-300 hover:text-gray-400'}`}
                             >
                               <Star className={`w-3.5 h-3.5 ${item.isFeatured ? 'fill-indigo-500' : ''}`} />
                             </button>

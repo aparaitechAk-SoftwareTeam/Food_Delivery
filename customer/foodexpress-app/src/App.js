@@ -12,6 +12,7 @@ import { Provider } from "react-redux";
 import { Provider as PaperProvider } from "react-native-paper";
 import { store } from "./redux/store";
 import AppNavigator from "./navigation/AppNavigator";
+import SplashNavigator from "./navigation/SplashNavigator";
 import { lightTheme, darkTheme } from "./constants/theme";
 import { useColorScheme } from "react-native";
 import { StatusBar } from "expo-status-bar";
@@ -81,17 +82,15 @@ const App = () => {
   const scheme = useColorScheme();
   const theme = scheme === "dark" ? darkTheme : lightTheme;
 
-  useEffect(() => {
-    store.dispatch(loadUserFromStorage());
-  }, []);
-
   return (
     <Provider store={store}>
       <PaperProvider theme={theme}>
         <StatusBar style={scheme === "dark" ? "light" : "dark"} />
-        <LocationGate>
-          <AppNavigator />
-        </LocationGate>
+        <SplashNavigator>
+          <LocationGate>
+            <AppNavigator />
+          </LocationGate>
+        </SplashNavigator>
       </PaperProvider>
     </Provider>
   );

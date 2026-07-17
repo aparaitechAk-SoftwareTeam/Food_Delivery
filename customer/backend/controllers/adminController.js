@@ -111,7 +111,7 @@ exports.getRestaurantsList = async (req, res) => {
 exports.getOrdersList = async (req, res) => {
   
   try {
-    const orders = await Order.find().populate("user").populate("restaurant");
+    const orders = await Order.find().populate("user").populate("restaurant").sort({ createdAt: -1 });
     res.json(orders);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -253,12 +253,44 @@ exports.getCombos = async (req, res) => {
   }
 };
 
+// Helper to sync Combo to a shadow Food document
+const syncComboToFood = async (combo) => {
+  const Food = require("../models/Food");
+  try {
+    const firstRest = combo.items && combo.items.length > 0
+      ? (await Food.findById(combo.items[0]).select("restaurant"))?.restaurant
+      : null;
+
+    const foodPayload = {
+      name: combo.name,
+      description: combo.description || "Curated meal combo with discount savings.",
+      price: combo.price,
+      originalPrice: combo.originalPrice || combo.price,
+      image: combo.image || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=400&q=80",
+      isCombo: true,
+      isAvailable: combo.isActive !== false,
+      rating: 4.8,
+      preparationTime: 25,
+      restaurant: firstRest
+    };
+
+    await Food.findByIdAndUpdate(
+      combo._id,
+      { $set: foodPayload },
+      { upsert: true, new: true }
+    );
+    console.log(`[syncComboToFood] Synced combo '${combo.name}' to Food collection.`);
+  } catch (err) {
+    console.error("[syncComboToFood] Error syncing combo:", err.message);
+  }
+};
+
 exports.createCombo = async (req, res) => {
-  
   try {
     const newCombo = new Combo(req.body);
     await newCombo.save();
     const populated = await Combo.findById(newCombo._id).populate("items");
+    await syncComboToFood(populated);
     res.status(201).json(populated);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -267,10 +299,10 @@ exports.createCombo = async (req, res) => {
 
 exports.updateCombo = async (req, res) => {
   const { id } = req.params;
-  
   try {
     const updated = await Combo.findByIdAndUpdate(id, req.body, { new: true }).populate("items");
     if (!updated) return res.status(404).json({ message: "Combo not found" });
+    await syncComboToFood(updated);
     res.json(updated);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -279,10 +311,14 @@ exports.updateCombo = async (req, res) => {
 
 exports.deleteCombo = async (req, res) => {
   const { id } = req.params;
-  
   try {
     const deleted = await Combo.findByIdAndDelete(id);
     if (!deleted) return res.status(404).json({ message: "Combo not found" });
+    
+    // Also delete shadow food
+    const Food = require("../models/Food");
+    await Food.findByIdAndDelete(id);
+    
     res.json({ message: "Combo deleted", deleted });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -515,39 +551,32 @@ exports.toggleBlockUser = async (req, res) => {
 };
 
 exports.getReviews = async (req, res) => {
-  
   try {
-    const reviews = await Review.find().populate("user", "name email").populate("food", "name").populate("restaurant", "name");
-    res.json(reviews);
+    const reviewController = require("./reviewController");
+    await reviewController.getAllReviewsAdmin(req, res);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
 exports.updateReviewStatus = async (req, res) => {
-  const { id } = req.params;
-  const { status } = req.body;
-  
   try {
-    const updated = await Review.findByIdAndUpdate(id, { status }, { new: true }).populate("user", "name email").populate("food", "name");
-    if (!updated) return res.status(404).json({ message: "Review not found" });
-    res.json(updated);
+    const reviewController = require("./reviewController");
+    await reviewController.updateStatus(req, res);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
 exports.deleteReview = async (req, res) => {
-  const { id } = req.params;
-  
   try {
-    const deleted = await Review.findByIdAndDelete(id);
-    if (!deleted) return res.status(404).json({ message: "Review not found" });
-    res.json({ message: "Review deleted", deleted });
+    const reviewController = require("./reviewController");
+    await reviewController.deleteReview(req, res);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 // ── Delivery Boy Management ───────────────────────────────────────────────────
 

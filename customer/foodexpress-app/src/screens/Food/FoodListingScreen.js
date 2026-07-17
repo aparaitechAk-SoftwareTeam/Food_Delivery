@@ -11,6 +11,7 @@ import {
   Modal,
   ScrollView,
   SafeAreaView,
+  Linking,
 } from "react-native";
 import CustomScreenHeader from "../../components/CustomScreenHeader";
 import {
@@ -26,6 +27,7 @@ import {
 import { useDispatch, useSelector } from "react-redux";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { fetchFoods } from "../../redux/slices/foodsSlice";
+import { addToCart } from "../../redux/slices/cartSlice";
 import { toggleFavoriteRestaurant, fetchFavorites, addFoodToWishlist, removeFoodFromWishlist } from "../../redux/slices/wishlistSlice";
 import FilterDrawer from "../../components/FilterDrawer";
 import FoodCard from "../../components/FoodCard";
@@ -208,27 +210,35 @@ const FoodListingScreen = ({ navigation, route }) => {
     return count;
   };
 
-  // Actions Mock
+  // Actions Live Implementation
   const handleBookNow = (item) => {
     const restName = typeof item.restaurant === "object" ? item.restaurant?.name : item.restaurant;
-    Alert.alert(
-      "Confirm Order",
-      `Would you like to order ${item.name} from ${restName}?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        { text: "Order Now", onPress: () => Alert.alert("Success", `Order confirmed for ${item.name}!`) }
-      ]
+    dispatch(
+      addToCart({
+        id: item._id || item.id,
+        name: item.name,
+        price: item.price,
+        quantity: 1,
+        image: item.image,
+        restaurantName: restName || "FoodExpress Restaurant",
+        restaurantId: item.restaurant?._id || item.restaurant?.id || item.restaurant,
+      })
     );
+    navigation.navigate("Cart");
   };
 
   const handleChat = (item) => {
-    const restName = typeof item.restaurant === "object" ? item.restaurant?.name : item.restaurant;
-    Alert.alert("Chat", `Opening secure messaging with ${restName || "Provider"}...`);
+    const phone = item.restaurant?.contactNumber || "+919158852129";
+    Linking.openURL(`sms:${phone}`).catch(() => {
+      Alert.alert("Error", "SMS client could not be opened.");
+    });
   };
 
   const handleCall = (item) => {
-    const restName = typeof item.restaurant === "object" ? item.restaurant?.name : item.restaurant;
-    Alert.alert("Call", `Dialing ${restName || "Provider"} at +91 99999 88888...`);
+    const phone = item.restaurant?.contactNumber || "+919158852129";
+    Linking.openURL(`tel:${phone}`).catch(() => {
+      Alert.alert("Error", "Phone dialer could not be opened.");
+    });
   };
 
   const handleSortSelect = (option) => {

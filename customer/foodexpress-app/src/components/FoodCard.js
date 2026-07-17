@@ -187,7 +187,7 @@ const FoodCard = ({ food, navigation }) => {
           <View style={styles.metaRow}>
             <View style={styles.metaItem}>
               <MaterialCommunityIcons name="star" size={14} color="#FF9F43" />
-              <Text style={styles.metaText}>{food.rating || "4.1"}</Text>
+              <Text style={styles.metaText}>{food.rating ? food.rating.toFixed(1) : "0.0"}</Text>
             </View>
             <View style={styles.metaDot} />
             <View style={styles.metaItem}>

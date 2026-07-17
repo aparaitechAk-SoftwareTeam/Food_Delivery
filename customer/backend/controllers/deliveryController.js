@@ -9,7 +9,11 @@ exports.toggleOnlineStatus = async (req, res) => {
     if (!user) {
       return res.status(450).json({ message: "Rider profile not found" });
     }
-    user.isOnline = !user.isOnline;
+    if (req.body.isOnline !== undefined) {
+      user.isOnline = !!req.body.isOnline;
+    } else {
+      user.isOnline = !user.isOnline;
+    }
     await user.save();
 
     res.json({
@@ -87,7 +91,8 @@ exports.getAssignedOrders = async (req, res) => {
     })
       .populate("user", "name phone email")
       .populate("restaurant", "name address coordinates image")
-      .populate("items.food", "name image price");
+      .populate("items.food", "name image price")
+      .sort({ createdAt: -1 });
 
     res.json(orders);
   } catch (err) {

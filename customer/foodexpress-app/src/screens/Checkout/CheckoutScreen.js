@@ -92,12 +92,12 @@ const CheckoutScreen = ({ navigation }) => {
     const responseData = err?.response?.data || null;
     const status = err?.response?.status || "Unknown Status";
 
-    console.error("=== CHECKOUT TRANSACTION ERROR ===");
-    console.error(`API Endpoint: POST ${endpoint}`);
-    console.error("Request Payload:", JSON.stringify(payload, null, 2));
-    console.error(`HTTP Status: ${status}`);
-    console.error("Response / Backend Error:", JSON.stringify(responseData || err, null, 2));
-    console.error("==================================");
+    console.warn("=== CHECKOUT TRANSACTION WARNING ===");
+    console.warn(`API Endpoint: POST ${endpoint}`);
+    console.warn("Request Payload:", JSON.stringify(payload, null, 2));
+    console.warn(`HTTP Status: ${status}`);
+    console.warn("Response / Backend Error:", JSON.stringify(responseData || err, null, 2));
+    console.warn("==================================");
 
     if (errorMsg.includes("Token is not valid") || errorMsg.includes("Not authorized") || status === 401) {
       setTimeout(() => {
@@ -518,53 +518,6 @@ const CheckoutScreen = ({ navigation }) => {
           </Card.Content>
         </Card>
 
-        {/* Applied Coupon / Promos Section */}
-        <Card style={styles.section}>
-          <Card.Title title="Apply Coupon / Promo Wallet" titleStyle={styles.sectionTitle} />
-          <Card.Content>
-            {bill.appliedCoupon ? (
-              <View style={styles.appliedCouponContainer}>
-                <View style={styles.appliedCouponLeft}>
-                  <MaterialCommunityIcons name="ticket-percent" size={24} color="#039855" />
-                  <View style={{ marginLeft: 10 }}>
-                    <Text style={styles.appliedCouponCode}>{bill.appliedCoupon.code}</Text>
-                    <Text style={styles.appliedCouponValue}>₹{bill.discount} discount applied</Text>
-                  </View>
-                </View>
-                <TouchableOpacity onPress={handleRemoveCouponPress} style={styles.removeCouponBtn}>
-                  <Text style={styles.removeCouponBtnText}>REMOVE</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <View>
-                {activeCoupons.length === 0 ? (
-                  <Text style={{ fontSize: 12, color: "#667085", fontStyle: "italic" }}>
-                    No active coupons available in your wallet.
-                  </Text>
-                ) : (
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.couponsScroll}>
-                    {activeCoupons.map((coupon) => (
-                      <TouchableOpacity 
-                        key={coupon._id || coupon.code} 
-                        style={styles.checkoutCouponCard}
-                        onPress={() => handleApplyCouponPress(coupon.code)}
-                        activeOpacity={0.8}
-                      >
-                        <MaterialCommunityIcons name="gift-outline" size={18} color="#FF6F61" />
-                        <View style={{ marginLeft: 8, marginRight: 12 }}>
-                          <Text style={styles.checkoutCouponCode}>{coupon.code}</Text>
-                          <Text style={styles.checkoutCouponVal}>₹{coupon.value} OFF</Text>
-                        </View>
-                        <Text style={styles.applyLabel}>APPLY</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                )}
-              </View>
-            )}
-          </Card.Content>
-        </Card>
-
         {/* Payment Methods Options */}
         <Card style={styles.section}>
           <Card.Title title="Select Payment Method" titleStyle={styles.sectionTitle} />
@@ -656,35 +609,9 @@ const CheckoutScreen = ({ navigation }) => {
           disabled={isProcessing}
           contentStyle={{ paddingVertical: 6 }}
         >
-          {paymentMethod === "UPI" ? `Pay via ${selectedUPI}` : "Place Order"}
+          {paymentMethod === "Razorpay QR" ? "Generate Payment QR Code" : "Place Order"}
         </AppButton>
       </ScrollView>
-
-      {/* Simulated UPI Intent Dialog Overlay */}
-      <Portal>
-        <Dialog visible={showUPIOverlay} onDismiss={cancelUPIPayment} style={styles.upiDialog}>
-          <Dialog.Title style={styles.upiDialogTitle}>
-            <MaterialCommunityIcons name="wallet" size={24} color="#ff6b00" style={{ marginRight: 8 }} />
-            UPI Payment Portal
-          </Dialog.Title>
-          <Dialog.Content>
-            <Text style={styles.upiMerchant}>Pay to: {items[0]?.restaurantName || "FoodExpress Kitchen"}</Text>
-            <View style={styles.upiCardDetails}>
-              <Text style={styles.upiAmountLabel}>Amount to Pay</Text>
-              <Text style={styles.upiAmountVal}>₹{bill.grandTotal.toFixed(2)}</Text>
-            </View>
-            <Text style={styles.upiSub}>Redirecting to {selectedUPI} sandbox...</Text>
-          </Dialog.Content>
-          <Dialog.Actions style={styles.upiActions}>
-            <AppButton mode="outlined" onPress={cancelUPIPayment} style={styles.upiBtnCancel}>
-              Decline / Cancel
-            </AppButton>
-            <AppButton mode="contained" buttonColor="#ff6b00" onPress={confirmUPIPayment} style={styles.upiBtnApprove}>
-              Approve Payment
-            </AppButton>
-          </Dialog.Actions>
-        </Dialog>
-      </Portal>
 
       {/* Razorpay UPI QR Dialog */}
       <Portal>
@@ -790,12 +717,15 @@ const styles = StyleSheet.create({
   paymentMethodLeft: {
     flexDirection: "row",
     alignItems: "center",
+    flex: 1,
+    marginRight: 8,
   },
   paymentMethodLabel: {
     marginLeft: 12,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
     color: "#344054",
+    flexShrink: 1,
   },
   upiAppsContainer: {
     paddingLeft: 24,

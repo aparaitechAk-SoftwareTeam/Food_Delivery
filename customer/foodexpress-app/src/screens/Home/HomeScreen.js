@@ -352,6 +352,20 @@ const HomeScreen = ({ navigation }) => {
   const filteredRestaurants = getFilteredRestaurants();
   const filteredFoods = getFilteredFoods();
 
+  const getExtendedCategories = () => {
+    const list = [...(categories || [])];
+    const hasCombos = list.some((c) => (c.name || "").toLowerCase() === "combos");
+    if (!hasCombos) {
+      list.push({
+        _id: "virtual-combos-id",
+        id: "virtual-combos-id",
+        name: "Combos",
+        image: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=200&q=80",
+      });
+    }
+    return list;
+  };
+
   const handleViewAllBestsellers = () => {
     navigation.navigate("FoodListing", { filterType: "bestsellers", title: "🔥 Bestsellers" });
   };
@@ -365,7 +379,11 @@ const HomeScreen = ({ navigation }) => {
   };
 
   const handleViewAllCategory = (catName) => {
-    navigation.navigate("FoodListing", { filterType: "category", category: catName, title: catName });
+    if (catName?.toLowerCase() === "combos") {
+      handleViewAllCombos();
+    } else {
+      navigation.navigate("FoodListing", { filterType: "category", category: catName, title: catName });
+    }
   };
 
   // Loading & Error States
@@ -535,10 +553,14 @@ const HomeScreen = ({ navigation }) => {
                         return (
                           <CategorySlider
                             key={sec.key}
-                            categories={categories.slice(0, 25)}
+                            categories={getExtendedCategories().slice(0, 25)}
                             selectedCategory={selectedCategory}
                             onSelectCategory={(cat) => {
-                              setSelectedCategory(selectedCategory === cat.name ? null : cat.name);
+                              if (cat.name?.toLowerCase() === "combos") {
+                                handleViewAllCombos();
+                              } else {
+                                setSelectedCategory(selectedCategory === cat.name ? null : cat.name);
+                              }
                             }}
                           />
                         );
@@ -832,7 +854,7 @@ const HomeScreen = ({ navigation }) => {
 
         {/* Floating Category Menu Jump-scroll */}
         <FloatingMenu
-          categories={categories.slice(0, 15)}
+          categories={getExtendedCategories().slice(0, 15)}
           onSelectCategory={(cat) => {
             handleViewAllCategory(cat.name);
           }}

@@ -221,12 +221,55 @@ exports.getFoods = async (req, res) => {
 };
 
 exports.getFoodById = async (req, res) => {
-  const food = await Food.findById(req.params.id).populate(
+  let food = await Food.findById(req.params.id).populate(
     "category restaurant reviews",
   );
+
   if (!food) {
-    res.status(404);
-    throw new Error("Food not found");
+    const Combo = require("../models/Combo");
+    const combo = await Combo.findById(req.params.id).populate({
+      path: "items",
+      populate: { path: "restaurant" }
+    });
+
+    if (!combo) {
+      res.status(404);
+      throw new Error("Food/Combo not found");
+    }
+
+    const firstRest = combo.items && combo.items.length > 0 ? combo.items[0].restaurant : null;
+    const isVeg = combo.items && combo.items.length > 0 
+      ? combo.items.every(item => item.isVeg !== false) 
+      : true;
+
+    const formattedResponse = {
+      _id: combo._id,
+      name: combo.name,
+      description: combo.description || "Curated meal combo with discount savings.",
+      price: combo.price,
+      originalPrice: combo.originalPrice || combo.price,
+      image: combo.image || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=400&q=80",
+      category: { name: "Bento Combo" },
+      restaurant: firstRest,
+      rating: 4.8,
+      serves: "1-2",
+      isVeg: isVeg,
+      isBestseller: true,
+      ingredients: ["Combined standard ingredients"],
+      nutrition: {
+        calories: "450 kcal",
+        protein: "12 g",
+        carbs: "62 g",
+        fat: "14 g"
+      },
+      temperature: "Served Piping Hot",
+      allergens: "Check component items",
+      recommendedFoods: [],
+      isCombo: true,
+      items: combo.items
+    };
+
+    return res.json(formattedResponse);
   }
 
   // Fetch recommended foods from same category
@@ -251,6 +294,7 @@ exports.getFoodById = async (req, res) => {
     originalPrice: food.originalPrice || food.price,
     image: food.image,
     category: food.category,
+    restaurant: food.restaurant,
     rating: food.rating || 4.5,
     serves: food.servingSize || "1",
     isVeg: isVeg,
@@ -322,10 +366,54 @@ exports.getHealthy = async (req, res) => {
 };
 
 exports.getCombos = async (req, res) => {
-  
   try {
-    const filtered = await Food.find({ isCombo: true }).populate("category restaurant").limit(30);
-    res.json({ foods: filtered });
+    const Combo = require("../models/Combo");
+    
+    // 1. Fetch created combos from Combo collection
+    const dbCombos = await Combo.find({ isActive: true }).populate({
+      path: "items",
+      populate: { path: "restaurant" }
+    });
+
+    const formattedCombos = dbCombos.map(combo => {
+      // Determine if vegetarian (if all items are vegetarian, it's veg)
+      const isVeg = combo.items && combo.items.length > 0 
+        ? combo.items.every(item => item.isVeg !== false) 
+        : true;
+        
+      const firstRest = combo.items && combo.items.length > 0 
+        ? combo.items[0].restaurant 
+        : null;
+
+      return {
+        _id: combo._id,
+        id: combo._id,
+        name: combo.name,
+        description: combo.description || "Curated meal combo with discount savings.",
+        price: combo.price,
+        originalPrice: combo.originalPrice || combo.price,
+        discountPercentage: combo.originalPrice && combo.originalPrice > combo.price
+          ? Math.round(((combo.originalPrice - combo.price) / combo.originalPrice) * 100)
+          : 0,
+        image: combo.image || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=400&q=80",
+        rating: 4.8,
+        preparationTime: 25,
+        isVeg,
+        isAvailable: true,
+        category: { name: "Bento Combo" },
+        restaurant: firstRest,
+        isCombo: true,
+        items: combo.items
+      };
+    });
+
+    // 2. Fetch standard food items with isCombo: true
+    const standardCombos = await Food.find({ isCombo: true }).populate("category restaurant").limit(30);
+
+    // 3. Combine both lists
+    const allCombos = [...formattedCombos, ...standardCombos];
+    
+    res.json({ foods: allCombos });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

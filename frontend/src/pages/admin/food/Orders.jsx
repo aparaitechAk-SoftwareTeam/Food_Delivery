@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ClipboardList, Search, Eye, Check, X, CheckCircle2, AlertTriangle, RefreshCw, Printer, Filter } from 'lucide-react';
+import { ClipboardList, Search, Eye, Check, X, CheckCircle2, AlertTriangle, RefreshCw, Printer, Filter, Star } from 'lucide-react';
 import Sidebar from '../../../components/admin/Sidebar';
 import TopHeader from '../../../components/admin/TopHeader';
 import { API_BASE_URL } from '../../../config';
@@ -14,6 +14,7 @@ const Orders = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
   const [updatingId, setUpdatingId] = useState(null);
+  const [orderReviews, setOrderReviews] = useState([]);
 
   const loadRiders = async () => {
     try {
@@ -40,7 +41,10 @@ const Orders = () => {
         }
       });
       const data = await response.json();
-      setOrders(Array.isArray(data) ? data : []);
+      const sortedData = Array.isArray(data)
+        ? data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        : [];
+      setOrders(sortedData);
     } catch (err) {
       console.error(err);
     } finally {
@@ -59,7 +63,8 @@ const Orders = () => {
       console.log("[Socket] Received new order in admin panel:", newOrder);
       setOrders((prev) => {
         if (prev.some((o) => o._id === newOrder._id)) return prev;
-        return [newOrder, ...prev];
+        const updated = [newOrder, ...prev];
+        return updated.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       });
     });
 
@@ -81,6 +86,29 @@ const Orders = () => {
       socket.off("delivery-assigned");
     };
   }, []);
+
+  useEffect(() => {
+    if (selectedOrder) {
+      const fetchOrderReviews = async () => {
+        try {
+          const token = localStorage.getItem('admin_token');
+          const response = await fetch(`${API_BASE_URL}/reviews/order/${selectedOrder._id}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          const data = await response.json();
+          setOrderReviews(Array.isArray(data) ? data : []);
+        } catch (e) {
+          console.error(e);
+          setOrderReviews([]);
+        }
+      };
+      fetchOrderReviews();
+    } else {
+      setOrderReviews([]);
+    }
+  }, [selectedOrder]);
 
   const handleUpdateStatus = async (orderId, newStatus, newPaymentStatus) => {
     setUpdatingId(orderId);
@@ -153,6 +181,33 @@ const Orders = () => {
     });
   };
 
+  const handleRefreshOrder = async () => {
+    if (!selectedOrder) return;
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('admin_token');
+      const response = await fetch(`${API_BASE_URL}/admin/orders`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await response.json();
+      if (Array.isArray(data)) {
+        const sortedData = data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        setOrders(sortedData);
+        
+        const freshOrder = sortedData.find(o => o._id === selectedOrder._id);
+        if (freshOrder) {
+          setSelectedOrder(freshOrder);
+        }
+      }
+    } catch (err) {
+      console.error("Error refreshing order details:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handlePrint = () => {
     window.print();
   };
@@ -197,30 +252,48 @@ const Orders = () => {
               </div>
 
               <div className="flex items-center gap-3">
-                <div className="flex items-center gap-1.5 border border-gray-250 rounded-xl px-3 py-2 bg-slate-50 text-xs text-gray-600">
-                  <Filter className="w-3.5 h-3.5" />
-                  <select
-                    value={filterStatus}
-                    onChange={(e) => setFilterStatus(e.target.value)}
-                    className="bg-transparent outline-none cursor-pointer font-semibold"
-                  >
-                    <option value="All">All Statuses</option>
-                    <option value="Pending">Pending</option>
-                    <option value="Confirmed">Confirmed</option>
-                    <option value="Preparing">Preparing</option>
-                    <option value="Out For Delivery">Out For Delivery</option>
-                    <option value="Delivered">Delivered</option>
-                    <option value="Cancelled">Cancelled</option>
-                  </select>
-                </div>
-
                 <button 
                   onClick={loadOrders}
-                  className="p-2.5 border border-gray-200 rounded-xl bg-white hover:bg-slate-50 transition-colors shadow-sm"
+                  className="p-2.5 border border-gray-200 rounded-xl bg-white hover:bg-slate-50 transition-colors shadow-sm cursor-pointer"
                 >
                   <RefreshCw className={`w-4 h-4 text-gray-500 ${loading ? 'animate-spin' : ''}`} />
                 </button>
               </div>
+            </div>
+
+            {/* Status Section Tabs */}
+            <div className="flex flex-wrap gap-2 mb-6 border-b border-gray-200/50 pb-4">
+              {[
+                { id: 'All', label: 'All Statuses' },
+                { id: 'Pending', label: 'Pending' },
+                { id: 'Confirmed', label: 'Confirmed' },
+                { id: 'Preparing', label: 'Preparing' },
+                { id: 'Out For Delivery', label: 'Out For Delivery' },
+                { id: 'Delivered', label: 'Delivered' },
+                { id: 'Cancelled', label: 'Cancelled' },
+              ].map(status => {
+                const count = status.id === 'All' 
+                  ? orders.length 
+                  : orders.filter(o => o.status === status.id).length;
+                const isActive = filterStatus === status.id;
+                
+                return (
+                  <button
+                    key={status.id}
+                    onClick={() => setFilterStatus(status.id)}
+                    className={`px-3 py-1.5 border rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 shadow-sm ${
+                      isActive 
+                        ? 'bg-indigo-600 text-white border-indigo-600 ring-2 ring-indigo-100' 
+                        : 'bg-white hover:bg-slate-50 text-slate-600 border-gray-200/80'
+                    }`}
+                  >
+                    <span>{status.label}</span>
+                    <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-extrabold ${isActive ? 'bg-indigo-500 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
 
             {/* Orders Table */}
@@ -312,14 +385,21 @@ const Orders = () => {
                 <h3 className="text-sm font-bold text-gray-900">Order Info</h3>
                 <div className="flex gap-1.5">
                   <button 
+                    onClick={handleRefreshOrder}
+                    disabled={loading}
+                    className="p-1.5 border border-gray-200 hover:bg-slate-50 text-gray-450 hover:text-gray-700 rounded-lg transition-colors cursor-pointer"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+                  </button>
+                  <button 
                     onClick={handlePrint}
-                    className="p-1.5 border border-gray-200 hover:bg-slate-50 text-gray-450 hover:text-gray-700 rounded-lg transition-colors"
+                    className="p-1.5 border border-gray-200 hover:bg-slate-50 text-gray-450 hover:text-gray-700 rounded-lg transition-colors cursor-pointer"
                   >
                     <Printer className="w-3.5 h-3.5" />
                   </button>
                   <button 
                     onClick={() => setSelectedOrder(null)}
-                    className="p-1.5 border border-gray-200 hover:bg-slate-50 text-gray-450 hover:text-gray-700 rounded-lg transition-colors"
+                    className="p-1.5 border border-gray-200 hover:bg-slate-50 text-gray-450 hover:text-gray-700 rounded-lg transition-colors cursor-pointer"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
@@ -420,95 +500,124 @@ const Orders = () => {
                 </div>
               </div>
 
-              {/* Rider Assignment */}
-              <div className="text-xs border-b border-gray-100 pb-4 mb-4">
-                <h4 className="font-bold text-gray-900 uppercase tracking-wider text-[9px] mb-2 text-slate-400">Assigned Delivery Rider</h4>
-                {selectedOrder.deliveryBoy ? (
-                  <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 flex items-center justify-between font-semibold text-slate-700">
-                    <div>
-                      <span className="block font-bold text-slate-800">
-                        {typeof selectedOrder.deliveryBoy === 'object' ? selectedOrder.deliveryBoy.name : 'Assigned Rider'}
-                      </span>
-                      <span className="block text-[10px] text-indigo-650 font-bold uppercase tracking-wider mt-0.5">
-                        Rider Status: {selectedOrder.deliveryStatus || 'Assigned'}
-                      </span>
+              {/* Customer Reviews for this Order */}
+              {orderReviews.length > 0 && (
+                <div className="text-xs border-b border-gray-100 pb-4 mb-4">
+                  <h4 className="font-bold text-gray-900 uppercase tracking-wider text-[9px] mb-2 text-slate-400">Customer Feedback</h4>
+                  <div className="space-y-3">
+                    {orderReviews.map((rev, idx) => (
+                      <div key={idx} className="bg-amber-50/50 border border-amber-100 rounded-xl p-3">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="font-bold text-slate-800">{rev.food?.name || "Dish"}</span>
+                          <div className="flex items-center gap-0.5 text-amber-500 font-bold text-[10px]">
+                            <Star className="w-3 h-3 fill-current" />
+                            <span>{rev.rating}</span>
+                          </div>
+                        </div>
+                        {rev.title && <h5 className="font-bold text-slate-800 text-[11px] mb-0.5">{rev.title}</h5>}
+                        <p className="text-slate-650 leading-relaxed text-[11px]">{rev.comment}</p>
+                        
+                        {rev.images && rev.images.length > 0 && (
+                          <div className="flex gap-1 mt-1.5">
+                            {rev.images.map((imgUrl, imgIdx) => (
+                              <img 
+                                key={imgIdx} 
+                                src={imgUrl} 
+                                className="w-8 h-8 rounded object-cover border border-amber-150" 
+                                alt="" 
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Rider Assignment (Only visible in Preparing and subsequent delivery stages) */}
+              {selectedOrder.status !== 'Pending' && selectedOrder.status !== 'Confirmed' && selectedOrder.status !== 'Cancelled' && (
+                <div className="text-xs border-b border-gray-100 pb-4 mb-4">
+                  <h4 className="font-bold text-gray-900 uppercase tracking-wider text-[9px] mb-2 text-slate-400">Assigned Delivery Rider</h4>
+                  {selectedOrder.deliveryBoy ? (
+                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 flex items-center justify-between font-semibold text-slate-700">
+                      <div>
+                        <span className="block font-bold text-slate-800">
+                          {typeof selectedOrder.deliveryBoy === 'object' ? selectedOrder.deliveryBoy.name : 'Assigned Rider'}
+                        </span>
+                        <span className="block text-[10px] text-indigo-600 font-bold uppercase tracking-wider mt-0.5">
+                          Rider Status: {selectedOrder.deliveryStatus || 'Assigned'}
+                        </span>
+                      </div>
+                      {typeof selectedOrder.deliveryBoy === 'object' && selectedOrder.deliveryBoy.phone && (
+                        <span className="text-[10px] text-slate-450 font-bold">{selectedOrder.deliveryBoy.phone}</span>
+                      )}
                     </div>
-                    {typeof selectedOrder.deliveryBoy === 'object' && selectedOrder.deliveryBoy.phone && (
-                      <span className="text-[10px] text-slate-450 font-bold">{selectedOrder.deliveryBoy.phone}</span>
-                    )}
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <select
-                      value={selectedRiderId}
-                      onChange={(e) => setSelectedRiderId(e.target.value)}
-                      className="w-full px-3 py-1.5 border border-gray-205 rounded-xl bg-white outline-none cursor-pointer text-slate-700 font-semibold"
-                    >
-                      <option value="">Select Online Rider...</option>
-                      {riders.map(r => (
-                        <option key={r._id} value={r._id}>{r.name} ({r.vehicleType || 'Bike'})</option>
-                      ))}
-                    </select>
-                    <button
-                      onClick={handleAssignRider}
-                      disabled={!selectedRiderId}
-                      className="w-full py-2 bg-indigo-650 hover:bg-indigo-600 text-white rounded-xl font-bold transition-colors cursor-pointer disabled:opacity-50"
-                    >
-                      Assign Order
-                    </button>
-                  </div>
-                )}
-              </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <select
+                        value={selectedRiderId}
+                        onChange={(e) => setSelectedRiderId(e.target.value)}
+                        className="w-full px-3 py-1.5 border border-gray-205 rounded-xl bg-white outline-none cursor-pointer text-slate-700 font-semibold"
+                      >
+                        <option value="">Select Online Rider...</option>
+                        {riders.map(r => (
+                          <option key={r._id} value={r._id}>{r.name} ({r.vehicleType || 'Bike'})</option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={handleAssignRider}
+                        disabled={!selectedRiderId}
+                        className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold transition-colors cursor-pointer disabled:opacity-50"
+                      >
+                        Assign Order
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Workflow Status Actions */}
               <div className="space-y-2">
-                <h4 className="font-bold text-gray-900 uppercase tracking-wider text-[9px] mb-1.5 text-slate-400">Update Status</h4>
-                {selectedOrder.status === 'Confirmed' && (
-                  <button
-                    onClick={() => handleUpdateStatus(selectedOrder._id, 'Preparing')}
-                    className="w-full py-2.5 bg-indigo-650 hover:bg-indigo-600 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
-                  >
-                    Set Preparing
-                  </button>
-                )}
-                {selectedOrder.status === 'Preparing' && (
-                  <button
-                    onClick={() => handleUpdateStatus(selectedOrder._id, 'Out For Delivery')}
-                    className="w-full py-2.5 bg-indigo-650 hover:bg-indigo-600 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
-                  >
-                    Dispatch / Out for Delivery
-                  </button>
-                )}
-                {selectedOrder.status === 'Out For Delivery' && (
-                  <button
-                    onClick={() => handleUpdateStatus(selectedOrder._id, 'Delivered')}
-                    className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
-                  >
-                    Mark as Delivered
-                  </button>
-                )}
-                {selectedOrder.status === 'Delivered' && (
-                  <div className="space-y-2">
-                    {selectedOrder.paymentStatus !== 'Paid' && (
-                      <button
-                        onClick={() => handleUpdateStatus(selectedOrder._id, null, 'Paid')}
-                        className="w-full py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
-                      >
-                        Confirm Payment Received
-                      </button>
-                    )}
+                <h4 className="font-bold text-gray-900 uppercase tracking-wider text-[9px] mb-1.5 text-slate-400">Order Status</h4>
+                
+                {/* 1. Pending -> Confirmed or Cancelled */}
+                {selectedOrder.status === 'Pending' && (
+                  <div className="flex gap-2">
                     <button
-                      onClick={() => handleUpdateStatus(selectedOrder._id, 'Completed')}
-                      disabled={selectedOrder.paymentStatus !== 'Paid'}
-                      className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer disabled:opacity-50"
+                      onClick={() => handleUpdateStatus(selectedOrder._id, 'Confirmed')}
+                      className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1"
                     >
-                      Complete Order
+                      <Check className="w-3.5 h-3.5" />
+                      <span>Confirm Order</span>
+                    </button>
+                    <button
+                      onClick={() => handleUpdateStatus(selectedOrder._id, 'Cancelled')}
+                      className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                      <span>Cancel Order</span>
                     </button>
                   </div>
                 )}
-                {['Completed', 'Cancelled'].includes(selectedOrder.status) && (
-                  <div className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] text-center text-slate-450 font-bold uppercase">
-                    Order is Finished ({selectedOrder.status})
+
+                {/* 2. Confirmed -> Preparing */}
+                {selectedOrder.status === 'Confirmed' && (
+                  <button
+                    onClick={() => handleUpdateStatus(selectedOrder._id, 'Preparing')}
+                    className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                  >
+                    Start Preparing
+                  </button>
+                )}
+
+                {/* 3. Preparing, Out For Delivery, Delivered, Completed, Cancelled (Plain Text Status Display) */}
+                {selectedOrder.status !== 'Pending' && selectedOrder.status !== 'Confirmed' && (
+                  <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 flex items-center justify-between font-semibold text-slate-700">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Current Status</span>
+                    <span className={`px-2.5 py-1 rounded-full border text-[10px] font-bold ${getStatusColor(selectedOrder.status)}`}>
+                      {selectedOrder.status}
+                    </span>
                   </div>
                 )}
               </div>

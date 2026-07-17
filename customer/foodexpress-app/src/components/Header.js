@@ -79,35 +79,6 @@ const Header = ({
           </TouchableOpacity>
         </View>
       </View>
-
-      {/* Lower row: Wallet/Coupon Quick card */}
-      <View style={styles.quickCard}>
-        <TouchableOpacity
-          style={styles.quickCardItem}
-          onPress={onWalletPress}
-          activeOpacity={0.7}
-        >
-          <MaterialCommunityIcons name="wallet-outline" size={20} color="#FF6F61" />
-          <View style={styles.quickCardTextWrapper}>
-            <Text style={styles.quickCardTitle}>FE Wallet</Text>
-            <Text style={styles.quickCardValue}>₹{walletBalance.toFixed(2)}</Text>
-          </View>
-        </TouchableOpacity>
-
-        <View style={styles.divider} />
-
-        <TouchableOpacity
-          style={styles.quickCardItem}
-          onPress={onCouponsPress}
-          activeOpacity={0.7}
-        >
-          <MaterialCommunityIcons name="ticket-percent-outline" size={20} color="#FF9F43" />
-          <View style={styles.quickCardTextWrapper}>
-            <Text style={styles.quickCardTitle}>Coupons</Text>
-            <Text style={styles.quickCardValue}>{activeCouponsCount} Active</Text>
-          </View>
-        </TouchableOpacity>
-      </View>
     </View>
   );
 };

@@ -101,10 +101,10 @@ const ProfileScreen = ({ navigation }) => {
       setAddrLabel("Home");
       setAddrLine1("");
       setAddrLine2("");
-      setAddrCity("Baramati");
-      setAddrState("Maharashtra");
-      setAddrPostalCode("413102");
-      setAddrCountry("India");
+      setAddrCity("");
+      setAddrState("");
+      setAddrPostalCode("");
+      setAddrCountry("");
       setAddrIsDefault(addresses.length === 0); // Default if first
     }
     setAddressModalVisible(true);
@@ -203,21 +203,29 @@ My Issue: `;
       <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       {/* User Header Profile */}
       <View style={styles.profileHeader}>
-        <Avatar.Image
-          size={74}
-          source={{
-            uri: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80",
-          }}
-          style={styles.avatar}
-        />
+        {userProfile?.profilePhoto ? (
+          <Avatar.Image
+            size={74}
+            source={{ uri: userProfile.profilePhoto }}
+            style={styles.avatar}
+          />
+        ) : (
+          <Avatar.Icon
+            size={74}
+            icon="account-circle-outline"
+            style={styles.avatar}
+          />
+        )}
         <View style={styles.profileInfo}>
           <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap" }}>
-            <Text style={styles.profileName}>{userProfile?.name || "Foodie Guest"}</Text>
+            <Text style={userProfile?.name ? styles.profileName : [styles.profileName, { color: "#999", fontStyle: "italic", fontSize: 15 }]}>
+              {userProfile?.name || "Enter your full name"}
+            </Text>
             {userProfile?.isGoldMember && userProfile?.goldExpiry && new Date(userProfile.goldExpiry) > new Date() && (
               <MaterialCommunityIcons name="crown" size={18} color="#D4AF37" style={{ marginLeft: 6 }} />
             )}
           </View>
-          <Text style={styles.profileEmail}>{userProfile?.email || "guest@foodexpress.com"}</Text>
+          <Text style={styles.profileEmail}>{userProfile?.email || ""}</Text>
           <Text style={styles.profilePhone}>
             {userProfile?.phone ? `+91 ${userProfile.phone}` : "Add Mobile Number"}
           </Text>
@@ -253,19 +261,6 @@ My Issue: `;
           <View style={styles.menuItemLeft}>
             <MaterialCommunityIcons name="heart-outline" size={22} color="#ff6b00" />
             <Text style={styles.menuItemText}>Saved Dishes ({wishlistFoods?.length || 0})</Text>
-          </View>
-          <MaterialCommunityIcons name="chevron-right" size={20} color="#bbb" />
-        </TouchableOpacity>
-
-        <Divider style={styles.menuDivider} />
-
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => navigation.navigate("Coupons")}
-        >
-          <View style={styles.menuItemLeft}>
-            <MaterialCommunityIcons name="ticket-percent-outline" size={22} color="#ff6b00" />
-            <Text style={styles.menuItemText}>My Coupons & Cashback Wallet</Text>
           </View>
           <MaterialCommunityIcons name="chevron-right" size={20} color="#bbb" />
         </TouchableOpacity>
