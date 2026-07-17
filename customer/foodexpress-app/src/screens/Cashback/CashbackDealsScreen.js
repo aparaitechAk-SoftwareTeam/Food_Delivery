@@ -1,11 +1,19 @@
 import React, { useState, useEffect } from "react";
-import { View, StyleSheet, FlatList, ActivityIndicator, SafeAreaView } from "react-native";
+import { View, StyleSheet, FlatList, ActivityIndicator, SafeAreaView, Alert } from "react-native";
 import CustomScreenHeader from "../../components/CustomScreenHeader";
 import { Text, Card, Chip, Divider } from "react-native-paper";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import api from "../../utils/api";
+import { useSelector, useDispatch } from "react-redux";
+import RewardCard from "../../components/RewardCard";
+import { fetchRewardStatus, claimReward } from "../../redux/slices/rewardSlice";
+import { fetchUserProfile } from "../../redux/slices/authSlice";
 
 const CashbackDealsScreen = ({ navigation }) => {
+  const dispatch = useDispatch();
+  const token = useSelector((state) => state.auth.token);
+  const { reward } = useSelector((state) => state.rewards);
+
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -23,7 +31,10 @@ const CashbackDealsScreen = ({ navigation }) => {
 
   useEffect(() => {
     loadCampaigns();
-  }, []);
+    if (token) {
+      dispatch(fetchRewardStatus());
+    }
+  }, [token]);
 
   const renderCampaignCard = ({ item }) => {
     const isExpired = new Date(item.expiryDate) < new Date();
@@ -61,37 +72,64 @@ const CashbackDealsScreen = ({ navigation }) => {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#ffffff" }}>
+      <CustomScreenHeader title="Cashback & Rewards" navigation={navigation} />
       <View style={styles.container}>
-      {/* Banner */}
-      <Card style={styles.headerCard}>
-        <Card.Content style={styles.headerContent}>
-          <MaterialCommunityIcons name="cash-multiple" size={40} color="#FFFFFF" />
-          <Text variant="headlineSmall" style={styles.headerTitle}>
-            Cashback Deals & Offers
-          </Text>
-          <Text variant="bodyMedium" style={styles.headerSubtitle}>
-            Order items from qualifying categories to receive instant cashback credited directly to your wallet on delivery!
-          </Text>
-        </Card.Content>
-      </Card>
+        {loading ? (
+          <ActivityIndicator size="large" color="#FF6F61" style={styles.loader} />
+        ) : (
+          <FlatList
+            data={campaigns}
+            keyExtractor={(item) => item._id}
+            renderItem={renderCampaignCard}
+            contentContainerStyle={styles.listContent}
+            ListHeaderComponent={
+              <View>
+                {/* Banner */}
+                <Card style={styles.headerCard}>
+                  <Card.Content style={styles.headerContent}>
+                    <MaterialCommunityIcons name="cash-multiple" size={40} color="#FFFFFF" />
+                    <Text variant="headlineSmall" style={styles.headerTitle}>
+                      Cashback Deals & Offers
+                    </Text>
+                    <Text variant="bodyMedium" style={styles.headerSubtitle}>
+                      Order items from qualifying categories to receive instant cashback credited directly to your wallet on delivery!
+                    </Text>
+                  </Card.Content>
+                </Card>
 
-      <Text variant="titleMedium" style={styles.sectionTitle}>
-        Active Campaigns
-      </Text>
+                {token && reward ? (
+                  <View style={{ marginHorizontal: 16, marginBottom: 16 }}>
+                    <RewardCard
+                      reward={reward}
+                      onClaim={() => {
+                        dispatch(claimReward())
+                          .unwrap()
+                          .then((res) => {
+                            Alert.alert(
+                              "🎉 Congratulations!",
+                              `Your ₹${res?.coupon?.value || reward?.cashbackAmount || 150} Cashback Coupon has been added to your Wallet.`,
+                              [{ text: "OK", onPress: () => dispatch(fetchRewardStatus()) }]
+                            );
+                            dispatch(fetchUserProfile());
+                          })
+                          .catch((err) => {
+                            Alert.alert("Error", err || "Failed to claim cashback");
+                          });
+                      }}
+                    />
+                  </View>
+                ) : null}
 
-      {loading ? (
-        <ActivityIndicator size="large" color="#FF6F61" style={styles.loader} />
-      ) : (
-        <FlatList
-          data={campaigns}
-          keyExtractor={(item) => item._id}
-          renderItem={renderCampaignCard}
-          contentContainerStyle={styles.listContent}
-          ListEmptyComponent={
-            <Text style={styles.empty}>No active cashback campaigns available today. Check back later!</Text>
-          }
-        />
-      )}
+                <Text variant="titleMedium" style={styles.sectionTitle}>
+                  Active Campaigns
+                </Text>
+              </View>
+            }
+            ListEmptyComponent={
+              <Text style={styles.empty}>No active cashback campaigns available today. Check back later!</Text>
+            }
+          />
+        )}
       </View>
     </SafeAreaView>
   );

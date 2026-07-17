@@ -29,6 +29,9 @@ const restaurantSchema = new mongoose.Schema({
   minimumOrder: { type: Number, default: 100 },
   gst: { type: Number, default: 5 },
   packagingCharges: { type: Number, default: 20 },
+  currency: { type: String, default: '₹' },
+  prepTime: { type: Number, default: 25 },
+  unit: { type: String, default: 'Servings' },
   contactNumber: { type: String, default: "+91 99999 88888" },
   email: { type: String, default: "contact@foodexpress.com" },
   socialLinks: {

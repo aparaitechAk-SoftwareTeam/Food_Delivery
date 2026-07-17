@@ -64,6 +64,12 @@ const Settings = () => {
           setCashbackAmount(rest.cashbackAmount || 150);
           setCashbackRequiredOrders(rest.cashbackRequiredOrders || 4);
           setCashbackExpiryHours(rest.cashbackExpiryHours || 48);
+
+          if (rest.deliveryCharges !== undefined) setDeliveryFee(rest.deliveryCharges);
+          if (rest.gst !== undefined) setTaxRate(rest.gst);
+          if (rest.currency !== undefined) setCurrency(rest.currency);
+          if (rest.unit !== undefined) setUnit(rest.unit);
+          if (rest.prepTime !== undefined) setPrepTime(rest.prepTime);
         }
       } catch (err) {
         console.error('Error fetching restaurant details:', err);
@@ -99,13 +105,22 @@ const Settings = () => {
       cashbackEnabled: cashbackEnabled,
       cashbackAmount: Number(cashbackAmount),
       cashbackRequiredOrders: Number(cashbackRequiredOrders),
-      cashbackExpiryHours: Number(cashbackExpiryHours)
+      cashbackExpiryHours: Number(cashbackExpiryHours),
+      deliveryCharges: Number(deliveryFee),
+      gst: Number(taxRate),
+      currency: currency,
+      prepTime: Number(prepTime),
+      unit: unit
     };
 
     try {
+      const token = localStorage.getItem('admin_token');
       await fetch(`${API_BASE_URL}/admin/restaurant`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify(payload)
       });
     } catch (err) {

@@ -1,7 +1,13 @@
+require("dotenv").config();
 const mongoose = require("mongoose");
 const Food = require("./models/Food");
 
-const uri = "mongodb+srv://foodexpress_db:Aparaitech2129@cluster0.bxevqzc.mongodb.net/?appName=Cluster0";
+const uri = process.env.MONGO_URI;
+
+if (!uri) {
+  console.error("Missing MONGO_URI in environment variables. Make sure backend/.env has MONGO_URI set.");
+  process.exit(1);
+}
 
 async function run() {
   await mongoose.connect(uri);

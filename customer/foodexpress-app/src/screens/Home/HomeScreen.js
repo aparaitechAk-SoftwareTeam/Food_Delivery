@@ -488,7 +488,7 @@ const HomeScreen = ({ navigation }) => {
                       .then((res) => {
                         Alert.alert(
                           "🎉 Congratulations!",
-                          `Your ₹${res?.coupon?.value || 150} Cashback Coupon has been added to your Wallet.`,
+                          `Your ₹${res?.coupon?.value || reward?.cashbackAmount || 150} Cashback Coupon has been added to your Wallet.`,
                           [{ text: "OK", onPress: () => dispatch(fetchRewardStatus()) }]
                         );
                         dispatch(fetchUserProfile());
@@ -756,7 +756,7 @@ const HomeScreen = ({ navigation }) => {
                                 .then((res) => {
                                   Alert.alert(
                                     "🎉 Congratulations!",
-                                    `Your ₹${res?.coupon?.value || 150} Cashback Coupon has been added to your Wallet.`,
+                                    `Your ₹${res?.coupon?.value || reward?.cashbackAmount || 150} Cashback Coupon has been added to your Wallet.`,
                                     [{ text: "OK", onPress: () => dispatch(fetchRewardStatus()) }]
                                   );
                                   dispatch(fetchUserProfile());

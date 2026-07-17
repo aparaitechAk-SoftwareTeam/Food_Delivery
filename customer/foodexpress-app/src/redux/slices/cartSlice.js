@@ -153,6 +153,10 @@ export const getItemQuantity = (state, baseId) => {
 
 const selectCartItems = (state) => state.cart.items || [];
 const selectAppliedCoupon = (state) => state.cart.appliedCoupon;
+const selectActiveRestaurant = (state) => {
+  const rests = state.foods?.restaurants || [];
+  return rests[0] || null;
+};
 
 /**
  * Single source of truth for bill calculations.
@@ -160,8 +164,8 @@ const selectAppliedCoupon = (state) => state.cart.appliedCoupon;
  * Memoized using createSelector to prevent returning a new reference on every state change.
  */
 export const selectCartBillDetails = createSelector(
-  [selectCartItems, selectAppliedCoupon],
-  (items, appliedCoupon) => {
+  [selectCartItems, selectAppliedCoupon, selectActiveRestaurant],
+  (items, appliedCoupon, restaurant) => {
     const subtotal = items.reduce((sum, item) => sum + item.quantity * item.price, 0);
     const roundedSubtotal = Math.round(subtotal * 100) / 100;
 
@@ -180,8 +184,10 @@ export const selectCartBillDetails = createSelector(
     }
 
     const discountedSubtotal = Math.max(0, roundedSubtotal - discount);
-    const gst = Math.round(discountedSubtotal * GST_RATE * 100) / 100;
-    const deliveryFee = items.length > 0 ? DELIVERY_FEE : 0;
+    const gstRate = restaurant && restaurant.gst !== undefined ? (restaurant.gst / 100) : GST_RATE;
+    const gst = Math.round(discountedSubtotal * gstRate * 100) / 100;
+    const baseDeliveryFee = restaurant && restaurant.deliveryCharges !== undefined ? restaurant.deliveryCharges : DELIVERY_FEE;
+    const deliveryFee = items.length > 0 ? baseDeliveryFee : 0;
     const platformFee = items.length > 0 ? PLATFORM_FEE : 0;
     const grandTotal = Math.round((discountedSubtotal + gst + deliveryFee + platformFee) * 100) / 100;
 

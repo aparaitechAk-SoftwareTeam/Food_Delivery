@@ -449,8 +449,6 @@ exports.bulkUpdate = async (req, res) => {
 };
 
 exports.updateRestaurantDetails = async (req, res) => {
-  
-
   try {
     const restaurant = await Restaurant.findOne();
     if (!restaurant) {
@@ -463,6 +461,54 @@ exports.updateRestaurantDetails = async (req, res) => {
     }
     Object.assign(restaurant, req.body);
     await restaurant.save();
+
+    // If cashback settings are updated, sync all user rewards directly in the database
+    if (req.body.cashbackAmount !== undefined || req.body.cashbackRequiredOrders !== undefined) {
+      const CashbackReward = require("../models/CashbackReward");
+      const currentRequired = Number(req.body.cashbackRequiredOrders) || restaurant.cashbackRequiredOrders || 4;
+      const currentAmount = Number(req.body.cashbackAmount) || restaurant.cashbackAmount || 150;
+
+      // Update all rewards in database
+      const rewards = await CashbackReward.find();
+      for (const reward of rewards) {
+        let changed = false;
+        if (reward.totalRequiredOrders !== currentRequired) {
+          reward.totalRequiredOrders = currentRequired;
+          changed = true;
+        }
+        if (reward.cashbackAmount !== currentAmount) {
+          reward.cashbackAmount = currentAmount;
+          changed = true;
+        }
+
+        // Clamp completed orders if required orders decreased
+        if (reward.completedOrders > reward.totalRequiredOrders) {
+          reward.completedOrders = reward.totalRequiredOrders;
+          changed = true;
+        }
+
+        // Re-evaluate eligibility for active rewards
+        if (reward.status === "Pending" || reward.status === "Eligible") {
+          if (reward.completedOrders >= reward.totalRequiredOrders) {
+            reward.status = "Eligible";
+          } else {
+            reward.status = "Pending";
+          }
+          changed = true;
+        } else if (reward.status === "Claimed") {
+          if (reward.completedOrders !== reward.totalRequiredOrders) {
+            reward.completedOrders = reward.totalRequiredOrders;
+            changed = true;
+          }
+        }
+
+        if (changed) {
+          await reward.save();
+        }
+      }
+      console.log(`[AdminController] Automatically updated reward configurations for ${rewards.length} users.`);
+    }
+
     res.json(restaurant);
   } catch (error) {
     res.status(500).json({ message: error.message });
