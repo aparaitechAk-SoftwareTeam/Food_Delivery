@@ -6,6 +6,7 @@ exports.getFoods = async (req, res) => {
   const {
     q,
     category,
+    restaurant,
     price,
     rating,
     deliveryTime,
@@ -25,6 +26,9 @@ exports.getFoods = async (req, res) => {
     const skipNum = (pageNum - 1) * limitNum;
 
     let foodQueryObj = {};
+    if (restaurant) {
+      foodQueryObj.restaurant = restaurant;
+    }
     let restaurantQueryObj = {};
 
     // 1. Restaurant Filters
