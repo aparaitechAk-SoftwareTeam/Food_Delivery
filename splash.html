@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Food Express Splash Component</title>
+  <style>
+    /* Reset and Center in Viewport */
+    body {
+      margin: 0;
+      padding: 0;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-color: #1a1514;
+    }
+
+    /* Outer phone bezel frame */
+    .phone-bezel {
+      width: 320px;
+      height: 620px;
+      background-color: #4a2e28;
+      padding: 14px;
+      border-radius: 18px;
+      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.5);
+      box-sizing: border-box;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    /* Inner Screen container */
+    .screen-content {
+      width: 100%;
+      height: 100%;
+      background-color: #d9382e;
+      border-radius: 8px;
+      overflow: hidden;
+      position: relative;
+      font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+      user-select: none;
+    }
+
+    /* Branding Typography */
+    .branding-block {
+      position: absolute;
+      top: 190px;
+      width: 100%;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .brand-title {
+      color: #ffffff;
+      font-weight: 800;
+      font-size: 34px;
+      letter-spacing: 3px;
+      line-height: 1.22;
+      margin: 0;
+    }
+
+    .brand-tagline {
+      font-size: 12px;
+      letter-spacing: 3px;
+      color: #ffe9e5;
+      opacity: 0.9;
+      margin-top: 10px;
+      font-weight: 600;
+      margin-bottom: 0;
+    }
+
+    /* Dotted Road Track */
+    .road-track {
+      position: absolute;
+      top: 470px;
+      left: 0;
+      right: 0;
+      height: 0;
+      border-top: 3px dotted #f5b942;
+    }
+
+    /* Looping Horizontal zip-across container */
+    .rider-wrapper {
+      position: absolute;
+      top: 412px; /* aligns bottom of rider SVG with 470px line */
+      width: 66px;
+      height: 60px;
+      animation: zip-across 3.2s linear infinite;
+    }
+
+    @keyframes zip-across {
+      0% {
+        left: -70px;
+      }
+      100% {
+        left: 100%;
+      }
+    }
+
+    /* Vertical engine bobbing */
+    .rider-svg {
+      width: 100%;
+      height: 100%;
+      animation: suspension-bob 0.5s ease-in-out infinite alternate;
+    }
+
+    @keyframes suspension-bob {
+      0% {
+        transform: translateY(0);
+      }
+      100% {
+        transform: translateY(-2px);
+      }
+    }
+
+    /* Wheel spinning animations */
+    .wheel {
+      animation: rotate-wheel 0.5s linear infinite;
+    }
+
+    .wheel-rear {
+      transform-origin: 14px 48px;
+    }
+
+    .wheel-front {
+      transform-origin: 52px 48px;
+    }
+
+    @keyframes rotate-wheel {
+      0% {
+        transform: rotate(0deg);
+      }
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* Trailing dust clouds keyframes */
+    .dust {
+      animation: dust-fade 0.6s ease-out infinite;
+    }
+
+    .dust-trail-1 {
+      animation-delay: 0s;
+    }
+
+    .dust-trail-2 {
+      animation-delay: 0.3s;
+    }
+
+    @keyframes dust-fade {
+      0% {
+        opacity: 0.5;
+        transform: scale(1) translate(0px, 0px);
+      }
+      100% {
+        opacity: 0;
+        transform: scale(0.4) translate(-18px, -4px);
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Bezel Phone Frame -->
+  <div class="phone-bezel">
+    <!-- Screen Viewport -->
+    <div class="screen-content">
+
+      <!-- Centered Branding Typography -->
+      <div class="branding-block">
+        <div class="brand-title">FOOD</div>
+        <div class="brand-title">EXPRESS</div>
+        <div class="brand-tagline">DELICIOUSNESS DELIVERED FAST</div>
+      </div>
+
+      <!-- Dotted Loading Track -->
+      <div class="road-track"></div>
+
+      <!-- Scooter Rider Animation Wrapper -->
+      <div class="rider-wrapper">
+        <svg class="rider-svg" viewBox="0 0 66 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+          
+          <!-- Trailing Dust Particles (aligned behind rear tire 14px, 48px) -->
+          <ellipse class="dust dust-trail-1" cx="4" cy="48" rx="4" ry="3" fill="#ffffff" style="transform-origin: 4px 48px;" />
+          <ellipse class="dust dust-trail-2" cx="-2" cy="49" rx="3" ry="2" fill="#ffffff" style="transform-origin: -2px 49px;" />
+
+          <!-- Rear rack line for Delivery Box -->
+          <path d="M14 48L12 32H25" stroke="#3a2420" stroke-width="1.5" />
+
+          <!-- White Delivery Box with Straps -->
+          <rect x="4" y="16" width="16" height="16" rx="1.5" fill="#ffffff" stroke="#3a2420" stroke-width="1" />
+          <line x1="4" y1="21" x2="20" y2="21" stroke="#3a2420" stroke-width="1.2" />
+          <line x1="4" y1="27" x2="20" y2="27" stroke="#3a2420" stroke-width="1.2" />
+
+          <!-- Chain Gear chainring at (30, 48) -->
+          <circle cx="30" cy="48" r="3.5" stroke="#3a2420" stroke-width="1.5" fill="none" />
+
+          <!-- Pedal Bicycle Frame (amber #f5b942) -->
+          <!-- Main triangle: seat tube (25, 32) to BB (30, 48) to head tube (44, 30) -->
+          <polygon points="30,48 25,32 44,30" stroke="#f5b942" stroke-width="2" fill="none" stroke-linejoin="round" />
+          <!-- Seat stays -->
+          <line x1="14" y1="48" x2="25" y2="32" stroke="#f5b942" stroke-width="2" />
+          <!-- Chain stays -->
+          <line x1="14" y1="48" x2="30" y2="48" stroke="#f5b942" stroke-width="2" />
+          <!-- Front Fork -->
+          <line x1="44" y1="30" x2="52" y2="48" stroke="#f5b942" stroke-width="2" />
+          <!-- Handlebar stem and grips -->
+          <path d="M44 30L42 22H47" stroke="#f5b942" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+
+          <!-- Saddle (Saddle Seat) -->
+          <path d="M21 32H28" stroke="#3a2420" stroke-width="2.5" stroke-linecap="round" />
+
+          <!-- Rider Body Uniform (Red Shirt #d9382e) -->
+          <path d="M25 32L33 20L38 20L34 32Z" fill="#d9382e" />
+
+          <!-- Skin tone Face & Arms (#e0a370) -->
+          <circle cx="34" cy="14" r="4" fill="#e0a370" />
+          <!-- Arm leaning holding handlebars -->
+          <path d="M33 20L42 22" stroke="#e0a370" stroke-width="2.2" stroke-linecap="round" />
+
+          <!-- Helmet and Cap Brim -->
+          <path d="M30.5 12.5C30.5 9 33.5 8.5 36.5 8.5C38 8.5 38.5 11 37.5 13H31" fill="#3a2420" />
+          <path d="M36.5 11.5L41.5 12.5L41 13.5L36.5 13Z" fill="#f5b942" />
+
+          <!-- Pedaling leg details (hip to knee to pedal) -->
+          <path d="M25 32L31 41L29 48" stroke="#3a2420" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+
+          <!-- Rear Wheel (outline circle + spoke crosses) -->
+          <g class="wheel wheel-rear">
+            <circle cx="14" cy="48" r="9.5" stroke="#3a2420" stroke-width="2" fill="none" />
+            <line x1="4.5" y1="48" x2="23.5" y2="48" stroke="#3a2420" stroke-width="1.5" />
+            <line x1="14" y1="38.5" x2="14" y2="57.5" stroke="#3a2420" stroke-width="1.5" />
+          </g>
+
+          <!-- Front Wheel (outline circle + spoke crosses) -->
+          <g class="wheel wheel-front">
+            <circle cx="52" cy="48" r="9.5" stroke="#3a2420" stroke-width="2" fill="none" />
+            <line x1="42.5" y1="48" x2="61.5" y2="48" stroke="#3a2420" stroke-width="1.5" />
+            <line x1="52" y1="38.5" x2="52" y2="57.5" stroke="#3a2420" stroke-width="1.5" />
+          </g>
+        </svg>
+      </div>
+
+    </div>
+  </div>
+
+</body>
+</html>

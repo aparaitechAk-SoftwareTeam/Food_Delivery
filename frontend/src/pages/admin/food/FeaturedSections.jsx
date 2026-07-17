@@ -11,6 +11,15 @@ const DEFAULT_SECTIONS = [
   { title: '🥗 Healthy Choices', subtitle: 'Calorie count balanced nutritious meals', maxItems: 8, isVisible: true, displayOrder: 4 },
 ];
 
+const getItemId = (item) => {
+  if (!item) return '';
+  const idVal = item._id || item.id || item;
+  if (typeof idVal === 'object' && idVal !== null) {
+    return idVal.$oid || idVal.toString();
+  }
+  return String(idVal || '');
+};
+
 const FeaturedSections = () => {
   const [sections, setSections] = useState([]);
   const [foods, setFoods] = useState([]);
@@ -59,12 +68,12 @@ const FeaturedSections = () => {
   };
 
   const handleEdit = (sec) => {
-    setEditingId(sec._id || sec.id);
+    setEditingId(getItemId(sec));
     setTitle(sec.title);
     setSubtitle(sec.subtitle || '');
     setMaxItems(sec.maxItems || 10);
     setDisplayOrder(sec.displayOrder || 1);
-    setSelectedItems((sec.items || []).map(item => item._id || item.id || item).filter(Boolean));
+    setSelectedItems((sec.items || []).map(item => getItemId(item)).filter(Boolean));
   };
 
   const handleReset = () => {
@@ -291,13 +300,14 @@ const FeaturedSections = () => {
                 <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Assign Dishes ({selectedItems.length})</label>
                 <div className="border border-gray-200 rounded-xl max-h-[220px] overflow-y-auto p-2 space-y-1 bg-gray-50/50">
                   {foods.map(food => {
-                    const isSelected = selectedItems.includes(food._id || food.id);
+                    const foodId = getItemId(food);
+                    const isSelected = selectedItems.includes(foodId);
                     return (
                       <div 
-                        key={food._id || food.id}
-                        onClick={() => handleSelectItem(food._id || food.id)}
+                        key={foodId}
+                        onClick={() => handleSelectItem(foodId)}
                         className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-all border ${
-                          isSelected ? 'bg-indigo-65/10 border-indigo-150 text-indigo-700' : 'bg-white border-gray-150 hover:bg-slate-50'
+                          isSelected ? 'bg-indigo-50 border-indigo-300 text-indigo-700' : 'bg-white border-gray-150 hover:bg-slate-50'
                         }`}
                       >
                         <span className="font-semibold truncate max-w-[200px]">{food.name}</span>

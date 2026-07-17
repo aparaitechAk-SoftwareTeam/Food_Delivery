@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings as SettingsIcon, Save, Info, RefreshCw, Check, Store } from 'lucide-react';
+import { Settings as SettingsIcon, Save, Info, RefreshCw, Check, Store, Gift } from 'lucide-react';
 import Sidebar from '../../../components/admin/Sidebar';
 import TopHeader from '../../../components/admin/TopHeader';
 import { API_BASE_URL } from '../../../config';

@@ -45,12 +45,12 @@ exports.generateQR = async (req, res) => {
         });
 
         // 2. Generate UPI QR Code associated with this order
-        const qrCode = await razorpay.qrCode.create({
+        const qrCode = await razorpay.qrcodes.create({
           type: "upi_qr",
           name: merchantName,
           usage: "single_use",
           fixed_amount: true,
-          amount: amountInPaise,
+          payment_amount: amountInPaise,
           description: `Order receipt: ${orderId}`,
           close_by: Math.floor(Date.now() / 1000) + 900, // 15 mins expiry
           notes: {
@@ -123,7 +123,7 @@ exports.verifyPayment = async (req, res) => {
     } else {
       try {
         // Retrieve payments made to the specific Razorpay QR Code
-        const paymentsList = await razorpay.qrCode.fetchPayments(razorpayOrderId);
+        const paymentsList = await razorpay.qrcodes.fetchPayments(razorpayOrderId);
         if (paymentsList && paymentsList.items && paymentsList.items.length > 0) {
           const capturedPayment = paymentsList.items.find(
             (p) => p.status === "captured" || p.status === "authorized"

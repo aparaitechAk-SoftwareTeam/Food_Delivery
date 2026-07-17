@@ -23,7 +23,10 @@ const DashboardScreen = ({ navigation }) => {
         api.get("/delivery/orders")
       ]);
       setStats(statsRes.data);
-      setOrders(ordersRes.data);
+      const sortedOrders = Array.isArray(ordersRes.data)
+        ? ordersRes.data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        : [];
+      setOrders(sortedOrders);
     } catch (err) {
       console.log("Error loading dashboard data:", err);
     } finally {

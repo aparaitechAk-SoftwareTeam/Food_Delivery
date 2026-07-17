@@ -4,6 +4,15 @@ import Sidebar from '../../../components/admin/Sidebar';
 import TopHeader from '../../../components/admin/TopHeader';
 import { API_BASE_URL } from '../../../config';
 
+const getItemId = (item) => {
+  if (!item) return '';
+  const idVal = item._id || item.id || item;
+  if (typeof idVal === 'object' && idVal !== null) {
+    return idVal.$oid || idVal.toString();
+  }
+  return String(idVal || '');
+};
+
 const ComboMeals = () => {
   const [combos, setCombos] = useState([]);
   const [foods, setFoods] = useState([]);
@@ -41,7 +50,7 @@ const ComboMeals = () => {
   // Price calculations
   const calculateOriginalPrice = (itemsList) => {
     const sum = itemsList.reduce((acc, itemId) => {
-      const food = foods.find(f => f._id === itemId || f.id === itemId);
+      const food = foods.find(f => getItemId(f) === itemId);
       return acc + (food ? food.price : 0);
     }, 0);
     setOriginalPrice(sum);
@@ -61,13 +70,13 @@ const ComboMeals = () => {
   };
 
   const handleEdit = (combo) => {
-    setEditingId(combo._id || combo.id);
+    setEditingId(getItemId(combo));
     setName(combo.name);
     setDescription(combo.description || '');
     setPrice(combo.price);
     setOriginalPrice(combo.originalPrice || combo.price);
     setImage(combo.image || '');
-    setSelectedItems((combo.items || []).map(item => item._id || item.id || item).filter(Boolean));
+    setSelectedItems((combo.items || []).map(item => getItemId(item)).filter(Boolean));
   };
 
   const handleReset = () => {
@@ -188,7 +197,7 @@ const ComboMeals = () => {
                 </div>
               ) : (
                 combos.map((combo) => (
-                  <div key={combo._id || combo.id} className="p-4 border border-gray-200/80 hover:border-indigo-150 rounded-2xl bg-white shadow-sm flex flex-col md:flex-row justify-between gap-4 transition-all">
+                  <div key={getItemId(combo)} className="p-4 border border-gray-200/80 hover:border-indigo-200 rounded-2xl bg-white shadow-sm flex flex-col md:flex-row justify-between gap-4 transition-all">
                     <div className="flex gap-4">
                       {combo.image ? (
                         <img src={combo.image} className="w-16 h-16 rounded-xl object-cover border border-slate-100 shadow-sm" alt="" />
@@ -202,7 +211,7 @@ const ComboMeals = () => {
                         {/* Included items */}
                         <div className="flex flex-wrap gap-1 mt-2.5">
                           {combo.items?.map(item => (
-                            <span key={item._id || item.id || item} className="px-2 py-0.5 rounded bg-slate-100 text-[9px] font-bold text-slate-600">
+                            <span key={getItemId(item)} className="px-2 py-0.5 rounded bg-slate-100 text-[9px] font-bold text-slate-600">
                               {item.name || 'Catalog Item'}
                             </span>
                           ))}
@@ -219,7 +228,7 @@ const ComboMeals = () => {
                         <button onClick={() => handleEdit(combo)} className="p-1.5 border border-gray-200 rounded-lg text-gray-400 hover:text-indigo-600 transition-colors">
                           <Edit2 className="w-3.5 h-3.5" />
                         </button>
-                        <button onClick={() => handleDelete(combo._id || combo.id)} className="p-1.5 border border-gray-200 rounded-lg text-gray-400 hover:text-rose-600 transition-colors">
+                        <button onClick={() => handleDelete(getItemId(combo))} className="p-1.5 border border-gray-200 rounded-lg text-gray-400 hover:text-rose-600 transition-colors">
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
@@ -269,13 +278,14 @@ const ComboMeals = () => {
                 <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Select Foods Included ({selectedItems.length})</label>
                 <div className="border border-gray-200 rounded-xl max-h-[160px] overflow-y-auto p-2 space-y-1 bg-gray-50/50">
                   {foods.map(food => {
-                    const isSelected = selectedItems.includes(food._id || food.id);
+                    const foodId = getItemId(food);
+                    const isSelected = selectedItems.includes(foodId);
                     return (
                       <div 
-                        key={food._id || food.id}
-                        onClick={() => handleSelectItem(food._id || food.id)}
+                        key={foodId}
+                        onClick={() => handleSelectItem(foodId)}
                         className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-all border ${
-                          isSelected ? 'bg-indigo-65/10 border-indigo-150 text-indigo-700' : 'bg-white border-gray-150 hover:bg-slate-50'
+                          isSelected ? 'bg-indigo-50 border-indigo-300 text-indigo-700' : 'bg-white border-gray-150 hover:bg-slate-50'
                         }`}
                       >
                         <span className="font-semibold truncate max-w-[200px]">{food.name}</span>

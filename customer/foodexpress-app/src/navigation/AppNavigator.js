@@ -152,7 +152,7 @@ const AppNavigator = () => {
 
   return (
     <NavigationContainer theme={scheme === "dark" ? DarkTheme : DefaultTheme}>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName="Main">
         <Stack.Screen name="Splash" component={SplashScreen} />
         <Stack.Screen name="Onboarding" component={OnboardingScreen} />
         <Stack.Screen name="Login" component={LoginScreen} />
@@ -181,40 +181,28 @@ const AppNavigator = () => {
           name="Notifications"
           component={NotificationsScreen}
           options={{
-            headerShown: true,
-            title: "Notifications",
-            headerTintColor: "#ff6b00",
-            headerTitleStyle: { fontWeight: "bold" },
+            headerShown: false,
           }}
         />
         <Stack.Screen
           name="FoodListing"
           component={FoodListingScreen}
-          options={({ route }) => ({
-            headerShown: true,
-            title: route.params?.category || route.params?.restaurant || "Explore Food",
-            headerTintColor: "#ff6b00",
-            headerTitleStyle: { fontWeight: "bold" },
-          })}
+          options={{
+            headerShown: false,
+          }}
         />
         <Stack.Screen
           name="FoodDetails"
           component={FoodDetailsScreen}
           options={{
-            headerShown: true,
-            title: "Food Details",
-            headerTintColor: "#ff6b00",
-            headerTitleStyle: { fontWeight: "bold" },
+            headerShown: false,
           }}
         />
         <Stack.Screen
           name="Checkout"
           component={CheckoutScreen}
           options={{
-            headerShown: true,
-            title: "Checkout",
-            headerTintColor: "#ff6b00",
-            headerTitleStyle: { fontWeight: "bold" },
+            headerShown: false,
           }}
         />
         <Stack.Screen
@@ -229,70 +217,49 @@ const AppNavigator = () => {
           name="Cart"
           component={CartScreen}
           options={{
-            headerShown: true,
-            title: "My Cart",
-            headerTintColor: "#ff6b00",
-            headerTitleStyle: { fontWeight: "bold" },
+            headerShown: false,
           }}
         />
         <Stack.Screen
           name="OrderDetails"
           component={OrderDetailsScreen}
           options={{
-            headerShown: true,
-            title: "Order Details",
-            headerTintColor: "#ff6b00",
-            headerTitleStyle: { fontWeight: "bold" },
+            headerShown: false,
           }}
         />
         <Stack.Screen
           name="OrderTracking"
           component={OrderTrackingScreen}
           options={{
-            headerShown: true,
-            title: "Track Order",
-            headerTintColor: "#ff6b00",
-            headerTitleStyle: { fontWeight: "bold" },
+            headerShown: false,
           }}
         />
         <Stack.Screen
           name="RestaurantDetail"
           component={RestaurantDetailsScreen}
           options={{
-            headerShown: true,
-            title: "Restaurant Details",
-            headerTintColor: "#ff6b00",
-            headerTitleStyle: { fontWeight: "bold" },
+            headerShown: false,
           }}
         />
         <Stack.Screen
           name="GoldMembership"
           component={GoldMembershipScreen}
           options={{
-            headerShown: true,
-            title: "Gold Membership",
-            headerTintColor: "#ff6b00",
-            headerTitleStyle: { fontWeight: "bold" },
+            headerShown: false,
           }}
         />
         <Stack.Screen
           name="Referral"
           component={ReferralScreen}
           options={{
-            headerShown: true,
-            title: "Invite Friends",
-            headerTintColor: "#ff6b00",
-            headerTitleStyle: { fontWeight: "bold" },
+            headerShown: false,
           }}
         />
         <Stack.Screen
           name="CashbackDeals"
           component={CashbackDealsScreen}
           options={{
-            headerShown: true,
-            title: "Cashback Deals",
-            headerTintColor: "#ff6b00",
-            headerTitleStyle: { fontWeight: "bold" },
+            headerShown: false,
           }}
         />
         <Stack.Screen

@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from "react";
-import { View, StyleSheet, ScrollView, TouchableOpacity, Image, Alert, SafeAreaView } from "react-native";
+import { View, StyleSheet, ScrollView, TouchableOpacity, Image, Alert, SafeAreaView, TextInput, Modal } from "react-native";
 import CustomScreenHeader from "../../components/CustomScreenHeader";
-import { Text, Divider, Portal, Dialog, RadioButton, Snackbar, ActivityIndicator } from "react-native-paper";
+import { Text, Divider, Portal, Dialog, RadioButton, Snackbar, ActivityIndicator, Button } from "react-native-paper";
 import { useDispatch } from "react-redux";
 import orderService from "../../services/orderService";
 import { cancelOrderThunk } from "../../redux/slices/ordersSlice";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import dayjs from "dayjs";
+import api from "../../utils/api";
 
 const OrderDetailsScreen = ({ route, navigation }) => {
   const { orderId } = route.params;
@@ -21,14 +22,43 @@ const OrderDetailsScreen = ({ route, navigation }) => {
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMsg, setSnackbarMsg] = useState("");
 
+  // Review states
+  const [reviews, setReviews] = useState([]);
+  const [reviewModalVisible, setReviewModalVisible] = useState(false);
+  const [selectedFood, setSelectedFood] = useState(null);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewTitle, setReviewTitle] = useState("");
+  const [reviewComment, setReviewComment] = useState("");
+  const [reviewImages, setReviewImages] = useState([]);
+  const [isEditing, setIsEditing] = useState(false);
+  const [existingReviewId, setExistingReviewId] = useState(null);
+
+  const showAlert = (title, message) => {
+    if (Platform.OS === "web") {
+      window.alert(`${title}\n\n${message}`);
+    } else {
+      Alert.alert(title, message);
+    }
+  };
+
   const fetchDetails = async (initial = false) => {
     try {
       if (initial) setLoading(true);
       const data = await orderService.getOrderDetails(orderId);
       setOrder(data);
+      
+      // Load reviews if the order is completed or delivered
+      if (data && (data.status === "Delivered" || data.status === "Completed")) {
+        try {
+          const res = await api.get(`/reviews/order/${orderId}`);
+          setReviews(res.data || []);
+        } catch (err) {
+          console.log("Error loading reviews for order:", err);
+        }
+      }
     } catch (err) {
       console.log("Error loading order details:", err);
-      if (initial) Alert.alert("Error", "Could not load order details.");
+      if (initial) showAlert("Error", "Could not load order details.");
     } finally {
       if (initial) setLoading(false);
     }
@@ -52,11 +82,92 @@ const OrderDetailsScreen = ({ route, navigation }) => {
       })
       .catch((err) => {
         const errorMsg = typeof err === "string" ? err : (err?.message || "Could not cancel order.");
-        Alert.alert("Error", errorMsg);
+        showAlert("Error", errorMsg);
       })
       .finally(() => {
         setCancelLoading(false);
       });
+  };
+
+  const getReviewForFood = (foodId) => {
+    return reviews.find(r => r.food === foodId || r.food?._id === foodId || r.food?.id === foodId);
+  };
+  
+  const hasReviewed = (foodId) => {
+    return !!getReviewForFood(foodId);
+  };
+
+  const handleOpenReviewModal = (item) => {
+    const foodId = item.food?._id || item.food?.id;
+    const foodName = item.food?.name;
+    const existing = getReviewForFood(foodId);
+    
+    setSelectedFood({ id: foodId, name: foodName });
+    
+    if (existing) {
+      setIsEditing(true);
+      setExistingReviewId(existing._id);
+      setReviewRating(existing.rating);
+      setReviewTitle(existing.title || "");
+      setReviewComment(existing.comment || "");
+      setReviewImages(existing.images || []);
+    } else {
+      setIsEditing(false);
+      setExistingReviewId(null);
+      setReviewRating(5);
+      setReviewTitle("");
+      setReviewComment("");
+      setReviewImages([]);
+    }
+    setReviewModalVisible(true);
+  };
+
+  const handleSimulateAddImage = () => {
+    if (reviewImages.length >= 3) {
+      showAlert("Limit Reached", "You can upload a maximum of 3 images.");
+      return;
+    }
+    const sampleImages = [
+      "https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?auto=format&fit=crop&w=200&q=80",
+      "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=200&q=80",
+      "https://images.unsplash.com/photo-1482049016688-2d3e1b311543?auto=format&fit=crop&w=200&q=80",
+      "https://images.unsplash.com/photo-1484723091739-30a097e8f929?auto=format&fit=crop&w=200&q=80",
+      "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=200&q=80"
+    ];
+    const randomImg = sampleImages[Math.floor(Math.random() * sampleImages.length)];
+    setReviewImages(prev => [...prev, randomImg]);
+  };
+
+  const handleSubmitReview = async () => {
+    if (reviewComment.trim().length < 10) {
+      showAlert("Validation Error", "Review description must be at least 10 characters.");
+      return;
+    }
+    
+    const payload = {
+      foodId: selectedFood.id,
+      orderId,
+      rating: reviewRating,
+      title: reviewTitle,
+      comment: reviewComment,
+      images: reviewImages
+    };
+    
+    try {
+      if (isEditing) {
+        await api.put(`/reviews/${existingReviewId}`, payload);
+        showAlert("Success", "Your review has been updated successfully.");
+      } else {
+        await api.post("/reviews", payload);
+        showAlert("Success", "Thank you for sharing your feedback!");
+      }
+      setReviewModalVisible(false);
+      fetchDetails(false);
+    } catch (err) {
+      console.log("Error submitting review:", err);
+      const errMsg = err.response?.data?.message || "Could not submit review.";
+      showAlert("Error", errMsg);
+    }
   };
 
   if (loading) {
@@ -150,6 +261,25 @@ const OrderDetailsScreen = ({ route, navigation }) => {
                     <Text style={styles.foodNameText}>{item.food?.name || "Dish"}</Text>
                   </View>
                   <Text style={styles.qtyText}>Qty: {item.quantity} x ₹{item.price}</Text>
+                  
+                  {/* Write/Edit Review Button */}
+                  {(order.status === "Delivered" || order.status === "Completed") && (
+                    <TouchableOpacity
+                      style={styles.reviewItemBtn}
+                      onPress={() => handleOpenReviewModal(item)}
+                      activeOpacity={0.8}
+                    >
+                      <MaterialCommunityIcons
+                        name={hasReviewed(item.food?._id || item.food?.id) ? "star" : "star-outline"}
+                        size={14}
+                        color="#ff6b00"
+                        style={{ marginRight: 4 }}
+                      />
+                      <Text style={styles.reviewItemBtnText}>
+                        {hasReviewed(item.food?._id || item.food?.id) ? "View/Edit Review" : "Write Review"}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
                 <Text style={styles.foodSubtotal}>₹{item.price * item.quantity}</Text>
               </View>
@@ -286,6 +416,109 @@ const OrderDetailsScreen = ({ route, navigation }) => {
           {snackbarMsg}
         </Snackbar>
       </ScrollView>
+
+      {/* Write / Edit Review Modal */}
+      <Modal
+        visible={reviewModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setReviewModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>
+              {isEditing ? "Edit Review" : "Write Review"}
+            </Text>
+            <Text style={styles.modalSubtitle}>
+              {selectedFood?.name}
+            </Text>
+            <Divider style={styles.modalDivider} />
+
+            {/* Star Selection */}
+            <Text style={styles.inputLabel}>Rating</Text>
+            <View style={styles.starsSelectionRow}>
+              {[1, 2, 3, 4, 5].map((s) => (
+                <TouchableOpacity key={s} onPress={() => setReviewRating(s)}>
+                  <MaterialCommunityIcons
+                    name={s <= reviewRating ? "star" : "star-outline"}
+                    size={32}
+                    color="#ff6b00"
+                    style={{ marginRight: 8 }}
+                  />
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Review Title */}
+            <Text style={styles.inputLabel}>Title (Optional)</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={reviewTitle}
+              onChangeText={setReviewTitle}
+              placeholder="E.g., Delicious!, Fast delivery"
+              placeholderTextColor="#999"
+            />
+
+            {/* Review Description */}
+            <Text style={styles.inputLabel}>Description (Min 10 characters)</Text>
+            <TextInput
+              style={[styles.modalInput, { height: 70, textAlignVertical: "top", paddingTop: 8 }]}
+              value={reviewComment}
+              onChangeText={setReviewComment}
+              placeholder="How was the taste? Was it fresh? (Min 10 characters)"
+              placeholderTextColor="#999"
+              multiline={true}
+              numberOfLines={3}
+            />
+
+            {/* Food Photos */}
+            <View style={styles.photoSectionHeader}>
+              <Text style={styles.inputLabel}>Photos ({reviewImages.length}/3)</Text>
+              {reviewImages.length < 3 && (
+                <TouchableOpacity onPress={handleSimulateAddImage} style={styles.addImageLink}>
+                  <Text style={styles.addImageLinkText}>+ Add Photo</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            
+            {reviewImages.length > 0 && (
+              <View style={styles.photoPreviewRow}>
+                {reviewImages.map((imgUrl, idx) => (
+                  <View key={idx} style={styles.photoThumbnailContainer}>
+                    <Image source={{ uri: imgUrl }} style={styles.photoThumbnail} />
+                    <TouchableOpacity
+                      style={styles.removePhotoBadge}
+                      onPress={() => setReviewImages(prev => prev.filter((_, i) => i !== idx))}
+                    >
+                      <MaterialCommunityIcons name="close-circle" size={16} color="#d32f2f" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            <View style={styles.modalButtons}>
+              <Button
+                mode="text"
+                onPress={() => setReviewModalVisible(false)}
+                textColor="#666"
+                style={styles.modalCancel}
+              >
+                Cancel
+              </Button>
+              <Button
+                mode="contained"
+                onPress={handleSubmitReview}
+                buttonColor="#ff6b00"
+                style={styles.modalSave}
+              >
+                Submit
+              </Button>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       </SafeAreaView>
     </Portal.Host>
   );
@@ -557,6 +790,121 @@ const styles = StyleSheet.create({
   btnActionText: {
     fontSize: 14,
     fontWeight: "bold",
+  },
+  reviewItemBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 6,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderWidth: 1,
+    borderColor: "#ff6b00",
+    borderRadius: 6,
+    alignSelf: "flex-start",
+  },
+  reviewItemBtnText: {
+    color: "#ff6b00",
+    fontSize: 11,
+    fontWeight: "bold",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    width: "88%",
+    borderRadius: 20,
+    padding: 20,
+    elevation: 10,
+    maxHeight: "90%",
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#222",
+    marginBottom: 2,
+  },
+  modalSubtitle: {
+    fontSize: 12,
+    color: "#666",
+    marginBottom: 8,
+  },
+  modalDivider: {
+    marginBottom: 14,
+  },
+  inputLabel: {
+    fontSize: 12,
+    color: "#666",
+    fontWeight: "600",
+    marginBottom: 6,
+  },
+  modalInput: {
+    height: 42,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    marginBottom: 14,
+    backgroundColor: "#f9f9f9",
+    fontSize: 14,
+    color: "#333",
+  },
+  starsSelectionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 14,
+  },
+  photoSectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  addImageLink: {
+    paddingVertical: 2,
+  },
+  addImageLinkText: {
+    color: "#ff6b00",
+    fontSize: 12,
+    fontWeight: "bold",
+  },
+  photoPreviewRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginBottom: 14,
+    gap: 8,
+  },
+  photoThumbnailContainer: {
+    position: "relative",
+    width: 56,
+    height: 56,
+  },
+  photoThumbnail: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 8,
+  },
+  removePhotoBadge: {
+    position: "absolute",
+    top: -6,
+    right: -6,
+    backgroundColor: "#fff",
+    borderRadius: 8,
+  },
+  modalButtons: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    marginTop: 14,
+  },
+  modalCancel: {
+    marginRight: 8,
+  },
+  modalSave: {
+    borderRadius: 8,
+    paddingHorizontal: 12,
   },
 });
 
