@@ -198,6 +198,15 @@ exports.createFood = async (req, res) => {
   try {
     if (req.body.category === "") req.body.category = null;
     if (req.body.restaurant === "") req.body.restaurant = null;
+    
+    // Auto-link to default single restaurant if missing
+    if (!req.body.restaurant) {
+      const defaultRest = await Restaurant.findOne();
+      if (defaultRest) {
+        req.body.restaurant = defaultRest._id;
+      }
+    }
+
     const newFood = new Food(req.body);
     await newFood.save();
     const populated = await Food.findById(newFood._id).populate("category restaurant");
