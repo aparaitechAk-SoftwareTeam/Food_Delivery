@@ -26,7 +26,7 @@ const NotificationsScreen = ({ navigation }) => {
       <View style={styles.container}>
         <FlatList
         data={notifications}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item, index) => (item._id || item.id || index || Math.random().toString()).toString()}
         refreshing={loading}
         onRefresh={() => dispatch(fetchNotifications())}
         renderItem={({ item }) => (

@@ -393,7 +393,7 @@ const CheckoutScreen = ({ navigation }) => {
   return (
     <Portal.Host>
       <SafeAreaView style={{ flex: 1, backgroundColor: "#f8f9fa" }}>
-        <CustomScreenHeader title="Checkout" navigation={navigation} showBack={false} />
+        <CustomScreenHeader title="Checkout" navigation={navigation} showBack={true} />
         <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 48 }} showsVerticalScrollIndicator={false}>
         
         {/* Delivery Address Section */}
@@ -474,7 +474,7 @@ const CheckoutScreen = ({ navigation }) => {
               <Text style={styles.feeValue}>₹{bill.deliveryFee.toFixed(2)}</Text>
             </View>
             <View style={styles.feeRow}>
-              <Text style={styles.feeLabel}>GST (5%)</Text>
+              <Text style={styles.feeLabel}>GST ({bill.gstPercentage || 5}%)</Text>
               <Text style={styles.feeValue}>₹{bill.gst.toFixed(2)}</Text>
             </View>
 

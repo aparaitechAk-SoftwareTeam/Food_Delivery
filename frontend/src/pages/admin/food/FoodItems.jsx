@@ -4,13 +4,14 @@ import Sidebar from '../../../components/admin/Sidebar';
 import TopHeader from '../../../components/admin/TopHeader';
 import { API_BASE_URL } from '../../../config';
 
-const CUISINES = ['Italian', 'North Indian', 'South Indian', 'Chinese', 'Continental', 'Mexican', 'Fast Food', 'Desserts'];
 const SPICE_LEVELS = ['None', 'Mild', 'Medium', 'Spicy', 'Extra Hot'];
 const DIETARY_LABELS = ['Veg', 'Egg', 'Non Veg'];
 
 const FoodItems = () => {
   const [foods, setFoods] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [cuisines, setCuisines] = useState([]);
+  const [availableTags, setAvailableTags] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -78,12 +79,16 @@ const FoodItems = () => {
     setLoading(true);
     setError(null);
     try {
-      const [foodsRes, catsRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/admin/foods`).then(res => res.json()).catch(() => []),
-        fetch(`${API_BASE_URL}/admin/categories`).then(res => res.json()).catch(() => [])
+      const [foodsRes, catsRes, cuisinesRes, tagsRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/admin/foods`, { credentials: 'include' }).then(res => res.json()).catch(() => []),
+        fetch(`${API_BASE_URL}/admin/categories`, { credentials: 'include' }).then(res => res.json()).catch(() => []),
+        fetch(`${API_BASE_URL}/admin/cuisines`, { credentials: 'include' }).then(res => res.json()).catch(() => []),
+        fetch(`${API_BASE_URL}/admin/tags`, { credentials: 'include' }).then(res => res.json()).catch(() => [])
       ]);
       setFoods(foodsRes);
       setCategories(catsRes);
+      setCuisines(Array.isArray(cuisinesRes) ? cuisinesRes.map(c => c.name) : []);
+      setAvailableTags(Array.isArray(tagsRes) ? tagsRes.map(t => t.name) : []);
     } catch (err) {
       console.error(err);
       setError('Unable to reach backend Catalog APIs.');
@@ -168,7 +173,7 @@ const FoodItems = () => {
       isChefSpecial: item.isChefSpecial || false,
       isRecommended: item.isRecommended || false,
       isCustomizable: item.isCustomizable || false,
-      tags: (item.tags || []).join(', '),
+      tags: item.tags || [],
       image: item.image || '',
       sortOrder: item.sortOrder || 0,
     });
@@ -205,7 +210,7 @@ const FoodItems = () => {
       isChefSpecial: false,
       isRecommended: false,
       isCustomizable: false,
-      tags: '',
+      tags: [],
       image: '',
       sortOrder: 0,
     });
@@ -216,11 +221,9 @@ const FoodItems = () => {
     e.preventDefault();
     setLoading(true);
     
-    // Format tags array
-    const tagsArray = formData.tags.split(',').map(t => t.trim()).filter(Boolean);
     const payload = {
       ...formData,
-      tags: tagsArray,
+      tags: Array.isArray(formData.tags) ? formData.tags : formData.tags.split(',').map(t => t.trim()).filter(Boolean),
       isVeg: formData.dietType === 'Veg',
       category: formData.category === '' ? null : formData.category,
     };
@@ -584,7 +587,7 @@ const FoodItems = () => {
                 className="px-3 py-1.5 border border-gray-200 rounded-xl text-xs text-gray-700 focus:outline-none bg-white"
               >
                 <option value="">All Cuisines</option>
-                {CUISINES.map(c => <option key={c} value={c}>{c}</option>)}
+                {cuisines.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
 
               <select 
@@ -843,7 +846,7 @@ const FoodItems = () => {
                       onChange={(e) => setFormData(prev => ({ ...prev, cuisine: e.target.value }))}
                       className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:outline-none bg-gray-50/50"
                     >
-                      {CUISINES.map(c => <option key={c} value={c}>{c}</option>)}
+                      {cuisines.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                   </div>
                 </div>
@@ -945,16 +948,47 @@ const FoodItems = () => {
                   </div>
                 </div>
 
-                {/* Tags input */}
+                {/* Tags chip selector */}
                 <div>
-                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Meta Tags (comma separated)</label>
-                  <input 
-                    type="text" 
-                    value={formData.tags}
-                    onChange={(e) => setFormData(prev => ({ ...prev, tags: e.target.value }))}
-                    placeholder="Bestseller, High Protein, Sugar Free"
-                    className="w-full px-3.5 py-2 border border-gray-200 rounded-xl focus:outline-none bg-gray-50/50 text-xs"
-                  />
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Tags</label>
+                  {availableTags.length === 0 ? (
+                    <p className="text-[10px] text-gray-400 italic">No tags available. Create tags in the Tags page first.</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-1.5">
+                      {availableTags.map(tag => {
+                        const selected = (formData.tags || []).includes(tag);
+                        return (
+                          <button
+                            key={tag}
+                            type="button"
+                            onClick={() => {
+                              setFormData(prev => {
+                                const current = Array.isArray(prev.tags) ? prev.tags : [];
+                                return {
+                                  ...prev,
+                                  tags: selected
+                                    ? current.filter(t => t !== tag)
+                                    : [...current, tag]
+                                };
+                              });
+                            }}
+                            className={`px-2.5 py-1 rounded-full text-[10px] font-semibold border transition-all ${
+                              selected
+                                ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                                : 'bg-white text-slate-600 border-gray-200 hover:border-indigo-400 hover:text-indigo-600'
+                            }`}
+                          >
+                            {selected && <span className="mr-0.5">✓</span>}{tag}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {(formData.tags || []).length > 0 && (
+                    <p className="text-[9px] text-indigo-500 font-semibold mt-1.5">
+                      Selected: {(formData.tags || []).join(', ')}
+                    </p>
+                  )}
                 </div>
 
                 {/* Flags grid */}

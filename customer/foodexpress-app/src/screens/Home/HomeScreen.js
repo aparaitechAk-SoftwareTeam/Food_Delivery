@@ -85,7 +85,8 @@ const HomeScreen = ({ navigation }) => {
   const dispatch = useDispatch();
 
   // Redux Selectors
-  const { categories, restaurants, foods, loading, error } = useSelector((state) => state.foods);
+  const { categories: rawCategories, restaurants, foods, loading, error } = useSelector((state) => state.foods);
+  const categories = useMemo(() => (rawCategories || []).filter(c => c && c.isVisible !== false), [rawCategories]);
   const { user, activeAddress, token } = useSelector((state) => state.auth);
   const cartItems = useSelector((state) => state.cart.items);
   const cartTotalAmount = useSelector((state) => state.cart.totalAmount);
@@ -476,7 +477,17 @@ const HomeScreen = ({ navigation }) => {
               <BannerCarousel
                 banners={banners}
                 onBannerPress={(banner) => {
-                  setSelectedCategory(banner.cta);
+                  if (banner.redirectType === "Foods" || (banner.foods && banner.foods.length > 0)) {
+                    navigation.navigate("FoodListing", {
+                      filterType: "banner",
+                      foods: banner.foods,
+                      discountPercentage: banner.discountPercentage || 0,
+                      category: banner.title || "Special Deals",
+                      bannerImage: banner.image
+                    });
+                  } else {
+                    setSelectedCategory(banner.cta);
+                  }
                 }}
               />
               {token && reward ? (
@@ -544,7 +555,17 @@ const HomeScreen = ({ navigation }) => {
                             key={sec.key}
                             banners={banners}
                             onBannerPress={(banner) => {
-                              setSelectedCategory(banner.cta);
+                              if (banner.redirectType === "Foods" || (banner.foods && banner.foods.length > 0)) {
+                                navigation.navigate("FoodListing", {
+                                  filterType: "banner",
+                                  foods: banner.foods,
+                                  discountPercentage: banner.discountPercentage || 0,
+                                  category: banner.title || "Special Deals",
+                                  bannerImage: banner.image
+                                });
+                              } else {
+                                setSelectedCategory(banner.cta);
+                              }
                             }}
                           />
                         );

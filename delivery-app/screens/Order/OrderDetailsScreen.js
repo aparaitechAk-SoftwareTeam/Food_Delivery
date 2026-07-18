@@ -33,7 +33,30 @@ const OrderDetailsScreen = ({ route, navigation }) => {
 
   useEffect(() => {
     fetchOrderDetails();
-    const interval = setInterval(fetchOrderDetails, 3000); // Poll every 3 seconds
+    // Poll at 15-second intervals (was 3s — reduced from 40 calls/min to ~8 calls/min).
+    // Stops automatically once the order reaches a terminal state.
+    const TERMINAL_STATES = ["Delivered", "Cancelled", "Completed", "Rejected"];
+    const interval = setInterval(async () => {
+      try {
+        const response = await api.get(`/delivery/orders`);
+        const active = response.data.find((o) => o._id === orderId);
+        if (active) {
+          setOrder(active);
+          if (TERMINAL_STATES.includes(active.deliveryStatus || active.status)) {
+            clearInterval(interval);
+          }
+        } else {
+          const historyRes = await api.get(`/delivery/history`);
+          const historical = historyRes.data.find((o) => o._id === orderId);
+          if (historical) {
+            setOrder(historical);
+            clearInterval(interval); // In history means terminal — stop polling
+          }
+        }
+      } catch (err) {
+        console.log("Error polling order detail:", err);
+      }
+    }, 15000); // 15 seconds
     return () => clearInterval(interval);
   }, [orderId]);
 

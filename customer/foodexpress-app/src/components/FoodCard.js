@@ -120,7 +120,7 @@ const FoodCard = ({ food, navigation }) => {
     <Animated.View style={[styles.card, { transform: [{ scale: scaleAnim }] }, !isAvailable && { opacity: 0.6 }]}>
       <TouchableOpacity
         activeOpacity={0.9}
-        onPress={() => navigation && navigation.navigate("FoodDetails", { foodId: food.id || food._id })}
+        onPress={() => navigation && navigation.navigate("FoodDetails", { foodId: food.id || food._id, discountPercentage: food.discountPercentage })}
       >
         {/* Top Section: Image & Badges */}
         <View style={styles.imageWrapper}>

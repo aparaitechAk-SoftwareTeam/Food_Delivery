@@ -196,6 +196,7 @@ export const selectCartBillDetails = createSelector(
       discount,
       discountedSubtotal,
       gst,
+      gstPercentage: restaurant && restaurant.gst !== undefined ? restaurant.gst : Math.round(GST_RATE * 100),
       deliveryFee,
       platformFee,
       grandTotal,

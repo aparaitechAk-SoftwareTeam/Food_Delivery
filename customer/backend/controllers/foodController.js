@@ -25,6 +25,12 @@ exports.getFoods = async (req, res) => {
     const skipNum = (pageNum - 1) * limitNum;
 
     let foodQueryObj = {};
+    if (req.query.ids) {
+      const idsArray = req.query.ids.split(",").filter(id => id.trim().length === 24);
+      if (idsArray.length > 0) {
+        foodQueryObj._id = { $in: idsArray };
+      }
+    }
     let restaurantQueryObj = {};
 
     // 1. Restaurant Filters
@@ -54,7 +60,8 @@ exports.getFoods = async (req, res) => {
 
       // Find categories matching name
       const searchCats = await Category.find({
-        name: searchRegex
+        name: searchRegex,
+        isVisible: { $ne: false }
       }).select("_id");
       const searchCatIds = searchCats.map(c => c._id);
 
@@ -88,7 +95,7 @@ exports.getFoods = async (req, res) => {
     // 3. Category Filter
     if (category) {
       // check if category is a name
-      const cat = await Category.findOne({ name: { $regex: category, $options: "i" } });
+      const cat = await Category.findOne({ name: { $regex: category, $options: "i" }, isVisible: { $ne: false } });
       if (cat) {
         foodQueryObj.category = cat._id;
       } else {
@@ -190,7 +197,7 @@ exports.getFoods = async (req, res) => {
     // Execute query with pagination
     const totalCount = await Food.countDocuments(foodQueryObj);
     const foods = await dbQuery.skip(skipNum).limit(limitNum);
-    const categories = await Category.find();
+    const categories = await Category.find({ isVisible: { $ne: false } }).sort({ priority: 1, name: 1 });
     const restaurants = await Restaurant.find().limit(30);
     const Coupon = require("../models/Coupon");
     const offers = await Coupon.find().limit(50);

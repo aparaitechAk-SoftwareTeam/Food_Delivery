@@ -320,7 +320,7 @@ exports.deleteCombo = async (req, res) => {
 exports.getBanners = async (req, res) => {
   
   try {
-    const bannersList = await Banner.find().sort({ createdAt: -1 });
+    const bannersList = await Banner.find().populate("foods").sort({ createdAt: -1 });
     res.json(bannersList);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -932,5 +932,107 @@ exports.updateCouponStatus = async (req, res) => {
     res.status(500).json({ message: "Failed to update coupon: " + error.message });
   }
 };
+
+// ─── Cuisine Management ───────────────────────────────────────────────────────
+const Cuisine = require("../models/Cuisine");
+
+const DEFAULT_CUISINES = [
+  "Italian", "North Indian", "South Indian", "Chinese",
+  "Continental", "Mexican", "Fast Food", "Desserts"
+];
+
+exports.getCuisines = async (req, res) => {
+  try {
+    // Seed defaults if collection is empty
+    const count = await Cuisine.countDocuments();
+    if (count === 0) {
+      await Cuisine.insertMany(DEFAULT_CUISINES.map(name => ({ name })));
+    }
+    const cuisines = await Cuisine.find({}).sort({ name: 1 });
+    res.json(cuisines);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch cuisines: " + error.message });
+  }
+};
+
+exports.createCuisine = async (req, res) => {
+  try {
+    const { name } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ message: "Cuisine name is required" });
+    }
+    const exists = await Cuisine.findOne({ name: new RegExp(`^${name.trim()}$`, "i") });
+    if (exists) {
+      return res.status(400).json({ message: "Cuisine already exists" });
+    }
+    const cuisine = await Cuisine.create({ name: name.trim() });
+    res.status(201).json(cuisine);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to create cuisine: " + error.message });
+  }
+};
+
+exports.deleteCuisine = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deleted = await Cuisine.findByIdAndDelete(id);
+    if (!deleted) return res.status(404).json({ message: "Cuisine not found" });
+    res.json({ message: "Cuisine deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to delete cuisine: " + error.message });
+  }
+};
+
+// ─── Tag Management ───────────────────────────────────────────────────────────
+const Tag = require("../models/Tag");
+
+const DEFAULT_TAGS = [
+  "New", "Trending", "Bestseller", "Healthy", "High Protein",
+  "Low Calorie", "Sugar Free", "Combo", "Recommended",
+  "Chef Choice", "Hot", "Cold", "Seasonal"
+];
+
+exports.getTags = async (req, res) => {
+  try {
+    const count = await Tag.countDocuments();
+    if (count === 0) {
+      await Tag.insertMany(DEFAULT_TAGS.map(name => ({ name })));
+    }
+    const tags = await Tag.find({}).sort({ name: 1 });
+    res.json(tags);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch tags: " + error.message });
+  }
+};
+
+exports.createTag = async (req, res) => {
+  try {
+    const { name } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ message: "Tag name is required" });
+    }
+    const exists = await Tag.findOne({ name: new RegExp(`^${name.trim()}$`, "i") });
+    if (exists) {
+      return res.status(400).json({ message: "Tag already exists" });
+    }
+    const tag = await Tag.create({ name: name.trim() });
+    res.status(201).json(tag);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to create tag: " + error.message });
+  }
+};
+
+exports.deleteTag = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deleted = await Tag.findByIdAndDelete(id);
+    if (!deleted) return res.status(404).json({ message: "Tag not found" });
+    res.json({ message: "Tag deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to delete tag: " + error.message });
+  }
+};
+
+
 
 

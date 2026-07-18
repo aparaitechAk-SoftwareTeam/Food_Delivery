@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
   StyleSheet,
@@ -22,7 +22,8 @@ const SearchScreen = ({ navigation }) => {
     categories: [],
   });
   
-  const categories = useSelector((state) => state.foods.categories) || [];
+  const rawCategories = useSelector((state) => state.foods.categories) || [];
+  const categories = useMemo(() => rawCategories.filter(c => c && c.isVisible !== false), [rawCategories]);
 
   // Debounced search trigger
   useEffect(() => {
@@ -107,7 +108,7 @@ const SearchScreen = ({ navigation }) => {
       <CustomScreenHeader title="Search" navigation={navigation} redirectToHome={true} />
       <View style={styles.container}>
         <Searchbar
-        placeholder="Search for food, cuisines, categories..."
+        placeholder="Search for food, cuisines, menu..."
         onChangeText={setQuery}
         value={query}
         style={styles.searchBar}
@@ -151,7 +152,7 @@ const SearchScreen = ({ navigation }) => {
         <ScrollView style={styles.resultsContainer}>
           {results.categories.length > 0 && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Categories</Text>
+              <Text style={styles.sectionTitle}>Menu</Text>
               <FlatList
                 data={results.categories}
                 keyExtractor={(item) => (item.id || item._id).toString()}

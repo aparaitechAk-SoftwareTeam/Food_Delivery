@@ -66,8 +66,37 @@ const OrderDetailsScreen = ({ route, navigation }) => {
 
   useEffect(() => {
     fetchDetails(true);
-    const interval = setInterval(() => fetchDetails(false), 3000); // Poll every 3 seconds
-    return () => clearInterval(interval);
+
+    // Only poll for non-terminal orders. Delivered/Cancelled/Completed orders
+    // won't change anymore — polling them wastes API quota.
+    const TERMINAL_STATES = ["Delivered", "Cancelled", "Completed"];
+    const isTerminalState = (status) => TERMINAL_STATES.includes(status);
+
+    let interval = null;
+
+    // Start a 15-second polling interval (down from 3s) — socket events provide
+    // immediate updates when connected; this is just a fallback.
+    if (!isTerminalState(undefined)) {
+      interval = setInterval(async () => {
+        // Re-check after each fetch: if terminal, stop the interval
+        try {
+          const currentData = await orderService.getOrderDetails(orderId);
+          if (currentData) {
+            setOrder(currentData);
+            if (isTerminalState(currentData.status)) {
+              clearInterval(interval);
+              interval = null;
+            }
+          }
+        } catch (err) {
+          console.log("Error polling order details:", err);
+        }
+      }, 15000); // 15 seconds — down from 3s
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
   }, [orderId]);
 
   const handleCancelOrder = () => {

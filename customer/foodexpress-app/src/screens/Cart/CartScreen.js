@@ -250,7 +250,8 @@ const CartScreen = ({ navigation }) => {
       <CustomScreenHeader
         title="Your Cart"
         navigation={navigation}
-        showBack={false}
+        showBack={true}
+        redirectToHome={true}
         rightAction={
           <TouchableOpacity onPress={() => {
             Alert.alert("Clear Cart", "Remove all items?", [
@@ -364,7 +365,7 @@ const CartScreen = ({ navigation }) => {
           )}
           <BillRow label="Delivery Fee" value={bill.deliveryFee} />
           <BillRow label="Platform Fee" value={bill.platformFee} />
-          <BillRow label={`GST (5%)`} value={bill.gst} />
+          <BillRow label={`GST (${bill.gstPercentage || 5}%)`} value={bill.gst} />
           <View style={styles.divider} />
           <BillRow label="Grand Total" value={bill.grandTotal} isTotal />
           {bill.discount > 0 && (

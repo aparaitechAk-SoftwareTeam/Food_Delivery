@@ -6,7 +6,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 const CustomScreenHeader = ({ title, navigation, showBack = true, rightAction, redirectToHome = false }) => {
   const handleBack = () => {
     if (redirectToHome && navigation) {
-      navigation.navigate("Home");
+      navigation.navigate("Main", { screen: "Home" });
     } else if (navigation) {
       navigation.goBack();
     }

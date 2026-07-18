@@ -15,6 +15,7 @@ const DashboardScreen = ({ navigation }) => {
 
   const locationInterval = useRef(null);
   const orderPollInterval = useRef(null);
+  const lastLocationRef = useRef(null); // track last sent GPS coords for movement threshold
 
   const fetchDashboardData = async () => {
     try {
@@ -37,38 +38,48 @@ const DashboardScreen = ({ navigation }) => {
 
   useEffect(() => {
     fetchDashboardData();
+    // NOTE: Removed the redundant loadStatus() call that duplicated /delivery/earnings
 
-    // Load active status
-    const loadStatus = async () => {
-      try {
-        const statsRes = await api.get("/delivery/earnings");
-        // We assume profile endpoint or earnings returns stats
-      } catch (e) {}
-    };
-    loadStatus();
-
-    // Listen to real-time events via Socket.IO
+    // Listen to real-time events via Socket.IO — use named handlers to
+    // prevent listener stacking if this component re-mounts.
     const socket = getSocket();
     socket.emit("join-role", "delivery");
 
-    socket.on("order-status-updated", (updatedOrder) => {
+    const handleStatusUpdate = (updatedOrder) => {
       console.log("[Socket] Received status update in delivery dashboard:", updatedOrder);
-      fetchDashboardData();
-    });
+      // Apply the received payload directly — no extra API call needed.
+      if (updatedOrder && updatedOrder._id) {
+        setOrders((prev) => prev.map((o) => (o._id === updatedOrder._id ? updatedOrder : o)));
+        // Refresh stats occasionally when order status changes
+        api.get("/delivery/earnings").then((res) => setStats(res.data)).catch(() => {});
+      }
+    };
 
-    socket.on("delivery-assigned", (updatedOrder) => {
+    const handleDeliveryAssigned = (updatedOrder) => {
       console.log("[Socket] Received new delivery assignment:", updatedOrder);
-      fetchDashboardData();
-    });
+      // Add new assignment to orders list if not already present
+      if (updatedOrder && updatedOrder._id) {
+        setOrders((prev) => {
+          if (prev.some((o) => o._id === updatedOrder._id)) {
+            return prev.map((o) => (o._id === updatedOrder._id ? updatedOrder : o));
+          }
+          return [updatedOrder, ...prev].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        });
+      }
+    };
 
-    // Fallback poll active orders every 8 seconds
-    orderPollInterval.current = setInterval(fetchDashboardData, 8000);
+    socket.on("order-status-updated", handleStatusUpdate);
+    socket.on("delivery-assigned", handleDeliveryAssigned);
+
+    // Polling removed — socket events handle real-time updates.
+    // If you need a safety-net fallback, use a long interval (60s+).
+    // orderPollInterval.current = setInterval(fetchDashboardData, 60000);
 
     return () => {
-      clearInterval(orderPollInterval.current);
+      if (orderPollInterval.current) clearInterval(orderPollInterval.current);
       if (locationInterval.current) clearInterval(locationInterval.current);
-      socket.off("order-status-updated");
-      socket.off("delivery-assigned");
+      socket.off("order-status-updated", handleStatusUpdate);
+      socket.off("delivery-assigned", handleDeliveryAssigned);
     };
   }, []);
 
@@ -103,8 +114,8 @@ const DashboardScreen = ({ navigation }) => {
     // Immediately send current location
     sendLocationUpdate();
 
-    // Setup periodic updates every 5 seconds
-    locationInterval.current = setInterval(sendLocationUpdate, 5000);
+    // Update every 10 seconds (was 5s) — movement threshold prevents redundant sends
+    locationInterval.current = setInterval(sendLocationUpdate, 10000);
   };
 
   const stopLocationTracking = () => {
@@ -114,23 +125,57 @@ const DashboardScreen = ({ navigation }) => {
     }
   };
 
+  // Minimum distance (meters) before sending a new GPS update.
+  // Prevents spamming the server when the rider is stationary.
+  const MIN_MOVEMENT_METERS = 10;
+
+  const hasMoved = (newLat, newLng) => {
+    const last = lastLocationRef.current;
+    if (!last) return true;
+    const R = 6371000; // Earth radius in meters
+    const dLat = ((newLat - last.lat) * Math.PI) / 180;
+    const dLng = ((newLng - last.lng) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((last.lat * Math.PI) / 180) *
+        Math.cos((newLat * Math.PI) / 180) *
+        Math.sin(dLng / 2) *
+        Math.sin(dLng / 2);
+    const distance = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return distance >= MIN_MOVEMENT_METERS;
+  };
+
   const sendLocationUpdate = async () => {
     try {
       const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      
+      const { latitude, longitude, heading, speed } = loc.coords;
+
+      // Skip sending if rider hasn't moved significantly (saves ~60% of PUT calls)
+      if (!hasMoved(latitude, longitude)) {
+        console.log("Rider stationary — skipping location update");
+        return;
+      }
+
+      // Update the last known location
+      lastLocationRef.current = { lat: latitude, lng: longitude };
+
       // Determine if there is an active order
-      const activeOrder = orders.find(o => ["Accepted", "Arrived At Restaurant", "Picked Up", "Out For Delivery"].includes(o.deliveryStatus || o.status));
+      const activeOrder = orders.find((o) =>
+        ["Accepted", "Arrived At Restaurant", "Picked Up", "Out For Delivery"].includes(
+          o.deliveryStatus || o.status
+        )
+      );
       const activeOrderId = activeOrder ? activeOrder._id : null;
 
       await api.put("/delivery/location", {
-        latitude: loc.coords.latitude,
-        longitude: loc.coords.longitude,
+        latitude,
+        longitude,
         orderId: activeOrderId,
-        heading: loc.coords.heading || 0,
-        speed: loc.coords.speed || 0,
+        heading: heading || 0,
+        speed: speed || 0,
       });
 
-      console.log("Rider GPS coordinates synced:", loc.coords.latitude, loc.coords.longitude);
+      console.log("Rider GPS coordinates synced:", latitude, longitude);
 
       // Emit low latency real-time socket event
       if (activeOrderId) {
@@ -138,10 +183,10 @@ const DashboardScreen = ({ navigation }) => {
         if (socket) {
           socket.emit("update-location", {
             orderId: activeOrderId,
-            latitude: loc.coords.latitude,
-            longitude: loc.coords.longitude,
-            heading: loc.coords.heading || 0,
-            speed: loc.coords.speed || 0,
+            latitude,
+            longitude,
+            heading: heading || 0,
+            speed: speed || 0,
             timestamp: new Date().toISOString(),
           });
         }

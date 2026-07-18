@@ -89,9 +89,36 @@ const OrderTrackingScreen = ({ route, navigation }) => {
     const socket = getSocket();
     socket.emit("join-order", orderId);
 
+    const TERMINAL_STATES = ["Delivered", "Cancelled", "Completed"];
+    let pollInterval = null;
+
+    const startPolling = () => {
+      if (pollInterval) return; // Already polling
+      pollInterval = setInterval(() => {
+        // Fetch and auto-stop on terminal state
+        orderService.getOrderTracking(orderId).then((data) => {
+          if (data) {
+            setOrder(data);
+            if (TERMINAL_STATES.includes(data.status)) {
+              stopPolling();
+            }
+          }
+        }).catch((err) => console.log("Tracking poll error:", err));
+      }, 15000); // 15s fallback — only runs when socket is offline
+    };
+
+    const stopPolling = () => {
+      if (pollInterval) {
+        clearInterval(pollInterval);
+        pollInterval = null;
+      }
+    };
+
     socket.on("order-status-updated", (updatedData) => {
       console.log("[Socket] Order status updated:", updatedData.status);
       setOrder(updatedData);
+      // Stop polling if terminal
+      if (TERMINAL_STATES.includes(updatedData.status)) stopPolling();
     });
 
     socket.on("delivery-location", (locData) => {
@@ -109,13 +136,19 @@ const OrderTrackingScreen = ({ route, navigation }) => {
       });
     });
 
-    // Fallback poll every 6 seconds
-    const interval = setInterval(fetchDetails, 6000);
+    // Polling only runs when socket is disconnected (true fallback)
+    if (!socket.connected) {
+      startPolling();
+    }
+    socket.on("connect", stopPolling);      // Socket came online — stop polling
+    socket.on("disconnect", startPolling);  // Socket went offline — start polling
 
     return () => {
-      clearInterval(interval);
+      stopPolling();
       socket.off("order-status-updated");
       socket.off("delivery-location");
+      socket.off("connect", stopPolling);
+      socket.off("disconnect", startPolling);
     };
   }, [orderId]);
 

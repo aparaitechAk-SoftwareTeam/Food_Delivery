@@ -100,7 +100,7 @@ const FloatingMenu = ({ categories = [], onSelectCategory }) => {
                 },
               ]}
             >
-              <Text style={styles.menuTitle}>Jump to Category</Text>
+              <Text style={styles.menuTitle}>Jump to Menu</Text>
               <ScrollView
                 style={styles.menuScroll}
                 contentContainerStyle={styles.menuGrid}

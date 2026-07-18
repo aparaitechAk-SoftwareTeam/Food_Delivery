@@ -11,10 +11,13 @@ const protect = async (req, res, next) => {
   }
   const token = authHeader.split(" ")[1];
 
-  // ── Dev/Demo bypass: accept the dummy token used by the local login fallback ─
-  // This prevents 401 errors from payment, order, and QR endpoints when the
-  // backend cannot reach the real auth server during development.
+  // ── Dev/Demo bypass: only accept the dummy token in non-production environments.
+  // This prevents the hardcoded bypass from being active in production Render deploys.
   if (token === "dummy-jwt-token") {
+    if (process.env.NODE_ENV === "production") {
+      res.status(401);
+      throw new Error("Token is not valid");
+    }
     const devUserId = "60c72b2f9b1d8b2a3c8e4d5e";
     try {
       const realUser = await User.findOne({});
@@ -39,9 +42,11 @@ const protect = async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    
+
+    // Primary: look up as regular User
     let user = await User.findById(decoded.id).select("-password");
     if (!user) {
+      // Fallback: look up as Admin (only if not found as User)
       const Admin = require("../models/Admin");
       user = await Admin.findById(decoded.id).select("-password");
     }
@@ -69,11 +74,14 @@ const optionalProtect = async (req, res, next) => {
   }
   const token = authHeader.split(" ")[1];
 
+  // Guard dummy token to dev-only
   if (token === "dummy-jwt-token") {
-    try {
-      const realUser = await User.findOne({});
-      req.user = realUser || null;
-    } catch (err) {}
+    if (process.env.NODE_ENV !== "production") {
+      try {
+        const realUser = await User.findOne({});
+        req.user = realUser || null;
+      } catch (err) {}
+    }
     return next();
   }
 

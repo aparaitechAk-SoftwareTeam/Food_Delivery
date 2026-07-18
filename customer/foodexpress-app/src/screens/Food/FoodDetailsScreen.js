@@ -79,6 +79,13 @@ const FoodDetailsScreen = ({ route, navigation }) => {
         if (!response) {
           if (initial) setError("No food details found");
         } else {
+          // Apply banner discount if passed from route
+          const bannerDiscount = route.params?.discountPercentage || 0;
+          if (bannerDiscount > 0) {
+            response.originalPrice = response.price;
+            response.price = Math.round(response.price * (1 - bannerDiscount / 100));
+            response.discountPercentage = bannerDiscount;
+          }
           setFood(response);
         }
         if (initial) setLoading(false);
@@ -133,11 +140,8 @@ const FoodDetailsScreen = ({ route, navigation }) => {
     setReviewsPage(1);
     setHasMoreReviews(true);
     fetchFoodReviews(1, false);
-    const interval = setInterval(() => {
-      fetchFoodDetails(false);
-      fetchFoodReviews(1, false);
-    }, 5000); // Poll every 5 seconds
-    return () => clearInterval(interval);
+    // No polling — food details are static; reviews are loaded on demand.
+    // Socket events handle any real-time updates if needed.
   }, [foodId]);
 
   const handleStickyAddPress = (shouldRedirect = false) => {
