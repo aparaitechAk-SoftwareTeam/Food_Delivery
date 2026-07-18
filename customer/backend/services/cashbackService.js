@@ -75,6 +75,13 @@ exports.handleOrderDelivered = async (order) => {
       // Check if not expired or claimed
       if (now < reward.expiryDate && reward.status !== "Claimed" && reward.status !== "Expired") {
         if (!reward.countedOrders.includes(orderId)) {
+          const Restaurant = require("../models/Restaurant");
+          const restaurant = await Restaurant.findOne().session(session);
+          if (restaurant) {
+            reward.totalRequiredOrders = restaurant.cashbackRequiredOrders || 4;
+            reward.cashbackAmount = restaurant.cashbackAmount || 150;
+          }
+
           reward.countedOrders.push(orderId);
           reward.completedOrders = Math.min(reward.completedOrders + 1, reward.totalRequiredOrders);
 
@@ -84,7 +91,7 @@ exports.handleOrderDelivered = async (order) => {
           if (reward.completedOrders >= reward.totalRequiredOrders) {
             reward.status = "Eligible";
             notificationTitle = "Cashback Unlock!";
-            notificationText = "Congratulations! Claim your ₹150 Cashback.";
+            notificationText = `Congratulations! Claim your ₹${reward.cashbackAmount} Cashback.`;
           } else {
             notificationTitle = "Cashback Progress";
             notificationText = `Great! ${reward.completedOrders} of ${reward.totalRequiredOrders} orders completed.`;
@@ -267,6 +274,17 @@ exports.claimCashback = async (userId) => {
       throw new Error("Cashback reward not found");
     }
 
+    // Force sync with latest restaurant settings on claim
+    const Restaurant = require("../models/Restaurant");
+    const restaurant = await Restaurant.findOne().session(session);
+    if (restaurant) {
+      reward.cashbackAmount = restaurant.cashbackAmount || 150;
+      reward.totalRequiredOrders = restaurant.cashbackRequiredOrders || 4;
+      if (reward.completedOrders >= reward.totalRequiredOrders) {
+        reward.status = "Eligible";
+      }
+    }
+
     // Force update status to Expired if time has elapsed
     if (new Date() >= reward.expiryDate && (reward.status === "Pending" || reward.status === "Eligible")) {
       reward.status = "Expired";
@@ -361,8 +379,75 @@ exports.claimCashback = async (userId) => {
  * Retrieve the current reward status for a user.
  */
 exports.getRewardStatus = async (userId) => {
+  const Restaurant = require("../models/Restaurant");
+  const restaurant = await Restaurant.findOne();
+
+  // If cashback is disabled globally, hide the reward card
+  if (restaurant && restaurant.cashbackEnabled === false) {
+    return null;
+  }
+
   let reward = await CashbackReward.findOne({ userId });
-  if (!reward) return null;
+
+  // Dynamically initialize a new reward if it does not exist and cashback is enabled
+  if (!reward) {
+    const requiredOrders = restaurant?.cashbackRequiredOrders || 4;
+    const cashbackAmount = restaurant?.cashbackAmount || 150;
+    const expiryHours = restaurant?.cashbackExpiryHours || 48;
+    const expiryDate = new Date(Date.now() + expiryHours * 60 * 60 * 1000);
+
+    reward = await CashbackReward.create({
+      userId,
+      totalRequiredOrders: requiredOrders,
+      completedOrders: 0,
+      cashbackAmount: cashbackAmount,
+      expiryDate,
+      status: "Pending",
+      countedOrders: [],
+    });
+    console.log(`[CashbackService] Dynamically created missing reward for user ${userId}`);
+  }
+
+  if (restaurant) {
+    const currentRequired = restaurant.cashbackRequiredOrders || 4;
+    const currentAmount = restaurant.cashbackAmount || 150;
+    
+    let changed = false;
+    if (reward.totalRequiredOrders !== currentRequired) {
+      reward.totalRequiredOrders = currentRequired;
+      changed = true;
+    }
+    if (reward.cashbackAmount !== currentAmount) {
+      reward.cashbackAmount = currentAmount;
+      changed = true;
+    }
+
+    // Clamp completedOrders if required orders decreased
+    if (reward.completedOrders > reward.totalRequiredOrders) {
+      reward.completedOrders = reward.totalRequiredOrders;
+      changed = true;
+    }
+
+    // Re-evaluate eligibility based on new target
+    if (reward.status === "Pending" || reward.status === "Eligible") {
+      if (reward.completedOrders >= reward.totalRequiredOrders) {
+        reward.status = "Eligible";
+      } else {
+        reward.status = "Pending";
+      }
+      changed = true;
+    } else if (reward.status === "Claimed") {
+      // Keep completed orders display equal to total required orders for claimed state consistency
+      if (reward.completedOrders !== reward.totalRequiredOrders) {
+        reward.completedOrders = reward.totalRequiredOrders;
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      await reward.save();
+    }
+  }
 
   // Check if expired and update state if necessary
   if (new Date() >= reward.expiryDate && (reward.status === "Pending" || reward.status === "Eligible")) {

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { View, StyleSheet, Animated, TouchableOpacity } from "react-native";
 import { Text } from "react-native-paper";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useSelector } from "react-redux";
 
 const RewardCard = ({ reward, onClaim }) => {
   const {
@@ -11,6 +12,18 @@ const RewardCard = ({ reward, onClaim }) => {
     expiryDate,
     status = "Pending",
   } = reward || {};
+
+  const activeRestaurant = useSelector((state) => state.foods?.restaurants?.[0] || null);
+
+  const numCompleted = Number(completedOrders) || 0;
+  
+  const numTotal = activeRestaurant?.cashbackRequiredOrders !== undefined
+    ? Number(activeRestaurant.cashbackRequiredOrders)
+    : (Number(totalRequiredOrders) || 4);
+
+  const liveCashbackAmount = activeRestaurant?.cashbackAmount !== undefined
+    ? Number(activeRestaurant.cashbackAmount)
+    : (Number(cashbackAmount) || 150);
 
   const [timeLeft, setTimeLeft] = useState(0);
   const progressAnim = useRef(new Animated.Value(0)).current;
@@ -38,13 +51,13 @@ const RewardCard = ({ reward, onClaim }) => {
 
   // Animate progress bar on completedOrders or totalRequiredOrders update
   useEffect(() => {
-    const progressPercent = totalRequiredOrders > 0 ? completedOrders / totalRequiredOrders : 0;
+    const progressPercent = numTotal > 0 ? numCompleted / numTotal : 0;
     Animated.timing(progressAnim, {
       toValue: progressPercent,
       duration: 1000,
       useNativeDriver: false,
     }).start();
-  }, [completedOrders, totalRequiredOrders, progressAnim]);
+  }, [numCompleted, numTotal, progressAnim]);
 
   const formatTime = (secs) => {
     const h = Math.floor(secs / 3600);
@@ -59,16 +72,16 @@ const RewardCard = ({ reward, onClaim }) => {
   const isPending = status === "Pending" && !isExpired;
 
   // Determine dynamic copy
-  let cardTitle = `Unlock ₹${cashbackAmount} Cashback`;
+  let cardTitle = `Unlock ₹${liveCashbackAmount} Cashback`;
   let cardSubtitle = "";
   
   if (isPending) {
-    const remaining = totalRequiredOrders - completedOrders;
+    const remaining = numTotal - numCompleted;
     cardSubtitle = `Place ${remaining} more order${remaining > 1 ? "s" : ""} to claim your reward`;
   } else if (isEligible) {
-    cardSubtitle = "Congratulations! Your ₹150 cashback is ready.";
+    cardSubtitle = `Congratulations! Your ₹${liveCashbackAmount} cashback is ready.`;
   } else if (isClaimed) {
-    cardSubtitle = `₹${cashbackAmount} Cashback Claimed`;
+    cardSubtitle = `₹${liveCashbackAmount} Cashback Claimed`;
   } else if (isExpired) {
     cardSubtitle = "Offer Expired";
   }
@@ -126,7 +139,7 @@ const RewardCard = ({ reward, onClaim }) => {
           />
         </View>
         <Text style={styles.progressText}>
-          {completedOrders} of {totalRequiredOrders} orders completed
+          {numCompleted} of {numTotal} orders completed
         </Text>
       </View>
 

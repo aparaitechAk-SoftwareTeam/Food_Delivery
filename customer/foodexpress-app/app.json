@@ -22,6 +22,7 @@
     },
     "android": {
       "package": "com.foodexpress.customer",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#FFFFFF"
@@ -35,7 +36,8 @@
     "web": {},
     "plugins": [
       "expo-asset",
-      "expo-splash-screen"
+      "expo-splash-screen",
+      "expo-web-browser"
     ],
     "extra": {
       "eas": {

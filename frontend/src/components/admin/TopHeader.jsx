@@ -13,8 +13,8 @@ const TopHeader = () => {
     title = 'CMS Dashboard';
     subtitle = 'Overview of menu items, combos, availability, and platform performance.';
   } else if (path.includes('/categories')) {
-    title = 'Category Manager';
-    subtitle = 'Order and setup menu categories visible to customers.';
+    title = 'Menu Manager';
+    subtitle = 'Order and setup menus visible to customers.';
   } else if (path.includes('/foods')) {
     title = 'Food Directory Catalog';
     subtitle = 'Manage food details, inventory, tags, and discounts.';

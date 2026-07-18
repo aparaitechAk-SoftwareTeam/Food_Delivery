@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ClipboardList, Search, Eye, Check, X, CheckCircle2, AlertTriangle, RefreshCw, Printer, Filter, Star } from 'lucide-react';
 import Sidebar from '../../../components/admin/Sidebar';
 import TopHeader from '../../../components/admin/TopHeader';
@@ -15,6 +15,10 @@ const Orders = () => {
   const [filterStatus, setFilterStatus] = useState('All');
   const [updatingId, setUpdatingId] = useState(null);
   const [orderReviews, setOrderReviews] = useState([]);
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [lastRefreshed, setLastRefreshed] = useState(null);
+  const intervalRef = useRef(null);
+  const AUTO_REFRESH_SECS = 60; // 60-second safety-net poll; socket handles real-time
 
   const loadRiders = async () => {
     try {
@@ -31,8 +35,8 @@ const Orders = () => {
     }
   };
 
-  const loadOrders = async () => {
-    setLoading(true);
+  const loadOrders = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const token = localStorage.getItem('admin_token');
       const response = await fetch(`${API_BASE_URL}/admin/orders`, {
@@ -48,9 +52,32 @@ const Orders = () => {
     } catch (err) {
       console.error(err);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
-  };
+  }, []);
+
+  // ─── Auto-refresh helpers ────────────────────────────────────────────────────
+  // The socket handles real-time order updates. This 60-second poll is only a
+  // safety-net fallback for any missed socket events. No 1-second countdown
+  // interval — that caused a React re-render every second unnecessarily.
+  const startAutoRefresh = useCallback(() => {
+    clearInterval(intervalRef.current);
+    intervalRef.current = setInterval(() => {
+      loadOrders(true);
+      setLastRefreshed(new Date());
+    }, AUTO_REFRESH_SECS * 1000);
+  }, [loadOrders]);
+
+  useEffect(() => {
+    if (autoRefresh) {
+      startAutoRefresh();
+    } else {
+      clearInterval(intervalRef.current);
+    }
+    return () => {
+      clearInterval(intervalRef.current);
+    };
+  }, [autoRefresh, startAutoRefresh]);
 
   useEffect(() => {
     loadOrders();
@@ -251,13 +278,47 @@ const Orders = () => {
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
-                <button 
-                  onClick={loadOrders}
+              <div className="flex items-center gap-2">
+
+                {/* Live auto-refresh indicator */}
+                <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-[10px] font-semibold select-none transition-all ${
+                  autoRefresh
+                    ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                    : 'bg-gray-50 border-gray-200 text-gray-400'
+                }`}>
+                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                    autoRefresh ? 'bg-emerald-500 animate-pulse' : 'bg-gray-300'
+                  }`} />
+                  {autoRefresh
+                    ? <span>Live · {lastRefreshed
+                        ? lastRefreshed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                        : 'Socket'
+                      }</span>
+                    : <span>Auto-off</span>
+                  }
+                </div>
+
+                {/* Pause / Resume toggle */}
+                <button
+                  onClick={() => setAutoRefresh(prev => !prev)}
+                  className={`px-3 py-1.5 rounded-xl border text-[10px] font-semibold transition-all ${
+                    autoRefresh
+                      ? 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
+                      : 'bg-indigo-600 border-indigo-600 text-white hover:bg-indigo-700'
+                  }`}
+                >
+                  {autoRefresh ? 'Pause' : 'Resume'}
+                </button>
+
+                {/* Manual refresh */}
+                <button
+                  onClick={() => { loadOrders(); setLastRefreshed(new Date()); if (autoRefresh) startAutoRefresh(); }}
+                  title="Refresh now"
                   className="p-2.5 border border-gray-200 rounded-xl bg-white hover:bg-slate-50 transition-colors shadow-sm cursor-pointer"
                 >
                   <RefreshCw className={`w-4 h-4 text-gray-500 ${loading ? 'animate-spin' : ''}`} />
                 </button>
+
               </div>
             </div>
 

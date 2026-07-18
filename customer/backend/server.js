@@ -35,11 +35,33 @@ const referralRoutes     = require("./routes/referralRoutes");
 const campaignRoutes     = require("./routes/campaignRoutes");
 const errorHandler      = require("./middleware/errorHandler");
 
-// Rate limiter: maximum 300 requests per 15 minutes per IP
+// Rate limiter: maximum 300 requests per 15 minutes per IP (global fallback)
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 300,
   message: { message: "Too many requests from this IP, please try again after 15 minutes." },
+  standardHeaders: true,
+  legacyHeaders: false,
+  // Skip rate limiting for health checks
+  skip: (req) => req.path === "/api/health",
+});
+
+// Stricter limiter for authentication endpoints (prevents brute-force)
+// 20 requests per 15 minutes per IP
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: { message: "Too many authentication attempts. Please try again in 15 minutes." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Stricter limiter for payment endpoints
+// 30 requests per 15 minutes per IP
+const paymentLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: { message: "Too many payment requests. Please try again shortly." },
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -83,7 +105,7 @@ app.use(express.json());
 app.use(morgan("dev"));
 
 // ── Routes ─────────────────────────────────────────────────────────────────────
-app.use("/api/auth",        authRoutes);
+app.use("/api/auth",        authLimiter, authRoutes);
 app.use("/api/foods",       foodRoutes);
 app.use("/api/products",    foodRoutes);   // alias
 app.use("/api/orders",      orderRoutes);
@@ -96,7 +118,7 @@ app.use("/api/user",        userRoutes);
 app.use("/api/favorites",   favoriteRoutes);
 app.use("/api/banners",     bannerRoutes);
 app.use("/api/search",      searchRoutes);
-app.use("/api/payment",     paymentRoutes);
+app.use("/api/payment",     paymentLimiter, paymentRoutes);
 app.use("/api/admin",       adminRoutes);
 app.use("/api/delivery",    deliveryRoutes);
 app.use("/api/notifications", notificationRoutes);

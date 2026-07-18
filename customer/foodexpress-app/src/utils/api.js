@@ -26,20 +26,27 @@ const isPrivateLanUrl = (url) => {
 const getBaseURLs = () => {
   const configuredUrl = normalizeApiUrl(process.env.EXPO_PUBLIC_API_URL);
   const urls = [];
+  const isDev = typeof __DEV__ !== "undefined" && __DEV__;
 
-  if (Platform.OS === "web" && configuredUrl && isPrivateLanUrl(configuredUrl)) {
-    const port = new URL(configuredUrl).port || "5000";
-    urls.push(normalizeApiUrl(`http://localhost:${port}`));
-  }
-
+  // 1. If we have a configured URL, prioritize it
   if (configuredUrl) {
     urls.push(configuredUrl);
   }
 
-  if (Platform.OS === "android") {
-    urls.push("http://10.0.2.2:5000/api");
+  // 2. Add local development server URLs as fallbacks/alternatives in dev mode
+  if (isDev || !configuredUrl || configuredUrl.includes("localhost") || configuredUrl.includes("127.0.0.1")) {
+    if (Platform.OS === "web") {
+      urls.push("http://localhost:5000/api");
+      urls.push("http://127.0.0.1:5000/api");
+    } else if (Platform.OS === "android") {
+      urls.push("http://10.0.2.2:5000/api");
+    } else {
+      // iOS Simulator or others
+      urls.push("http://localhost:5000/api");
+    }
   }
 
+  // 3. Add default remote API as a last resort
   urls.push(DEFAULT_REMOTE_API);
 
   return [...new Set(urls.filter(Boolean))];
@@ -49,7 +56,7 @@ const API_BASE_URLS = getBaseURLs();
 
 const api = axios.create({
   baseURL: API_BASE_URLS[0],
-  timeout: 15000,
+  timeout: 35000,
 });
 
 api.interceptors.request.use(async (config) => {

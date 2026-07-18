@@ -264,6 +264,19 @@ My Issue: `;
           </View>
           <MaterialCommunityIcons name="chevron-right" size={20} color="#bbb" />
         </TouchableOpacity>
+
+        <Divider style={styles.menuDivider} />
+
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => navigation.navigate("Coupons")}
+        >
+          <View style={styles.menuItemLeft}>
+            <MaterialCommunityIcons name="gift-outline" size={22} color="#ff6b00" />
+            <Text style={styles.menuItemText}>Cashback & Rewards</Text>
+          </View>
+          <MaterialCommunityIcons name="chevron-right" size={20} color="#bbb" />
+        </TouchableOpacity>
       </Card>
 
       {/* Saved Addresses Section */}

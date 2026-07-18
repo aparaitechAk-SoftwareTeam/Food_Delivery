@@ -253,7 +253,7 @@ const RestaurantDetailsScreen = ({ route, navigation }) => {
         </View>
         <View style={styles.metaDivider} />
         <View style={styles.metaItem}>
-          <Text style={styles.metaValue}>₹{DELIVERY_FEE}</Text>
+          <Text style={styles.metaValue}>₹{restaurant.deliveryCharges !== undefined ? restaurant.deliveryCharges : DELIVERY_FEE}</Text>
           <Text style={styles.metaLabel}>Delivery</Text>
         </View>
         <View style={styles.metaDivider} />

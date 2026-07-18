@@ -25,6 +25,10 @@ const authService = {
     const { data } = await api.post("/auth/logout");
     return data;
   },
+  googleLogin: async (googlePayload) => {
+    const { data } = await api.post("/auth/google", googlePayload);
+    return data;
+  },
 };
 
 export default authService;

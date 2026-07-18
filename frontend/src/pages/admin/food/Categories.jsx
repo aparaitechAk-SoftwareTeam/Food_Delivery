@@ -252,8 +252,8 @@ const Categories = () => {
           <div className="flex-1 bg-white rounded-2xl border border-gray-200 shadow-sm p-6 overflow-hidden flex flex-col">
             <div className="flex justify-between items-center mb-6">
               <div>
-                <h2 className="text-base font-bold text-gray-900 flex items-center gap-1.5"><FolderHeart className="w-5 h-5 text-indigo-500" /> Category Manager</h2>
-                <p className="text-[10px] text-gray-400 mt-1">Order and setup menu categories visible to customers.</p>
+                <h2 className="text-base font-bold text-gray-900 flex items-center gap-1.5"><FolderHeart className="w-5 h-5 text-indigo-500" /> Menu Manager</h2>
+                <p className="text-[10px] text-gray-400 mt-1">Order and setup menus visible to customers.</p>
               </div>
               <button 
                 onClick={loadCategories}

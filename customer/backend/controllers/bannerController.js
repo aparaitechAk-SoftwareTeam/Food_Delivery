@@ -2,9 +2,10 @@ const Banner = require("../models/Banner");
 
 // Get all active promotional banners
 exports.getBanners = async (req, res) => {
-
-  
-  const banners = await Banner.find({ isActive: true });
+  const banners = await Banner.find({ isActive: true }).populate({
+    path: "foods",
+    populate: { path: "restaurant" }
+  });
   res.json(banners);
 };
 

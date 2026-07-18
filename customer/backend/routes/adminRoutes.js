@@ -50,6 +50,12 @@ const {
   getAdminProfile,
   getCouponsList,
   updateCouponStatus,
+  getCuisines,
+  createCuisine,
+  deleteCuisine,
+  getTags,
+  createTag,
+  deleteTag,
 } = require("../controllers/adminController");
 const protect = require("../middleware/authMiddleware");
 const router = express.Router();
@@ -142,5 +148,15 @@ router.delete("/campaigns/:id", deleteCampaign);
 // Admin Coupon Management
 router.get("/coupons", getCouponsList);
 router.put("/coupons/:id/status", updateCouponStatus);
+
+// Cuisine Management
+router.get("/cuisines", getCuisines);
+router.post("/cuisines", createCuisine);
+router.delete("/cuisines/:id", deleteCuisine);
+
+// Tag Management
+router.get("/tags", getTags);
+router.post("/tags", createTag);
+router.delete("/tags/:id", deleteTag);
 
 module.exports = router;

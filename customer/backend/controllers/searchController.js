@@ -29,6 +29,7 @@ exports.searchAll = async (req, res) => {
     // Search Categories matching name
     const categories = await Category.find({
       name: regex,
+      isVisible: { $ne: false },
     });
 
     res.json({

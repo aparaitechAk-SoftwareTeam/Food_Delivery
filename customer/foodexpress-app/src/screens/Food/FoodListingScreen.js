@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
 import {
   View,
   StyleSheet,
@@ -37,7 +37,8 @@ const FoodListingScreen = ({ navigation, route }) => {
   const dispatch = useDispatch();
 
   // Redux Selectors
-  const { categories, loading } = useSelector((state) => state.foods);
+  const { categories: rawCategories, loading } = useSelector((state) => state.foods);
+  const categories = useMemo(() => (rawCategories || []).filter(c => c && c.isVisible !== false), [rawCategories]);
   const { favorites, items: wishlistItems } = useSelector((state) => state.wishlist);
   const { token } = useSelector((state) => state.auth);
 
@@ -69,7 +70,7 @@ const FoodListingScreen = ({ navigation, route }) => {
 
   // Load initial route parameters
   useEffect(() => {
-    if (route.params?.category) {
+    if (route.params?.category && route.params?.filterType === "category") {
       setActiveFilters((prev) => ({ ...prev, category: route.params.category }));
     } else if (route.params?.restaurant) {
       setSearchQuery(route.params.restaurant);
@@ -96,6 +97,50 @@ const FoodListingScreen = ({ navigation, route }) => {
     }
 
     const filterType = route.params?.filterType;
+    if (filterType === "banner") {
+      const bannerFoods = route.params?.foods || [];
+      const bannerDiscount = route.params?.discountPercentage || 0;
+      
+      let finalFoods = [];
+      if (bannerFoods.length > 0 && typeof bannerFoods[0] === "string") {
+        try {
+          const { data } = await api.get(`/foods?ids=${bannerFoods.join(",")}`);
+          const fetchedFoods = data.foods || [];
+          // Filter locally to be 100% safe in case the backend ignored the 'ids' parameter (e.g. Render fallback)
+          finalFoods = fetchedFoods.filter(f => bannerFoods.includes(f._id || f.id));
+        } catch (err) {
+          console.log("Error fetching banner foods by IDs:", err);
+        }
+      } else {
+        finalFoods = bannerFoods.filter(food => food && typeof food === "object" && (food.id || food._id));
+      }
+
+      let processedFoods = finalFoods.map(food => {
+        if (bannerDiscount > 0) {
+          const originalPrice = food.price;
+          const discountedPrice = Math.round(originalPrice * (1 - bannerDiscount / 100));
+          return {
+            ...food,
+            originalPrice: originalPrice,
+            price: discountedPrice,
+            discountPercentage: bannerDiscount
+          };
+        }
+        return food;
+      });
+
+      if (searchQuery) {
+        processedFoods = processedFoods.filter(f => f.name.toLowerCase().includes(searchQuery.toLowerCase()));
+      }
+
+      setFoodsList(processedFoods);
+      setCurrentPage(1);
+      setTotalPages(1);
+      setTotalCount(processedFoods.length);
+      setPaginationLoading(false);
+      return;
+    }
+
     let endpoint = "/foods";
     if (filterType === "bestsellers") endpoint = "/products/bestsellers";
     else if (filterType === "new-arrivals") endpoint = "/products/new-arrivals";
@@ -374,7 +419,7 @@ const FoodListingScreen = ({ navigation, route }) => {
         <View style={styles.actionsRow}>
           <Button
             mode="outlined"
-            onPress={() => navigation.navigate("FoodDetails", { foodId: item.id || item._id })}
+            onPress={() => navigation.navigate("FoodDetails", { foodId: item.id || item._id, discountPercentage: item.discountPercentage })}
             style={styles.actionBtn}
             labelStyle={styles.actionLabel}
             textColor="#555"
@@ -423,14 +468,75 @@ const FoodListingScreen = ({ navigation, route }) => {
 
   const activeFiltersCount = getActiveFiltersCount();
 
+  const getBannerPromoTotals = () => {
+    let totalOriginal = 0;
+    let totalDiscounted = 0;
+    foodsList.forEach(item => {
+      const orig = item.originalPrice || item.price;
+      const disc = item.price;
+      totalOriginal += orig;
+      totalDiscounted += disc;
+    });
+    return { totalOriginal, totalDiscounted };
+  };
+
+  const renderBannerPromoCard = () => {
+    if (route.params?.filterType !== "banner" || foodsList.length === 0) return null;
+    const bannerDiscount = route.params?.discountPercentage || 0;
+    const { totalOriginal, totalDiscounted } = getBannerPromoTotals();
+    
+    return (
+      <View style={styles.promoCardContainer}>
+        <View style={styles.promoCardHeader}>
+          <MaterialCommunityIcons name="tag-heart" size={24} color="#ff6b00" />
+          <Text style={styles.promoCardTitle}>
+            Special {route.params?.category || "Promo"} Deal
+          </Text>
+        </View>
+        
+        <Text style={styles.promoCardSubtitle}>
+          {"Get these selected dishes at "}{bannerDiscount}{"% OFF! Add them to your cart to enjoy this discount."}
+        </Text>
+        
+        <View style={styles.promoCardPricingRow}>
+          <View>
+            <Text style={styles.promoPriceLabel}>Original Total</Text>
+            <Text style={styles.promoOriginalPrice}>₹{totalOriginal}</Text>
+          </View>
+          
+          <View style={styles.promoArrowContainer}>
+            <MaterialCommunityIcons name="arrow-right-bold" size={20} color="#ff6b00" />
+            <Text style={styles.promoDiscountText}>{`${bannerDiscount}% OFF`}</Text>
+          </View>
+          
+          <View>
+            <Text style={styles.promoPriceLabel}>Offer Price</Text>
+            <Text style={styles.promoDiscountedPrice}>₹{totalDiscounted}</Text>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
   const renderHeaderComponent = () => {
     return (
       <View style={styles.headerContainer}>
+        {route.params?.bannerImage && (
+          <Image
+            source={{ uri: route.params.bannerImage }}
+            style={styles.bannerHeaderImage}
+            resizeMode="cover"
+          />
+        )}
         {/* Horizontally scrolling Category Circle Icons */}
         <View style={styles.categorySection}>
           <FlatList
             data={categories}
-            keyExtractor={(item) => (item.id || item._id).toString()}
+            keyExtractor={(item, index) => {
+              if (!item) return `empty-cat-${index}`;
+              const itemId = item.id || item._id;
+              return itemId ? itemId.toString() : `cat-index-${index}`;
+            }}
             renderItem={renderCategorySliderItem}
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -550,6 +656,8 @@ const FoodListingScreen = ({ navigation, route }) => {
           )}
         </ScrollView>
 
+        {renderBannerPromoCard()}
+
         {/* Results title and dynamic count */}
         <View style={styles.titleContainer}>
           <View style={{ flex: 1 }}>
@@ -572,7 +680,7 @@ const FoodListingScreen = ({ navigation, route }) => {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#ffffff" }}>
-      <CustomScreenHeader title={route.params?.category || "Explore Menu"} navigation={navigation} showBack={false} />
+      <CustomScreenHeader title={route.params?.category || "Explore Menu"} navigation={navigation} showBack={true} redirectToHome={true} />
       <View style={styles.container}>
         {/* Sticky Search Bar */}
         <View style={styles.searchHeader}>
@@ -599,7 +707,11 @@ const FoodListingScreen = ({ navigation, route }) => {
         key={isGridView ? "grid" : "list"}
         numColumns={isGridView ? 2 : 1}
         data={foodsList}
-        keyExtractor={(item) => (item.id || item._id).toString()}
+        keyExtractor={(item, index) => {
+          if (!item) return `empty-item-${index}`;
+          const itemId = item.id || item._id;
+          return itemId ? itemId.toString() : `item-index-${index}`;
+        }}
         renderItem={isGridView ? ({ item }) => <FoodCard food={item} navigation={navigation} /> : renderFoodCard}
         ListHeaderComponent={renderHeaderComponent}
         refreshing={loading && currentPage === 1}
@@ -1054,6 +1166,82 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     textAlign: "center",
     paddingHorizontal: 4,
+  },
+  bannerHeaderImage: {
+    width: "100%",
+    height: 160,
+    marginBottom: 12,
+  },
+  promoCardContainer: {
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 16,
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: "#FFF5F5",
+    borderWidth: 1,
+    borderColor: "#FEB2B2",
+    elevation: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+  },
+  promoCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 6,
+    gap: 8,
+  },
+  promoCardTitle: {
+    fontSize: 15,
+    fontWeight: "bold",
+    color: "#C53030",
+  },
+  promoCardSubtitle: {
+    fontSize: 12,
+    color: "#742A2A",
+    lineHeight: 16,
+    marginBottom: 12,
+  },
+  promoCardPricingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: "#FED7D7",
+  },
+  promoPriceLabel: {
+    fontSize: 10,
+    fontWeight: "bold",
+    color: "#9B2C2C",
+    textTransform: "uppercase",
+    marginBottom: 2,
+  },
+  promoOriginalPrice: {
+    fontSize: 15,
+    fontWeight: "bold",
+    color: "#A0AEC0",
+    textDecorationLine: "line-through",
+  },
+  promoArrowContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  promoDiscountText: {
+    fontSize: 9,
+    fontWeight: "bold",
+    color: "#E53E3E",
+    marginTop: 2,
+  },
+  promoDiscountedPrice: {
+    fontSize: 18,
+    fontWeight: "900",
+    color: "#E53E3E",
   },
 });
 

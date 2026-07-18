@@ -8,8 +8,12 @@ export const getSocket = () => {
     const socketURL = API_BASE_URL.replace("/api", "");
     console.log(`[SocketIO] Connecting Admin Panel to: ${socketURL}`);
     socket = io(socketURL, {
-      transports: ["polling", "websocket"],
+      // WebSocket-first: skip HTTP long-polling on initial connect.
+      // Falls back to polling only if WebSocket is unavailable.
+      transports: ["websocket", "polling"],
       autoConnect: true,
+      reconnectionDelay: 2000,
+      reconnectionAttempts: 5,
     });
   }
   return socket;
