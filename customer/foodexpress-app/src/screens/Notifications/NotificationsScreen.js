@@ -16,8 +16,9 @@ const NotificationsScreen = ({ navigation }) => {
   }, [dispatch]);
 
   const renderTag = (type) => {
-    const color = type === "Offer" ? "orange" : "blue";
-    return <Chip style={[styles.chip, { borderColor: color }]}>{type}</Chip>;
+    const displayType = type || "System Notice";
+    const color = displayType === "Offer" ? "orange" : "blue";
+    return <Chip style={[styles.chip, { borderColor: color }]} textStyle={{ fontSize: 10 }}>{displayType}</Chip>;
   };
 
   return (
@@ -25,23 +26,28 @@ const NotificationsScreen = ({ navigation }) => {
       <CustomScreenHeader title="Notifications" navigation={navigation} />
       <View style={styles.container}>
         <FlatList
-        data={notifications}
-        keyExtractor={(item, index) => (item._id || item.id || index || Math.random().toString()).toString()}
-        refreshing={loading}
-        onRefresh={() => dispatch(fetchNotifications())}
-        renderItem={({ item }) => (
-          <Card style={styles.card}>
-            <Card.Content>
-              <View style={styles.topRow}>
-                <Text variant="titleMedium">{item.title}</Text>
-                {renderTag(item.type)}
-              </View>
-              <Text style={styles.description}>{item.description}</Text>
-            </Card.Content>
-          </Card>
-        )}
-        ListEmptyComponent={<Text style={styles.empty}>No notifications</Text>}
-      />
+          data={notifications || []}
+          keyExtractor={(item, index) => (item?._id || item?.id || index || Math.random().toString()).toString()}
+          refreshing={loading}
+          onRefresh={() => dispatch(fetchNotifications())}
+          renderItem={({ item }) => {
+            if (!item) return null;
+            return (
+              <Card style={styles.card}>
+                <Card.Content>
+                  <View style={styles.topRow}>
+                    <Text variant="titleMedium" numberOfLines={1} style={{ flex: 1, marginRight: 8 }}>
+                      {item.title || "Notice"}
+                    </Text>
+                    {renderTag(item.type)}
+                  </View>
+                  <Text style={styles.description}>{item.description || ""}</Text>
+                </Card.Content>
+              </Card>
+            );
+          }}
+          ListEmptyComponent={<Text style={styles.empty}>No notifications</Text>}
+        />
       </View>
     </SafeAreaView>
   );

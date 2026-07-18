@@ -40,11 +40,11 @@ const LoginScreen = ({ navigation, route }) => {
     return () => backHandler.remove();
   }, []);
 
-  // Google OAuth setup using the client IDs from Firebase Console / google-services.json
+  // Google OAuth setup using platform-specific Client IDs to prevent redirect scheme errors
   const [request, response, promptAsync] = Google.useAuthRequest({
-    androidClientId: "215877724329-m5621nnr5s5vv8ickmla0kl4mloapbup.apps.googleusercontent.com",
-    iosClientId: "215877724329-m5621nnr5s5vv8ickmla0kl4mloapbup.apps.googleusercontent.com",
-    webClientId: "215877724329-m5621nnr5s5vv8ickmla0kl4mloapbup.apps.googleusercontent.com",
+    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || "215877724329-gnhr3a98ejcqq98sv5sphc8m6i62r3b.apps.googleusercontent.com",
+    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || "215877724329-m5621nnr5s5vv8ickmla0kl4mloapbup.apps.googleusercontent.com",
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || "215877724329-m5621nnr5s5vv8ickmla0kl4mloapbup.apps.googleusercontent.com",
   });
 
   const [googleLoading, setGoogleLoading] = useState(false);

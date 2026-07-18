@@ -2,6 +2,7 @@
   "expo": {
     "name": "FoodExpress",
     "slug": "food-delivery",
+    "scheme": "com.foodexpress.customer",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
@@ -24,7 +25,7 @@
       "package": "com.foodexpress.customer",
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/icon.png",
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"
       },
       "config": {
