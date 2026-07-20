@@ -9,6 +9,7 @@ import { login, loginGoogle } from "../../redux/slices/authSlice";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as WebBrowser from "expo-web-browser";
 import * as Google from "expo-auth-session/providers/google";
+import { makeRedirectUri } from "expo-auth-session";
 import { GoogleAuthProvider, signInWithCredential } from "firebase/auth";
 import { auth as firebaseAuth } from "../../utils/firebase";
 import { useThemeContext } from "../../constants/ThemeContext";
@@ -42,11 +43,18 @@ const LoginScreen = ({ navigation, route }) => {
     return () => backHandler.remove();
   }, []);
 
-  // Google OAuth setup using platform-specific Client IDs to prevent redirect scheme errors
+  const CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || "215877724329-m5621nnr5s5vv8ickmla0kl4mloapbup.apps.googleusercontent.com";
+
+  // HTTPS Auth Proxy URI matching current app.json owner (kshitij28s-team) & slug (kshitij-kamble)
+  const redirectUri = makeRedirectUri({
+    native: "https://auth.expo.io/@kshitij28s-team/kshitij-kamble",
+  });
+
   const [request, response, promptAsync] = Google.useAuthRequest({
-    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || "215877724329-gnhr3a98ejcqq98sv5sphc8m6i62r3b.apps.googleusercontent.com",
-    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || "215877724329-m5621nnr5s5vv8ickmla0kl4mloapbup.apps.googleusercontent.com",
-    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || "215877724329-m5621nnr5s5vv8ickmla0kl4mloapbup.apps.googleusercontent.com",
+    clientId: CLIENT_ID,
+    webClientId: CLIENT_ID,
+    redirectUri,
+    scopes: ["profile", "email"],
   });
 
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -392,14 +400,22 @@ const LoginScreen = ({ navigation, route }) => {
         <View style={styles.socialRow}>
           <TouchableOpacity
             style={[styles.socialButton, styles.googleButton, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
-            onPress={() => {
-              if (request) {
-                promptAsync().catch((err) => {
-                  console.log("promptAsync failed:", err);
+            onPress={async () => {
+              try {
+                setGoogleLoading(true);
+                if (request) {
+                  const res = await promptAsync();
+                  if (!res || res.type === "cancel" || res.type === "dismiss") {
+                    setGoogleLoading(false);
+                  }
+                } else {
                   handleGoogleMockLogin();
-                });
-              } else {
-                handleGoogleMockLogin();
+                }
+              } catch (err) {
+                console.log("Google promptAsync error:", err);
+                setGoogleLoading(false);
+                setSnackbarMsg("Google login failed to launch: " + (err?.message || "Please try again"));
+                setSnackbarVisible(true);
               }
             }}
             disabled={googleLoading}

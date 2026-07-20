@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "FoodExpress",
-    "slug": "food-delivery",
+    "slug": "kshitij-kamble",
     "scheme": "com.foodexpress.customer",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -24,6 +24,24 @@
     "android": {
       "package": "com.foodexpress.customer",
       "googleServicesFile": "./google-services.json",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "com.foodexpress.customer"
+            },
+            {
+              "scheme": "com.googleusercontent.apps.215877724329-gnhr3a98ejcqq98sv5sphc8m6i62r3b"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"
@@ -42,9 +60,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "97c187fd-5f6a-41d5-8387-c2ff725a3352"
+        "projectId": "90f671bf-ace0-4c70-9b0c-f1ac55a5d47d"
       }
     },
-    "owner": "sandykamble"
+    "owner": "kshitij28s-team"
   }
 }
