@@ -14,7 +14,7 @@ const Inventory = () => {
     try {
       const response = await fetch(`${API_BASE_URL}/admin/foods`);
       const data = await response.json();
-      setFoods(data);
+      setFoods(Array.isArray(data) ? data : (data?.foods || data?.data || []));
     } catch (err) {
       console.error(err);
     } finally {
@@ -27,7 +27,7 @@ const Inventory = () => {
   }, []);
 
   const handleStockChange = (id, newStock) => {
-    setFoods(prev => prev.map(f => (f._id === id || f.id === id) ? { ...f, stock: parseInt(newStock) || 0 } : f));
+    setFoods(prev => (Array.isArray(prev) ? prev : []).map(f => (f._id === id || f.id === id) ? { ...f, stock: parseInt(newStock) || 0 } : f));
   };
 
   const handleToggleAvailable = async (food) => {

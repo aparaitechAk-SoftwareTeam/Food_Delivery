@@ -89,16 +89,21 @@ app.use(
       
       // Allow local development origins dynamically
       const isLocal = /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+)(:\d+)?$/.test(origin);
-      if (isLocal || allowedOrigins.includes(origin)) {
+      if (
+        isLocal ||
+        allowedOrigins.includes(origin) ||
+        origin.endsWith(".vercel.app") ||
+        origin.endsWith(".onrender.com")
+      ) {
         return callback(null, true);
       }
       
-      console.warn(`Origin ${origin} blocked by CORS`);
-      return callback(new Error("Not allowed by CORS"));
+      console.warn(`[CORS Guard] Rejected origin: ${origin}`);
+      return callback(null, false);
     },
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"]
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"]
   })
 );
 app.use(express.json());
@@ -139,6 +144,12 @@ app.get("/api/health", async (req, res) => {
     timestamp: new Date(),
     mongoDB: mongoose.connection.readyState === 1 ? "CONNECTED" : "DISCONNECTED"
   });
+});
+
+// 404 Fallback Handler
+app.use((req, res, next) => {
+  if (res.headersSent) return next();
+  res.status(404).json({ message: `Route ${req.originalUrl} not found.` });
 });
 
 // ── Global error handler (must be last) ────────────────────────────────────────

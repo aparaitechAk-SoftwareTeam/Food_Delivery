@@ -45,11 +45,12 @@ const Categories = () => {
       const response = await fetch(`${API_BASE_URL}/admin/categories`);
       const data = await response.json();
       
-      // If DB is empty, offer seed option or auto-populate DEFAULT_CATEGORIES
-      if (data.length === 0) {
+      const catList = Array.isArray(data) ? data : (data?.categories || data?.data || []);
+
+      if (catList.length === 0) {
         setCategories(DEFAULT_CATEGORIES.map((c, i) => ({ ...c, _id: `c-${i + 1}`, id: `c-${i + 1}` })));
       } else {
-        setCategories(data);
+        setCategories(catList);
       }
     } catch (err) {
       console.error(err);
@@ -266,7 +267,7 @@ const Categories = () => {
 
             {/* List */}
             <div className="flex-1 overflow-y-auto space-y-2.5 pr-2">
-              {categories.sort((a,b) => (a.priority || 0) - (b.priority || 0)).map((cat, idx) => (
+              {(Array.isArray(categories) ? [...categories] : []).sort((a,b) => (a.priority || 0) - (b.priority || 0)).map((cat, idx) => (
                 <div 
                   key={cat._id || cat.id} 
                   className={`flex items-center justify-between p-3.5 rounded-xl border border-gray-200/80 hover:border-indigo-100 bg-white transition-all ${!cat.isVisible ? 'opacity-60 bg-gray-50' : ''}`}

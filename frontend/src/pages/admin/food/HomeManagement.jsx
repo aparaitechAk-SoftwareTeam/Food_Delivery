@@ -45,7 +45,7 @@ const HomeManagement = () => {
         fetch(`${API_BASE_URL}/admin/banners`, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()).catch(() => []),
       ]);
 
-      setHomeSections(Array.isArray(sectionsRes) ? sectionsRes.sort((a,b) => a.displayOrder - b.displayOrder) : []);
+      setHomeSections(Array.isArray(sectionsRes) ? [...sectionsRes].sort((a,b) => (a.displayOrder || 0) - (b.displayOrder || 0)) : []);
       setRestaurants(Array.isArray(restaurantsRes) ? restaurantsRes : []);
       setFoods(Array.isArray(foodsRes) ? foodsRes : []);
       setBanners(Array.isArray(bannersRes) ? bannersRes : []);

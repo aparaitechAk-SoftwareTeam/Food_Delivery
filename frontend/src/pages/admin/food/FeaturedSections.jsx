@@ -41,12 +41,15 @@ const FeaturedSections = () => {
         fetch(`${API_BASE_URL}/admin/foods`).then(res => res.json()).catch(() => [])
       ]);
       
-      if (secRes.length === 0) {
+      const secList = Array.isArray(secRes) ? secRes : (secRes?.data || secRes?.sections || []);
+      const foodList = Array.isArray(foodsRes) ? foodsRes : (foodsRes?.foods || foodsRes?.data || []);
+
+      if (secList.length === 0) {
         setSections(DEFAULT_SECTIONS.map((s, idx) => ({ ...s, _id: `sec-${idx+1}`, id: `sec-${idx+1}`, items: [] })));
       } else {
-        setSections(secRes);
+        setSections(secList);
       }
-      setFoods(foodsRes);
+      setFoods(foodList);
     } catch (err) {
       console.error(err);
       setSections(DEFAULT_SECTIONS.map((s, idx) => ({ ...s, _id: `sec-${idx+1}`, id: `sec-${idx+1}`, items: [] })));
@@ -201,7 +204,7 @@ const FeaturedSections = () => {
             </div>
 
             <div className="flex-1 overflow-y-auto space-y-4 pr-2">
-              {sections.sort((a,b) => (a.displayOrder || 0) - (b.displayOrder || 0)).map((sec) => (
+              {(Array.isArray(sections) ? [...sections] : []).sort((a,b) => (a.displayOrder || 0) - (b.displayOrder || 0)).map((sec) => (
                 <div key={sec._id || sec.id} className="p-4 border border-gray-250/70 hover:border-indigo-150 rounded-2xl bg-white shadow-sm flex items-start justify-between gap-4 transition-all">
                   <div>
                     <h4 className="text-xs font-black text-slate-800">{sec.title}</h4>

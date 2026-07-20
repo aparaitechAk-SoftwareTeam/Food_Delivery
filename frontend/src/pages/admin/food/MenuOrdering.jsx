@@ -16,8 +16,11 @@ const MenuOrdering = () => {
         fetch(`${API_BASE_URL}/admin/categories`).then(res => res.json()).catch(() => []),
         fetch(`${API_BASE_URL}/admin/sections`).then(res => res.json()).catch(() => [])
       ]);
-      setCategories(catsRes.sort((a,b) => (a.priority || 0) - (b.priority || 0)));
-      setSections(secRes.sort((a,b) => (a.displayOrder || 0) - (b.displayOrder || 0)));
+      const catList = Array.isArray(catsRes) ? catsRes : (catsRes?.categories || catsRes?.data || []);
+      const secList = Array.isArray(secRes) ? secRes : (secRes?.sections || secRes?.data || []);
+
+      setCategories([...catList].sort((a,b) => (a.priority || 0) - (b.priority || 0)));
+      setSections([...secList].sort((a,b) => (a.displayOrder || 0) - (b.displayOrder || 0)));
     } catch (err) {
       console.error(err);
     } finally {

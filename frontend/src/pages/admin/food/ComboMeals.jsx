@@ -34,8 +34,8 @@ const ComboMeals = () => {
         fetch(`${API_BASE_URL}/admin/combos`).then(res => res.json()).catch(() => []),
         fetch(`${API_BASE_URL}/admin/foods`).then(res => res.json()).catch(() => [])
       ]);
-      setCombos(combosRes);
-      setFoods(foodsRes);
+      setCombos(Array.isArray(combosRes) ? combosRes : (combosRes?.combos || combosRes?.data || []));
+      setFoods(Array.isArray(foodsRes) ? foodsRes : (foodsRes?.foods || foodsRes?.data || []));
     } catch (err) {
       console.error(err);
     } finally {
