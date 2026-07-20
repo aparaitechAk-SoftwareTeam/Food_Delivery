@@ -1,7 +1,8 @@
 import React from "react";
-import { View, StyleSheet, TouchableOpacity, Image } from "react-native";
-import { Text, Avatar, IconButton } from "react-native-paper";
+import { View, StyleSheet, TouchableOpacity } from "react-native";
+import { Text, Avatar } from "react-native-paper";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useThemeContext } from "../constants/ThemeContext";
 
 const Header = ({
   activeAddress,
@@ -14,6 +15,8 @@ const Header = ({
   walletBalance = 150.00,
   activeCouponsCount = 12,
 }) => {
+  const { isDark, theme } = useThemeContext();
+
   const getInitials = (name) => {
     if (!name) return "FE";
     return name
@@ -25,7 +28,7 @@ const Header = ({
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.colors.surface }]}>
       {/* Upper row: Location & Badges */}
       <View style={styles.topRow}>
         <TouchableOpacity
@@ -33,17 +36,17 @@ const Header = ({
           onPress={onAddressPress}
           activeOpacity={0.7}
         >
-          <View style={styles.locationIconWrapper}>
-            <MaterialCommunityIcons name="map-marker" size={24} color="#FF6F61" />
+          <View style={[styles.locationIconWrapper, { backgroundColor: isDark ? "#332220" : "#FFF0EE" }]}>
+            <MaterialCommunityIcons name="map-marker" size={24} color={theme.colors.primary} />
           </View>
           <View style={styles.locationTexts}>
             <View style={styles.labelRow}>
-              <Text style={styles.locationLabel}>
+              <Text style={[styles.locationLabel, { color: theme.colors.text }]}>
                 {activeAddress?.label || "Select Location"}
               </Text>
-              <MaterialCommunityIcons name="chevron-down" size={16} color="#667085" />
+              <MaterialCommunityIcons name="chevron-down" size={16} color={theme.colors.subtext} />
             </View>
-            <Text numberOfLines={1} style={styles.addressLine}>
+            <Text numberOfLines={1} style={[styles.addressLine, { color: theme.colors.subtext }]}>
               {activeAddress
                 ? `${activeAddress.line1}, ${activeAddress.city}`
                 : "Choose delivery address"}
@@ -53,18 +56,18 @@ const Header = ({
 
         <View style={styles.actionsContainer}>
           {/* Delivery Time Badge */}
-          <View style={styles.deliveryBadge}>
-            <MaterialCommunityIcons name="clock-outline" size={14} color="#2E7D32" />
-            <Text style={styles.deliveryBadgeText}>25 mins</Text>
+          <View style={[styles.deliveryBadge, { backgroundColor: isDark ? "#1b3320" : "#E8F5E9" }]}>
+            <MaterialCommunityIcons name="clock-outline" size={14} color="#4caf50" />
+            <Text style={[styles.deliveryBadgeText, { color: "#4caf50" }]}>25 mins</Text>
           </View>
 
           {/* Notifications */}
           <TouchableOpacity
-            style={styles.actionButton}
+            style={[styles.actionButton, { backgroundColor: isDark ? "#2a2a2a" : "#F8F9FA" }]}
             onPress={onNotificationPress}
             activeOpacity={0.7}
           >
-            <MaterialCommunityIcons name="bell-outline" size={22} color="#1D2939" />
+            <MaterialCommunityIcons name="bell-outline" size={22} color={theme.colors.text} />
             <View style={styles.redDot} />
           </TouchableOpacity>
 
@@ -73,7 +76,7 @@ const Header = ({
             <Avatar.Text
               size={36}
               label={getInitials(user?.name)}
-              style={styles.avatar}
+              style={[styles.avatar, { backgroundColor: theme.colors.primary }]}
               labelStyle={styles.avatarText}
             />
           </TouchableOpacity>
@@ -85,7 +88,6 @@ const Header = ({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#FFFFFF",
     paddingHorizontal: 16,
     paddingTop: 8,
     paddingBottom: 16,
@@ -112,7 +114,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#FFF0EE",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 10,
@@ -127,12 +128,10 @@ const styles = StyleSheet.create({
   locationLabel: {
     fontSize: 15,
     fontWeight: "bold",
-    color: "#1D2939",
     marginRight: 4,
   },
   addressLine: {
     fontSize: 12,
-    color: "#667085",
     marginTop: 2,
   },
   actionsContainer: {
@@ -142,7 +141,6 @@ const styles = StyleSheet.create({
   deliveryBadge: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#E8F5E9",
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
@@ -151,14 +149,12 @@ const styles = StyleSheet.create({
   deliveryBadgeText: {
     fontSize: 11,
     fontWeight: "bold",
-    color: "#2E7D32",
     marginLeft: 4,
   },
   actionButton: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: "#F8F9FA",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 8,
@@ -174,46 +170,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#FF3B30",
   },
   avatar: {
-    backgroundColor: "#FF6F61",
   },
   avatarText: {
     fontSize: 13,
     fontWeight: "bold",
     color: "#FFFFFF",
-  },
-  quickCard: {
-    flexDirection: "row",
-    backgroundColor: "#F8F9FA",
-    borderRadius: 14,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    marginTop: 14,
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  quickCardItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-    paddingHorizontal: 8,
-  },
-  quickCardTextWrapper: {
-    marginLeft: 8,
-  },
-  quickCardTitle: {
-    fontSize: 11,
-    color: "#667085",
-  },
-  quickCardValue: {
-    fontSize: 13,
-    fontWeight: "bold",
-    color: "#1D2939",
-    marginTop: 1,
-  },
-  divider: {
-    width: 1,
-    height: 24,
-    backgroundColor: "#E4E7EC",
   },
 });
 

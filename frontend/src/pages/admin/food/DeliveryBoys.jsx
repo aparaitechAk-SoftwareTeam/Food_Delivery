@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Plus, Trash2, Edit2, Ban, CheckCircle, RefreshCw, Phone, ShieldCheck, Truck, ShieldAlert, X, Eye } from 'lucide-react';
+import { 
+  Users, Plus, Trash2, Edit2, Ban, CheckCircle, RefreshCw, Phone, ShieldCheck, 
+  Truck, ShieldAlert, X, Eye, DollarSign, Wallet, CreditCard, PackageCheck, 
+  TrendingUp, Search, Calendar, MapPin, PhoneCall 
+} from 'lucide-react';
 import Sidebar from '../../../components/admin/Sidebar';
 import TopHeader from '../../../components/admin/TopHeader';
 import { API_BASE_URL } from '../../../config';
@@ -8,10 +12,14 @@ const DeliveryBoys = () => {
   const [riders, setRiders] = useState([]);
   const [orders, setOrders] = useState([]);
   const [selectedRider, setSelectedRider] = useState(null);
+  const [riderHistoryData, setRiderHistoryData] = useState(null);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingRider, setEditingRider] = useState(null);
-  
+  const [searchRider, setSearchRider] = useState('');
+  const [historyFilter, setHistoryFilter] = useState('ALL'); // ALL, COD, ONLINE
+
   // Form fields
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -49,6 +57,33 @@ const DeliveryBoys = () => {
     loadRiders();
   }, []);
 
+  // Fetch detailed history when a rider is selected
+  const fetchRiderHistory = async (riderId) => {
+    setLoadingHistory(true);
+    try {
+      const token = localStorage.getItem('admin_token');
+      const res = await fetch(`${API_BASE_URL}/admin/delivery-boys/${riderId}/history`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setRiderHistoryData(data);
+      } else {
+        setRiderHistoryData(null);
+      }
+    } catch (err) {
+      console.error("Error loading rider history:", err);
+      setRiderHistoryData(null);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  const handleSelectRider = (rider) => {
+    setSelectedRider(rider);
+    fetchRiderHistory(rider._id);
+  };
+
   const openAddModal = () => {
     setEditingRider(null);
     setName('');
@@ -66,7 +101,7 @@ const DeliveryBoys = () => {
     setEditingRider(rider);
     setName(rider.name || '');
     setEmail(rider.email || '');
-    setPassword(''); // Leave empty, only update if requested (not updating password here)
+    setPassword('');
     setPhone(rider.phone || '');
     setVehicleType(rider.vehicleType || 'Bike');
     setVehicleNumber(rider.vehicleNumber || '');
@@ -90,7 +125,7 @@ const DeliveryBoys = () => {
     };
 
     if (!editingRider) {
-      payload.password = password || 'Rider@123'; // Default fallback
+      payload.password = password || 'Rider@123';
     }
 
     try {
@@ -136,6 +171,7 @@ const DeliveryBoys = () => {
       });
       if (response.ok) {
         setRiders(prev => prev.filter(r => r._id !== id));
+        if (selectedRider?._id === id) setSelectedRider(null);
       } else {
         alert('Failed to delete delivery boy.');
       }
@@ -157,6 +193,9 @@ const DeliveryBoys = () => {
       });
       if (response.ok) {
         setRiders(prev => prev.map(r => r._id === rider._id ? { ...r, isBlocked: !r.isBlocked } : r));
+        if (selectedRider?._id === rider._id) {
+          setSelectedRider(prev => ({ ...prev, isBlocked: !prev.isBlocked }));
+        }
       } else {
         alert('Failed to toggle block status.');
       }
@@ -165,206 +204,408 @@ const DeliveryBoys = () => {
     }
   };
 
+  // Calculate System-wide Delivery Metrics
+  const systemMetrics = riders.reduce((acc, r) => {
+    acc.totalRiders += 1;
+    if (r.isOnline) acc.onlineCount += 1;
+    acc.totalEarnings += r.totalEarnings || 0;
+    acc.totalCashCollected += r.cashCollected || 0;
+    acc.completedDeliveries += r.completedCount || 0;
+    return acc;
+  }, { totalRiders: 0, onlineCount: 0, totalEarnings: 0, totalCashCollected: 0, completedDeliveries: 0 });
+
+  const filteredRiders = riders.filter(r => {
+    const q = searchRider.toLowerCase();
+    return (
+      (r.name && r.name.toLowerCase().includes(q)) ||
+      (r.email && r.email.toLowerCase().includes(q)) ||
+      (r.phone && r.phone.toLowerCase().includes(q)) ||
+      (r.vehicleNumber && r.vehicleNumber.toLowerCase().includes(q))
+    );
+  });
+
   return (
     <div className="min-h-screen bg-slate-50 flex">
       <Sidebar />
       <div className="flex-1 pl-[240px] flex flex-col min-w-0">
         <TopHeader />
         
-        <main className="flex-1 p-8 flex gap-8">
-          {/* Riders Directory List */}
-          <div className="flex-1 flex flex-col gap-6 min-w-0">
-            {/* Header Actions */}
-            <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-gray-200/80 shadow-sm">
-              <span className="text-xs font-bold text-gray-500">Manage Delivery Personnel</span>
-              <div className="flex items-center gap-2">
-                <button 
-                  onClick={openAddModal}
-                  className="px-4 py-2 bg-indigo-650 hover:bg-indigo-600 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Add Delivery Boy</span>
-                </button>
-                <button 
-                  onClick={loadRiders}
-                  className="p-2 border border-gray-200 rounded-xl bg-white hover:bg-slate-50 transition-colors"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 text-gray-500 ${loading ? 'animate-spin' : ''}`} />
-                </button>
+        <main className="flex-1 p-8 flex flex-col gap-6 min-w-0">
+          
+          {/* Top KPI Metrics Banner */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+            <div className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-sm flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-1">Total Delivery Riders</span>
+                <span className="text-2xl font-black text-slate-800">{systemMetrics.totalRiders}</span>
+                <span className="text-[10px] font-bold text-emerald-600 block mt-1">{systemMetrics.onlineCount} Online Right Now</span>
+              </div>
+              <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+                <Truck className="w-6 h-6" />
               </div>
             </div>
 
-            {/* Grid Layout */}
-            <div className={`grid grid-cols-1 ${selectedRider ? 'lg:grid-cols-2' : 'md:grid-cols-3'} gap-6`}>
-              {loading ? (
-                Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm animate-pulse space-y-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-slate-200 rounded-full" />
-                      <div className="space-y-1.5 flex-1">
-                        <div className="h-3 bg-slate-200 rounded w-24" />
-                        <div className="h-2 bg-slate-200 rounded w-16" />
-                      </div>
-                    </div>
-                    <div className="h-2 bg-slate-200 rounded w-full" />
-                    <div className="h-2 bg-slate-200 rounded w-3/4" />
-                    <div className="h-8 bg-slate-200 rounded-xl w-full mt-4" />
-                  </div>
-                ))
-              ) : riders.length === 0 ? (
-                <div className="col-span-full bg-white border border-gray-200 rounded-2xl p-10 text-center text-gray-400 font-semibold shadow-sm">
-                  No delivery riders registered on the system.
-                </div>
-              ) : (
-                riders.map(rider => (
-                  <div key={rider._id} className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm flex flex-col justify-between hover:shadow-md transition-all duration-200 relative overflow-hidden">
-                    
-                    {/* Status Indicator Badge */}
-                    <span className={`absolute top-4 right-4 px-2 py-0.5 rounded-full text-[8px] font-extrabold uppercase border ${rider.isBlocked ? 'bg-rose-50 border-rose-100 text-rose-600' : rider.isOnline ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 'bg-slate-50 border-slate-200 text-slate-500'}`}>
-                      {rider.isBlocked ? 'Blocked' : rider.isOnline ? 'Online' : 'Offline'}
-                    </span>
+            <div className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-sm flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-1">Deliveries Completed</span>
+                <span className="text-2xl font-black text-slate-800">{systemMetrics.completedDeliveries}</span>
+                <span className="text-[10px] font-bold text-slate-500 block mt-1">Total Fulfilled Orders</span>
+              </div>
+              <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
+                <PackageCheck className="w-6 h-6" />
+              </div>
+            </div>
 
-                    <div className="flex items-start gap-3.5 mb-4">
-                      <img 
-                        src={rider.profilePhoto || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80"} 
-                        alt={rider.name}
-                        className="w-12 h-12 rounded-2xl bg-slate-100 object-cover"
-                      />
-                      <div>
-                        <h3 className="text-xs font-bold text-slate-800">{rider.name}</h3>
-                        <p className="text-[10px] text-gray-400 font-medium mt-0.5">{rider.email}</p>
-                        <div className="flex items-center gap-1 mt-1 text-[10px] font-semibold text-slate-500">
-                          <Phone className="w-3 h-3 text-slate-400" />
-                          <span>{rider.phone}</span>
-                        </div>
-                      </div>
-                    </div>
+            <div className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-sm flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-1">Total Rider Earnings</span>
+                <span className="text-2xl font-black text-emerald-600">₹{systemMetrics.totalEarnings.toLocaleString()}</span>
+                <span className="text-[10px] font-bold text-gray-400 block mt-1">Delivery Payouts</span>
+              </div>
+              <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
+                <DollarSign className="w-6 h-6" />
+              </div>
+            </div>
 
-                    {/* Vehicle Details */}
-                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 text-[10px] space-y-1 text-slate-600 font-semibold mb-4">
-                      <div className="flex items-center gap-1 text-slate-700">
-                        <Truck className="w-3.5 h-3.5 text-indigo-500" />
-                        <span className="font-bold text-slate-800">Vehicle: {rider.vehicleType}</span>
-                      </div>
-                      <div>Number: <span className="text-slate-800">{rider.vehicleNumber || 'N/A'}</span></div>
-                      <div>License: <span className="text-slate-800">{rider.licenseNumber || 'N/A'}</span></div>
-                      {rider.isOnline && rider.location?.latitude && (
-                        <div className="text-emerald-600 text-[9px] font-bold block pt-1 border-t border-slate-200 mt-1">
-                          GPS Active: {rider.location.latitude.toFixed(4)}, {rider.location.longitude.toFixed(4)}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Action buttons */}
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => setSelectedRider(rider)}
-                        className="p-2 border border-gray-200 hover:bg-slate-50 text-gray-450 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl flex items-center justify-center transition-colors cursor-pointer"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => openEditModal(rider)}
-                        className="flex-1 py-2 border border-gray-200 hover:bg-slate-50 text-[10px] font-bold text-gray-650 rounded-xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                      >
-                        <Edit2 className="w-3 h-3" />
-                        <span>Edit</span>
-                      </button>
-                      <button
-                        onClick={() => handleToggleBlock(rider)}
-                        className={`px-3 py-2 border rounded-xl flex items-center justify-center transition-colors cursor-pointer ${rider.isBlocked ? 'bg-emerald-50 border-emerald-100 text-emerald-600 hover:bg-emerald-100' : 'bg-rose-50 border-rose-100 text-rose-600 hover:bg-rose-100'}`}
-                      >
-                        <Ban className="w-3 h-3" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(rider._id)}
-                        className="px-3 py-2 border border-gray-200 hover:border-rose-250 hover:bg-rose-50 text-gray-400 hover:text-rose-600 rounded-xl flex items-center justify-center transition-colors cursor-pointer"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
+            <div className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-sm flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 block mb-1">COD Cash Collected</span>
+                <span className="text-2xl font-black text-amber-600">₹{systemMetrics.totalCashCollected.toLocaleString()}</span>
+                <span className="text-[10px] font-bold text-gray-400 block mt-1">Cash in Hand to Deposit</span>
+              </div>
+              <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600">
+                <Wallet className="w-6 h-6" />
+              </div>
             </div>
           </div>
 
-          {/* Details Sidebar */}
-          {selectedRider && (
-            <div className="w-[320px] bg-white rounded-2xl border border-gray-200 shadow-sm p-6 flex flex-col shrink-0 self-start max-h-[calc(100vh-120px)] overflow-y-auto">
-              <div className="flex justify-between items-center border-b border-gray-100 pb-3 mb-4">
-                <h3 className="text-sm font-bold text-gray-900">Rider Profile</h3>
-                <button 
-                  onClick={() => setSelectedRider(null)}
-                  className="p-1 border border-gray-200 hover:bg-slate-50 text-gray-450 hover:text-gray-700 rounded-lg transition-colors"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
+          <div className="flex gap-8 min-w-0">
+            {/* Riders Directory List */}
+            <div className="flex-1 flex flex-col gap-6 min-w-0">
+              {/* Header Actions & Search Toolbar */}
+              <div className="flex flex-wrap justify-between items-center bg-white p-4 rounded-2xl border border-gray-200/80 shadow-sm gap-4">
+                <div className="relative flex-1 min-w-[200px]">
+                  <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
+                  <input
+                    type="text"
+                    value={searchRider}
+                    onChange={(e) => setSearchRider(e.target.value)}
+                    placeholder="Search by rider name, phone, email, vehicle..."
+                    className="w-full pl-9 pr-3 py-1.5 border border-gray-200 rounded-xl text-xs font-semibold outline-none focus:border-indigo-500"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={openAddModal}
+                    className="px-4 py-2 bg-indigo-650 hover:bg-indigo-600 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Add Delivery Boy</span>
+                  </button>
+                  <button 
+                    onClick={loadRiders}
+                    className="p-2 border border-gray-200 rounded-xl bg-white hover:bg-slate-50 transition-colors"
+                    title="Refresh Rider Roster"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 text-gray-500 ${loading ? 'animate-spin' : ''}`} />
+                  </button>
+                </div>
               </div>
 
-              {/* Basic Details */}
-              <div className="space-y-3.5 text-xs pb-4 border-b border-gray-100 mb-4">
-                <div className="flex items-center gap-2">
-                  <img 
-                    src={selectedRider.profilePhoto || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80"} 
-                    alt={selectedRider.name}
-                    className="w-10 h-10 rounded-xl bg-slate-100 object-cover"
-                  />
+              {/* Grid Layout */}
+              <div className={`grid grid-cols-1 ${selectedRider ? 'lg:grid-cols-2' : 'md:grid-cols-3'} gap-6`}>
+                {loading ? (
+                  Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm animate-pulse space-y-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 bg-slate-200 rounded-full" />
+                        <div className="space-y-1.5 flex-1">
+                          <div className="h-3 bg-slate-200 rounded w-24" />
+                          <div className="h-2 bg-slate-200 rounded w-16" />
+                        </div>
+                      </div>
+                      <div className="h-2 bg-slate-200 rounded w-full" />
+                      <div className="h-2 bg-slate-200 rounded w-3/4" />
+                      <div className="h-8 bg-slate-200 rounded-xl w-full mt-4" />
+                    </div>
+                  ))
+                ) : filteredRiders.length === 0 ? (
+                  <div className="col-span-full bg-white border border-gray-200 rounded-2xl p-10 text-center text-gray-400 font-semibold shadow-sm">
+                    No delivery riders registered on the system.
+                  </div>
+                ) : (
+                  filteredRiders.map(rider => (
+                    <div 
+                      key={rider._id} 
+                      className={`bg-white border rounded-2xl p-5 shadow-sm flex flex-col justify-between hover:shadow-md transition-all duration-200 relative overflow-hidden ${selectedRider?._id === rider._id ? 'border-indigo-500 ring-2 ring-indigo-500/20' : 'border-gray-200'}`}
+                    >
+                      
+                      {/* Status Indicator Badge */}
+                      <span className={`absolute top-4 right-4 px-2 py-0.5 rounded-full text-[8px] font-extrabold uppercase border ${rider.isBlocked ? 'bg-rose-50 border-rose-100 text-rose-600' : rider.isOnline ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 'bg-slate-50 border-slate-200 text-slate-500'}`}>
+                        {rider.isBlocked ? 'Blocked' : rider.isOnline ? 'Online' : 'Offline'}
+                      </span>
+
+                      <div className="flex items-start gap-3.5 mb-3">
+                        <img 
+                          src={rider.profilePhoto || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80"} 
+                          alt={rider.name}
+                          className="w-12 h-12 rounded-2xl bg-slate-100 object-cover"
+                        />
+                        <div>
+                          <h3 className="text-xs font-bold text-slate-800">{rider.name}</h3>
+                          <p className="text-[10px] text-gray-400 font-medium mt-0.5">{rider.email}</p>
+                          <div className="flex items-center gap-1 mt-1 text-[10px] font-semibold text-slate-500">
+                            <Phone className="w-3 h-3 text-slate-400" />
+                            <span>{rider.phone}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Money & Performance Snapshot */}
+                      <div className="grid grid-cols-2 gap-2 my-2 bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-[10px]">
+                        <div>
+                          <span className="text-[9px] text-gray-400 font-bold block uppercase">Payout Earned</span>
+                          <span className="font-extrabold text-emerald-600 text-xs">₹{rider.totalEarnings || 0}</span>
+                        </div>
+                        <div>
+                          <span className="text-[9px] text-gray-400 font-bold block uppercase">COD Cash</span>
+                          <span className="font-extrabold text-amber-600 text-xs">₹{rider.cashCollected || 0}</span>
+                        </div>
+                      </div>
+
+                      {/* Vehicle Details */}
+                      <div className="bg-slate-50 border border-slate-100 rounded-xl p-2.5 text-[10px] space-y-0.5 text-slate-600 font-semibold mb-4">
+                        <div className="flex items-center gap-1 text-slate-700">
+                          <Truck className="w-3.5 h-3.5 text-indigo-500" />
+                          <span className="font-bold text-slate-800">Vehicle: {rider.vehicleType}</span>
+                        </div>
+                        <div>Number: <span className="text-slate-800">{rider.vehicleNumber || 'N/A'}</span></div>
+                        <div>License: <span className="text-slate-800">{rider.licenseNumber || 'N/A'}</span></div>
+                        {rider.isOnline && rider.location?.latitude && (
+                          <div className="text-emerald-600 text-[9px] font-bold block pt-1 border-t border-slate-200 mt-1">
+                            GPS Active: {rider.location.latitude.toFixed(4)}, {rider.location.longitude.toFixed(4)}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleSelectRider(rider)}
+                          className="px-3 py-2 bg-indigo-50 border border-indigo-100 text-indigo-600 hover:bg-indigo-100 text-[10px] font-bold rounded-xl flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                          title="View Delivery History & Earnings"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>History</span>
+                        </button>
+                        <button
+                          onClick={() => openEditModal(rider)}
+                          className="flex-1 py-2 border border-gray-200 hover:bg-slate-50 text-[10px] font-bold text-gray-650 rounded-xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                        >
+                          <Edit2 className="w-3 h-3" />
+                          <span>Edit</span>
+                        </button>
+                        <button
+                          onClick={() => handleToggleBlock(rider)}
+                          className={`px-3 py-2 border rounded-xl flex items-center justify-center transition-colors cursor-pointer ${rider.isBlocked ? 'bg-emerald-50 border-emerald-100 text-emerald-600 hover:bg-emerald-100' : 'bg-rose-50 border-rose-100 text-rose-600 hover:bg-rose-100'}`}
+                        >
+                          <Ban className="w-3 h-3" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(rider._id)}
+                          className="px-3 py-2 border border-gray-200 hover:border-rose-250 hover:bg-rose-50 text-gray-400 hover:text-rose-600 rounded-xl flex items-center justify-center transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Rider Delivery History & Money Drawer */}
+            {selectedRider && (
+              <div className="w-[420px] bg-white rounded-2xl border border-gray-200 shadow-xl p-6 flex flex-col shrink-0 self-start max-h-[calc(100vh-120px)] overflow-y-auto">
+                <div className="flex justify-between items-center border-b border-gray-100 pb-3 mb-4">
                   <div>
-                    <span className="font-bold text-slate-800 block">{selectedRider.name}</span>
-                    <span className={`text-[8px] font-bold uppercase ${selectedRider.isBlocked ? 'text-rose-500' : selectedRider.isOnline ? 'text-emerald-500' : 'text-slate-500'}`}>
-                      {selectedRider.isBlocked ? 'Blocked' : selectedRider.isOnline ? 'Online Now' : 'Offline'}
-                    </span>
+                    <h3 className="text-sm font-bold text-gray-900">Rider Financial & Delivery Record</h3>
+                    <span className="text-[10px] text-gray-400 font-semibold block mt-0.5">Admin Money Settlement & Delivery Audits</span>
+                  </div>
+                  <button 
+                    onClick={() => setSelectedRider(null)}
+                    className="p-1.5 border border-gray-200 hover:bg-slate-50 text-gray-450 hover:text-gray-700 rounded-lg transition-colors cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Rider Header Card */}
+                <div className="space-y-3 text-xs pb-4 border-b border-gray-100 mb-4 bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
+                  <div className="flex items-center gap-3">
+                    <img 
+                      src={selectedRider.profilePhoto || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80"} 
+                      alt={selectedRider.name}
+                      className="w-12 h-12 rounded-2xl bg-white object-cover border border-slate-200"
+                    />
+                    <div>
+                      <span className="font-bold text-slate-800 text-sm block">{selectedRider.name}</span>
+                      <span className="text-[10px] text-gray-400 block">{selectedRider.email}</span>
+                      <span className={`text-[8px] font-extrabold uppercase mt-0.5 inline-block ${selectedRider.isBlocked ? 'text-rose-600' : selectedRider.isOnline ? 'text-emerald-600' : 'text-slate-500'}`}>
+                        ● {selectedRider.isBlocked ? 'Blocked' : selectedRider.isOnline ? 'Online Now' : 'Offline'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-[10px] pt-2 border-t border-slate-200/80 font-semibold text-slate-600">
+                    <div className="flex items-center gap-1">
+                      <Phone className="w-3 h-3 text-slate-400" />
+                      <span>{selectedRider.phone || 'N/A'}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Truck className="w-3 h-3 text-slate-400" />
+                      <span>{selectedRider.vehicleType} ({selectedRider.vehicleNumber || 'N/A'})</span>
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 text-slate-650 font-semibold">
-                  <Phone className="w-3.5 h-3.5 text-slate-400" />
-                  <span>{selectedRider.phone || 'No phone'}</span>
-                </div>
-                <div className="flex items-center gap-2 text-slate-650 font-semibold">
-                  <Truck className="w-3.5 h-3.5 text-slate-400" />
-                  <span className="flex-1 leading-normal">Vehicle: {selectedRider.vehicleType} ({selectedRider.vehicleNumber})</span>
-                </div>
-              </div>
+                {/* Money & Earnings Overview Banner */}
+                {loadingHistory ? (
+                  <div className="p-8 text-center">
+                    <RefreshCw className="w-6 h-6 text-indigo-500 animate-spin mx-auto mb-2" />
+                    <span className="text-xs text-gray-400 font-semibold block">Loading delivery history & earnings...</span>
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-2 gap-3 mb-4">
+                      <div className="bg-amber-50 border border-amber-150 p-3 rounded-2xl">
+                        <span className="text-[9px] font-bold text-amber-700 uppercase tracking-wider block mb-1">COD Cash Collected</span>
+                        <span className="text-lg font-black text-amber-700">
+                          ₹{riderHistoryData?.summary?.cashCollected !== undefined 
+                            ? riderHistoryData.summary.cashCollected.toLocaleString() 
+                            : (selectedRider.cashCollected || 0).toLocaleString()}
+                        </span>
+                        <span className="text-[8px] font-bold text-amber-600 block mt-0.5">Amount to deposit with Admin</span>
+                      </div>
 
-              {/* Delivery History */}
-              <div className="text-xs pb-4 mb-4 border-b border-gray-100">
-                <h4 className="font-bold text-gray-900 uppercase tracking-wider text-[9px] mb-2 text-slate-400 flex items-center gap-1"><Truck className="w-3 h-3 text-slate-500" /> Delivery History</h4>
-                {(() => {
-                  const riderOrders = orders.filter(o => o.deliveryBoy?._id === selectedRider._id || o.deliveryBoy === selectedRider._id);
-                  return riderOrders.length > 0 ? (
-                    <div className="space-y-2 overflow-y-auto pr-1 max-h-[300px]">
-                      {riderOrders.map((order) => (
-                        <div key={order._id} className="p-2.5 border border-gray-150 rounded-xl bg-slate-50 text-[10px] text-slate-650 font-semibold flex justify-between items-center">
-                          <div>
-                            <span className="font-bold text-slate-800 block">Order: #{order._id.slice(-6).toUpperCase()}</span>
-                            <span className="text-[9px] text-slate-450 block">{new Date(order.createdAt).toLocaleDateString()}</span>
-                          </div>
-                          <div className="text-right">
-                            <span className="font-bold text-slate-800 block">₹{order.totalAmount}</span>
-                            <span className={`text-[8px] font-black uppercase ${order.status === 'Delivered' ? 'text-emerald-600' : order.status === 'Cancelled' ? 'text-rose-500' : 'text-amber-500'}`}>{order.status}</span>
-                          </div>
-                        </div>
-                      ))}
+                      <div className="bg-emerald-50 border border-emerald-150 p-3 rounded-2xl">
+                        <span className="text-[9px] font-bold text-emerald-700 uppercase tracking-wider block mb-1">Rider Fee Earnings</span>
+                        <span className="text-lg font-black text-emerald-700">
+                          ₹{riderHistoryData?.summary?.totalEarnings !== undefined 
+                            ? riderHistoryData.summary.totalEarnings.toLocaleString() 
+                            : (selectedRider.totalEarnings || 0).toLocaleString()}
+                        </span>
+                        <span className="text-[8px] font-bold text-emerald-600 block mt-0.5">Total payout earned</span>
+                      </div>
                     </div>
-                  ) : (
-                    <span className="text-gray-450 italic">No deliveries recorded.</span>
-                  );
-                })()}
-              </div>
 
-              {/* Actions */}
-              <div className="text-xs space-y-2">
-                <button
-                  onClick={() => handleToggleBlock(selectedRider)}
-                  className={`w-full py-2.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer ${selectedRider.isBlocked ? 'bg-emerald-650 hover:bg-emerald-600 text-white' : 'bg-rose-600 hover:bg-rose-555 text-white'}`}
-                >
-                  {selectedRider.isBlocked ? 'Activate Account' : 'Block Rider Access'}
-                </button>
+                    {/* Delivery Log History */}
+                    <div className="text-xs pb-4 mb-4">
+                      {(() => {
+                        const historyList = (riderHistoryData && Array.isArray(riderHistoryData.orders) && riderHistoryData.orders.length > 0)
+                          ? riderHistoryData.orders
+                          : orders.filter(o => {
+                              if (!o.deliveryBoy) return false;
+                              const rId = o.deliveryBoy._id ? o.deliveryBoy._id.toString() : o.deliveryBoy.toString();
+                              return rId === selectedRider._id.toString();
+                            });
+                        
+                        const filtered = historyList.filter(o => {
+                          const isCOD = !o.paymentMethod || o.paymentMethod.toLowerCase().includes('cash') || o.paymentMethod.toUpperCase() === 'COD';
+                          if (historyFilter === 'COD') return isCOD;
+                          if (historyFilter === 'ONLINE') return !isCOD;
+                          return true;
+                        });
+
+                        return (
+                          <>
+                            <div className="flex justify-between items-center mb-3">
+                              <h4 className="font-bold text-gray-900 uppercase tracking-wider text-[10px] text-slate-500 flex items-center gap-1.5">
+                                <Truck className="w-3.5 h-3.5 text-indigo-500" />
+                                <span>Delivery Logs ({historyList.length})</span>
+                              </h4>
+
+                              {/* Filter tabs */}
+                              <div className="flex bg-slate-100 p-0.5 rounded-lg text-[9px] font-bold">
+                                <button
+                                  onClick={() => setHistoryFilter('ALL')}
+                                  className={`px-2 py-0.5 rounded-md ${historyFilter === 'ALL' ? 'bg-white shadow text-slate-800' : 'text-slate-500'}`}
+                                >
+                                  All
+                                </button>
+                                <button
+                                  onClick={() => setHistoryFilter('COD')}
+                                  className={`px-2 py-0.5 rounded-md ${historyFilter === 'COD' ? 'bg-white shadow text-amber-600' : 'text-slate-500'}`}
+                                >
+                                  COD
+                                </button>
+                                <button
+                                  onClick={() => setHistoryFilter('ONLINE')}
+                                  className={`px-2 py-0.5 rounded-md ${historyFilter === 'ONLINE' ? 'bg-white shadow text-indigo-600' : 'text-slate-500'}`}
+                                >
+                                  Online
+                                </button>
+                              </div>
+                            </div>
+
+                            {filtered.length > 0 ? (
+                              <div className="space-y-3 overflow-y-auto pr-1 max-h-[340px]">
+                                {filtered.map((order) => {
+                                  const isCOD = !order.paymentMethod || order.paymentMethod.toLowerCase().includes('cash') || order.paymentMethod.toUpperCase() === 'COD';
+                                  const custPhone = order.user?.phone || order.customerPhone;
+                                  return (
+                                    <div key={order._id} className="p-3 border border-gray-200 rounded-2xl bg-white text-[10px] text-slate-650 font-semibold space-y-2 hover:border-gray-300 transition-all shadow-2xs">
+                                      <div className="flex justify-between items-center">
+                                        <div>
+                                          <span className="font-bold text-slate-800 block text-xs">#{order.orderNumber || order._id.slice(-6).toUpperCase()}</span>
+                                          <span className="text-[9px] text-slate-400 block">{new Date(order.createdAt).toLocaleString()}</span>
+                                        </div>
+                                        <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase ${['Delivered', 'Completed'].includes(order.status) || ['Delivered', 'Completed'].includes(order.deliveryStatus) ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : order.status === 'Cancelled' ? 'bg-rose-50 text-rose-600 border border-rose-100' : 'bg-amber-50 text-amber-600 border border-amber-100'}`}>
+                                          {order.deliveryStatus || order.status}
+                                        </span>
+                                      </div>
+
+                                      <div className="text-[10px] space-y-0.5 text-slate-600 bg-slate-50 p-2 rounded-xl border border-slate-100">
+                                        <div>Customer: <span className="font-bold text-slate-800">{order.user?.name || order.customerName || 'Guest'}</span> {custPhone ? `(${custPhone})` : ''}</div>
+                                        <div>Restaurant: <span className="font-bold text-slate-800">{order.restaurant?.name || 'Partner Kitchen'}</span></div>
+                                      </div>
+
+                                      <div className="flex justify-between items-center pt-1 text-[10px]">
+                                        <span className={`px-2 py-0.5 rounded-lg text-[9px] font-bold border ${isCOD ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-sky-50 text-sky-700 border-sky-200'}`}>
+                                          {isCOD ? `💵 COD Cash: ₹${order.totalAmount}` : `💳 Online Paid: ₹${order.totalAmount}`}
+                                        </span>
+                                        <span className="font-extrabold text-emerald-600">
+                                          Payout: ₹{order.deliveryCharge || 40}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            ) : (
+                              <div className="p-6 text-center text-gray-400 italic bg-slate-50 rounded-2xl border border-slate-100">
+                                No delivery logs found matching filter.
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="text-xs space-y-2 pt-2 border-t border-gray-100">
+                      <button
+                        onClick={() => handleToggleBlock(selectedRider)}
+                        className={`w-full py-2.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer ${selectedRider.isBlocked ? 'bg-emerald-650 hover:bg-emerald-600 text-white' : 'bg-rose-600 hover:bg-rose-555 text-white'}`}
+                      >
+                        {selectedRider.isBlocked ? 'Activate Account' : 'Block Rider Access'}
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </main>
       </div>
 
@@ -375,7 +616,7 @@ const DeliveryBoys = () => {
             
             <button 
               onClick={() => setModalOpen(false)}
-              className="absolute top-4 right-4 p-1.5 border border-gray-200 rounded-xl hover:bg-slate-50 text-gray-405"
+              className="absolute top-4 right-4 p-1.5 border border-gray-200 rounded-xl hover:bg-slate-50 text-gray-405 cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>

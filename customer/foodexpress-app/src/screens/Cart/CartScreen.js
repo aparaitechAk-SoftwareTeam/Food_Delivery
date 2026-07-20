@@ -28,6 +28,7 @@ import {
   selectCartBillDetails,
 } from "../../redux/slices/cartSlice";
 import api from "../../utils/api";
+import { useThemeContext } from "../../constants/ThemeContext";
 
 // ─── Cart Item Row ────────────────────────────────────────────────────────────
 const CartItemRow = ({ item, onIncrease, onDecrease, onRemove }) => (
@@ -131,6 +132,7 @@ const RecoCard = ({ item, dispatch, cartItems, navigation }) => {
 // ─── CartScreen ───────────────────────────────────────────────────────────────
 const CartScreen = ({ navigation }) => {
   const dispatch = useDispatch();
+  const { isDark, theme } = useThemeContext();
   const items = useSelector((state) => state.cart.items) || [];
   const bill = useSelector(selectCartBillDetails);
   const { token } = useSelector((state) => state.auth);
@@ -213,11 +215,10 @@ const CartScreen = ({ navigation }) => {
   // ─── Empty State ─────────────────────────────────────────────────────────
   if (items.length === 0) {
     return (
-      <View style={styles.emptyContainer}>
-        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-        <MaterialCommunityIcons name="cart-off" size={80} color="#E0E0E0" />
-        <Text style={styles.emptyTitle}>Your cart is empty</Text>
-        <Text style={styles.emptySubtitle}>
+      <View style={[styles.emptyContainer, { backgroundColor: theme.colors.background }]}>
+        <MaterialCommunityIcons name="cart-off" size={80} color={theme.colors.placeholder} />
+        <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>Your cart is empty</Text>
+        <Text style={[styles.emptySubtitle, { color: theme.colors.subtext }]}>
           Add delicious food items to start your order
         </Text>
         <TouchableOpacity
@@ -234,18 +235,17 @@ const CartScreen = ({ navigation }) => {
   // ─── Bill row helper ─────────────────────────────────────────────────────
   const BillRow = ({ label, value, isTotal, isDiscount }) => (
     <View style={[styles.billRow, isTotal && styles.billRowTotal]}>
-      <Text style={[styles.billLabel, isTotal && styles.billLabelTotal, isDiscount && styles.billLabelDiscount]}>
+      <Text style={[styles.billLabel, { color: theme.colors.subtext }, isTotal && [styles.billLabelTotal, { color: theme.colors.text }], isDiscount && styles.billLabelDiscount]}>
         {label}
       </Text>
-      <Text style={[styles.billValue, isTotal && styles.billValueTotal, isDiscount && styles.billValueDiscount]}>
+      <Text style={[styles.billValue, { color: theme.colors.text }, isTotal && styles.billValueTotal, isDiscount && styles.billValueDiscount]}>
         {isDiscount ? `- ₹${value.toFixed(0)}` : `₹${value.toFixed(0)}`}
       </Text>
     </View>
   );
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
 
       <CustomScreenHeader
         title="Your Cart"

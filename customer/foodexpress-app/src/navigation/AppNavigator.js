@@ -10,7 +10,6 @@ import { useColorScheme } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useSelector } from "react-redux";
 
-import SplashScreen from "../screens/Auth/SplashScreen";
 import OnboardingScreen from "../screens/Auth/OnboardingScreen";
 import LoginScreen from "../screens/Auth/LoginScreen";
 import RegisterScreen from "../screens/Auth/RegisterScreen";
@@ -36,20 +35,28 @@ import CouponsScreen from "../screens/Profile/CouponsScreen";
 
 
 
+import { useThemeContext } from "../constants/ThemeContext";
+
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
 const MainTabs = () => {
   const wishlistItems = useSelector((state) => state.wishlist.items || []);
   const { token } = useSelector((state) => state.auth);
+  const { isDark, theme } = useThemeContext();
 
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarActiveTintColor: "#ff6b00",
-        tabBarInactiveTintColor: "#666",
-        tabBarStyle: { height: 64, paddingBottom: 8 },
+        tabBarActiveTintColor: theme.colors.primary,
+        tabBarInactiveTintColor: isDark ? "#888888" : "#666666",
+        tabBarStyle: { 
+          height: 64, 
+          paddingBottom: 8, 
+          backgroundColor: theme.colors.tabBarBg,
+          borderTopColor: theme.colors.border
+        },
       })}
     >
       <Tab.Screen
@@ -148,12 +155,11 @@ const MainTabs = () => {
 };
 
 const AppNavigator = () => {
-  const scheme = useColorScheme();
+  const { isDark } = useThemeContext();
 
   return (
-    <NavigationContainer theme={scheme === "dark" ? DarkTheme : DefaultTheme}>
+    <NavigationContainer theme={isDark ? DarkTheme : DefaultTheme}>
       <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName="Main">
-        <Stack.Screen name="Splash" component={SplashScreen} />
         <Stack.Screen name="Onboarding" component={OnboardingScreen} />
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen

@@ -7,9 +7,11 @@ import { fetchOrders } from "../../redux/slices/ordersSlice";
 import { addToCart } from "../../redux/slices/cartSlice";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import dayjs from "dayjs";
+import { useThemeContext } from "../../constants/ThemeContext";
 
 const OrdersScreen = ({ navigation }) => {
   const dispatch = useDispatch();
+  const { isDark, theme } = useThemeContext();
   const { currentOrders, history, loading } = useSelector((state) => state.orders);
   
   const [activeTab, setActiveTab] = useState("active"); // 'active' or 'past'
@@ -132,24 +134,24 @@ const OrdersScreen = ({ navigation }) => {
   const dataList = activeTab === "active" ? currentOrders : history;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#ffffff" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <CustomScreenHeader title="My Orders" navigation={navigation} redirectToHome={true} />
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* Tabs Header */}
-      <View style={styles.tabsContainer}>
+      <View style={[styles.tabsContainer, { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.border }]}>
         <TouchableOpacity
-          style={[styles.tab, activeTab === "active" && styles.activeTab]}
+          style={[styles.tab, activeTab === "active" && [styles.activeTab, { borderBottomColor: theme.colors.primary }]]}
           onPress={() => setActiveTab("active")}
         >
-          <Text style={[styles.tabText, activeTab === "active" && styles.activeTabText]}>
+          <Text style={[styles.tabText, { color: theme.colors.subtext }, activeTab === "active" && [styles.activeTabText, { color: theme.colors.primary }]]}>
             Active Orders ({currentOrders.length})
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.tab, activeTab === "past" && styles.activeTab]}
+          style={[styles.tab, activeTab === "past" && [styles.activeTab, { borderBottomColor: theme.colors.primary }]]}
           onPress={() => setActiveTab("past")}
         >
-          <Text style={[styles.tabText, activeTab === "past" && styles.activeTabText]}>
+          <Text style={[styles.tabText, { color: theme.colors.subtext }, activeTab === "past" && [styles.activeTabText, { color: theme.colors.primary }]]}>
             Past Orders ({history.length})
           </Text>
         </TouchableOpacity>

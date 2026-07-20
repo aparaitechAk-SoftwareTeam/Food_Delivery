@@ -12,8 +12,10 @@ import { Searchbar, Text, Card, ActivityIndicator, Chip } from "react-native-pap
 import searchService from "../../services/searchService";
 import { useSelector } from "react-redux";
 import CustomScreenHeader from "../../components/CustomScreenHeader";
+import { useThemeContext } from "../../constants/ThemeContext";
 
 const SearchScreen = ({ navigation }) => {
+  const { isDark, theme } = useThemeContext();
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState({
@@ -104,16 +106,19 @@ const SearchScreen = ({ navigation }) => {
     results.foods.length > 0;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#ffffff" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <CustomScreenHeader title="Search" navigation={navigation} redirectToHome={true} />
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
         <Searchbar
-        placeholder="Search for food, cuisines, menu..."
-        onChangeText={setQuery}
-        value={query}
-        style={styles.searchBar}
-        loading={loading}
-      />
+          placeholder="Search for food, cuisines, menu..."
+          placeholderTextColor={theme.colors.placeholder}
+          onChangeText={setQuery}
+          value={query}
+          style={[styles.searchBar, { backgroundColor: theme.colors.inputBg }]}
+          inputStyle={{ color: theme.colors.text }}
+          iconColor={theme.colors.placeholder}
+          loading={loading}
+        />
 
       {loading ? (
         <View style={styles.centerContainer}>
