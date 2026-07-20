@@ -1,13 +1,16 @@
 import React, { useState, useContext } from "react";
-import { View, StyleSheet, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
-import { Text, TextInput, Button, ActivityIndicator } from "react-native-paper";
+import { View, StyleSheet, Alert, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
+import { Text, TextInput, Button } from "react-native-paper";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import api from "../../utils/api";
 import { AuthContext } from "../../App";
+import { useThemeContext } from "../../utils/ThemeContext";
 
 const LoginScreen = () => {
   const { signIn } = useContext(AuthContext);
+  const { isDark, theme } = useThemeContext();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -45,27 +48,27 @@ const LoginScreen = () => {
   return (
     <KeyboardAvoidingView 
       behavior={Platform.OS === "ios" ? "padding" : "height"} 
-      style={styles.container}
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.headerSection}>
-          <View style={styles.brandBadge}>
+          <View style={[styles.brandBadge, { backgroundColor: theme.colors.primary }]}>
             <MaterialCommunityIcons name="moped" size={32} color="#FFFFFF" />
           </View>
-          <Text style={styles.brandTitle}>FoodExpress</Text>
-          <Text style={styles.brandSubtitle}>Rider Portal</Text>
+          <Text style={[styles.brandTitle, { color: theme.colors.text }]}>FoodExpress</Text>
+          <Text style={[styles.brandSubtitle, { color: theme.colors.primary }]}>Rider Portal</Text>
         </View>
 
-        <View style={styles.formSection}>
+        <View style={[styles.formSection, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
           <TextInput
             label="Rider Email"
             mode="outlined"
             value={email}
             onChangeText={setEmail}
-            textColor="#FFFFFF"
-            outlineColor="#2a3347"
-            activeOutlineColor="#ff6b00"
-            style={styles.input}
+            textColor={theme.colors.text}
+            outlineColor={theme.colors.border}
+            activeOutlineColor={theme.colors.primary}
+            style={[styles.input, { backgroundColor: isDark ? theme.colors.inputBg : "#ffffff" }]}
             disabled={loading}
             autoCapitalize="none"
             keyboardType="email-address"
@@ -76,18 +79,18 @@ const LoginScreen = () => {
             mode="outlined"
             value={password}
             onChangeText={setPassword}
-            textColor="#FFFFFF"
-            outlineColor="#2a3347"
-            activeOutlineColor="#ff6b00"
+            textColor={theme.colors.text}
+            outlineColor={theme.colors.border}
+            activeOutlineColor={theme.colors.primary}
             secureTextEntry={secureText}
             right={
               <TextInput.Icon 
                 icon={secureText ? "eye-off" : "eye"} 
-                color="#667085"
+                color={theme.colors.placeholder}
                 onPress={() => setSecureText(!secureText)} 
               />
             }
-            style={styles.input}
+            style={[styles.input, { backgroundColor: isDark ? theme.colors.inputBg : "#ffffff" }]}
             disabled={loading}
           />
 
@@ -96,7 +99,7 @@ const LoginScreen = () => {
             onPress={handleLogin}
             loading={loading}
             disabled={loading}
-            buttonColor="#ff6b00"
+            buttonColor={theme.colors.primary}
             textColor="#FFFFFF"
             style={styles.loginBtn}
             labelStyle={styles.btnLabel}
@@ -105,7 +108,7 @@ const LoginScreen = () => {
           </Button>
         </View>
 
-        <Text style={styles.footerText}>Protected by FoodExpress Security Protocols</Text>
+        <Text style={[styles.footerText, { color: theme.colors.subtext }]}>Protected by FoodExpress Security Protocols</Text>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -114,7 +117,6 @@ const LoginScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0b0f19",
   },
   scrollContent: {
     flexGrow: 1,
@@ -129,7 +131,6 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 20,
-    backgroundColor: "#ff6b00",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,
@@ -138,25 +139,20 @@ const styles = StyleSheet.create({
   brandTitle: {
     fontSize: 24,
     fontWeight: "bold",
-    color: "#FFFFFF",
   },
   brandSubtitle: {
     fontSize: 11,
     fontWeight: "bold",
-    color: "#ff6b00",
     textTransform: "uppercase",
     letterSpacing: 2,
     marginTop: 4,
   },
   formSection: {
-    backgroundColor: "#161b26",
     padding: 24,
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: "#222a3a",
   },
   input: {
-    backgroundColor: "transparent",
     marginBottom: 16,
   },
   loginBtn: {
@@ -170,7 +166,6 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 10,
-    color: "#475467",
     textAlign: "center",
     marginTop: 40,
     fontWeight: "600",

@@ -3,8 +3,10 @@ import { View, StyleSheet, ScrollView, Alert, Linking, TouchableOpacity, Platfor
 import { Text, Card, Button, ActivityIndicator, TextInput } from "react-native-paper";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import api from "../../utils/api";
+import { useThemeContext } from "../../utils/ThemeContext";
 
 const OrderDetailsScreen = ({ route, navigation }) => {
+  const { isDark, theme } = useThemeContext();
   const { orderId } = route.params;
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -133,17 +135,17 @@ const OrderDetailsScreen = ({ route, navigation }) => {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
       >
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, { backgroundColor: theme.colors.headerBg, borderColor: theme.colors.border }]}>
           <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-            <MaterialCommunityIcons name="arrow-left" size={24} color="#FFFFFF" />
+            <MaterialCommunityIcons name="arrow-left" size={24} color={theme.colors.text} />
           </TouchableOpacity>
-          <Text style={styles.title}>Order #{order.orderNumber || order._id.slice(-6).toUpperCase()}</Text>
+          <Text style={[styles.title, { color: theme.colors.text }]}>Order #{order.orderNumber || order._id.slice(-6).toUpperCase()}</Text>
         </View>
 
         <ScrollView 
@@ -153,25 +155,25 @@ const OrderDetailsScreen = ({ route, navigation }) => {
         >
         
         {/* Status indicator */}
-        <Card style={styles.infoCard}>
+        <Card style={[styles.infoCard, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
           <Card.Content>
             <View style={styles.row}>
-              <Text style={styles.label}>Delivery Workflow State:</Text>
+              <Text style={[styles.label, { color: theme.colors.subtext }]}>Delivery Workflow State:</Text>
               <Text style={styles.valueHighlight}>{order.deliveryStatus || "Assigned"}</Text>
             </View>
             <View style={[styles.row, { marginTop: 8 }]}>
-              <Text style={styles.label}>Payment Option:</Text>
-              <Text style={styles.value}>{order.paymentMethod} ({order.paymentStatus})</Text>
+              <Text style={[styles.label, { color: theme.colors.subtext }]}>Payment Option:</Text>
+              <Text style={[styles.value, { color: theme.colors.text }]}>{order.paymentMethod} ({order.paymentStatus})</Text>
             </View>
           </Card.Content>
         </Card>
 
         {/* Restaurant details */}
-        <Card style={styles.detailsCard}>
+        <Card style={[styles.detailsCard, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
           <Card.Content>
-            <Text style={styles.sectionHeader}>Pick Up Details (Restaurant)</Text>
-            <Text style={styles.partnerName}>{order.restaurant?.name || "Kitchen"}</Text>
-            <Text style={styles.addressText}>{order.restaurant?.address}</Text>
+            <Text style={[styles.sectionHeader, { color: theme.colors.subtext }]}>Pick Up Details (Restaurant)</Text>
+            <Text style={[styles.partnerName, { color: theme.colors.text }]}>{order.restaurant?.name || "Kitchen"}</Text>
+            <Text style={[styles.addressText, { color: theme.colors.subtext }]}>{order.restaurant?.address}</Text>
             
             <View style={styles.actionRow}>
               <Button

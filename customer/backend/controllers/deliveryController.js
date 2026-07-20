@@ -174,7 +174,22 @@ exports.updateDeliveryStatus = async (req, res) => {
 // 5. Get Rider Earnings & Performance widgets
 exports.getRiderEarnings = async (req, res) => {
   try {
-    const orders = await Order.find({ deliveryBoy: req.user._id, status: "Delivered" });
+    const mongoose = require("mongoose");
+    const rId = req.user._id;
+    const objectId = mongoose.Types.ObjectId.isValid(rId) ? new mongoose.Types.ObjectId(rId) : rId;
+
+    const orders = await Order.find({ 
+      $or: [
+        { deliveryBoy: rId },
+        { deliveryBoy: objectId }
+      ],
+      $or: [
+        { status: { $in: ["Delivered", "Completed"] } },
+        { deliveryStatus: { $in: ["Delivered", "Completed"] } },
+        { riderStatus: { $in: ["Delivered", "Completed"] } },
+        { orderStatus: { $in: ["Delivered", "Completed"] } }
+      ]
+    });
 
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
@@ -188,11 +203,21 @@ exports.getRiderEarnings = async (req, res) => {
     let todayEarnings = 0;
     let weeklyEarnings = 0;
     let monthlyEarnings = 0;
+    let totalEarnings = 0;
+    let cashCollected = 0;
+    let onlineEarnings = 0;
 
     orders.forEach((o) => {
       const orderDate = new Date(o.createdAt);
-      // We assume delivery fee payout to rider is ₹40 per completed delivery (deliveryCharge value)
       const pay = o.deliveryCharge || 40;
+      totalEarnings += pay;
+
+      const isCOD = !o.paymentMethod || o.paymentMethod.toLowerCase().includes("cash") || o.paymentMethod.toUpperCase() === "COD";
+      if (isCOD) {
+        cashCollected += o.totalAmount || 0;
+      } else {
+        onlineEarnings += o.totalAmount || 0;
+      }
 
       if (orderDate >= todayStart) {
         todayEarnings += pay;
@@ -208,34 +233,76 @@ exports.getRiderEarnings = async (req, res) => {
     const reviews = await Review.find({ deliveryBoy: req.user._id, status: "Approved" });
     const avgRating = reviews.length > 0
       ? Number((reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1))
-      : 4.8; // Default rating
+      : 4.8;
 
     res.json({
       todayEarnings,
       weeklyEarnings,
       monthlyEarnings,
+      totalEarnings,
+      cashCollected,
+      onlineEarnings,
       completedCount: orders.length,
       avgRating,
       ratingCount: reviews.length,
-      averageDeliveryTime: 25, // Mock default in minutes
+      averageDeliveryTime: 25,
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
 
-// 6. Get Rider Delivery History
+// 6. Get Rider Delivery History with Money Records
 exports.getRiderHistory = async (req, res) => {
   try {
+    const mongoose = require("mongoose");
+    const rId = req.user._id;
+    const objectId = mongoose.Types.ObjectId.isValid(rId) ? new mongoose.Types.ObjectId(rId) : rId;
+
     const orders = await Order.find({
-      deliveryBoy: req.user._id,
-      status: { $in: ["Delivered", "Completed", "Cancelled"] },
+      $or: [
+        { deliveryBoy: rId },
+        { deliveryBoy: objectId }
+      ]
     })
       .populate("user", "name phone email")
       .populate("restaurant", "name address")
+      .populate("items.food", "name image price")
       .sort({ createdAt: -1 });
 
-    res.json(orders);
+    let completedCount = 0;
+    let totalEarnings = 0;
+    let cashCollected = 0;
+    let onlineEarnings = 0;
+
+    orders.forEach((o) => {
+      const isCompleted = ["Delivered", "Completed"].includes(o.status) || 
+                          ["Delivered", "Completed"].includes(o.deliveryStatus) ||
+                          ["Delivered", "Completed"].includes(o.riderStatus) ||
+                          ["Delivered", "Completed"].includes(o.orderStatus);
+
+      if (isCompleted) {
+        completedCount += 1;
+        totalEarnings += o.deliveryCharge || 40;
+        const isCOD = !o.paymentMethod || o.paymentMethod.toLowerCase().includes("cash") || o.paymentMethod.toUpperCase() === "COD";
+        if (isCOD) {
+          cashCollected += o.totalAmount || 0;
+        } else {
+          onlineEarnings += o.totalAmount || 0;
+        }
+      }
+    });
+
+    res.json({
+      summary: {
+        completedCount,
+        totalEarnings,
+        cashCollected,
+        onlineEarnings,
+        totalOrders: orders.length,
+      },
+      orders,
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

@@ -6,9 +6,11 @@ import CustomScreenHeader from "../../components/CustomScreenHeader";
 import { fetchWishlist, removeFoodFromWishlist } from "../../redux/slices/wishlistSlice";
 import { addToCart } from "../../redux/slices/cartSlice";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useThemeContext } from "../../constants/ThemeContext";
 
 const WishlistScreen = ({ navigation }) => {
   const dispatch = useDispatch();
+  const { isDark, theme } = useThemeContext();
   const { items, loading } = useSelector((state) => state.wishlist);
   const [snackbarVisible, setSnackbarVisible] = React.useState(false);
   const [snackbarMsg, setSnackbarMsg] = React.useState("");
@@ -117,9 +119,9 @@ const WishlistScreen = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#ffffff" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <CustomScreenHeader title="My Wishlist" navigation={navigation} redirectToHome={true} />
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
 
       <FlatList
         data={items}

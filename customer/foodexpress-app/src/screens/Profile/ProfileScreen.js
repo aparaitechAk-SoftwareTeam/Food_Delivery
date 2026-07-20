@@ -32,11 +32,13 @@ import {
 } from "../../redux/slices/authSlice";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { openWhatsAppSupport } from "../../utils/whatsappHelper";
+import { useThemeContext } from "../../constants/ThemeContext";
 
 const ProfileScreen = ({ navigation }) => {
   const dispatch = useDispatch();
   const { userProfile, addresses } = useSelector((state) => state.auth);
   const { items: wishlistFoods } = useSelector((state) => state.wishlist);
+  const { isDark, theme, toggleTheme } = useThemeContext();
 
   useEffect(() => {
     const unsubscribe = navigation.addListener("focus", () => {
@@ -198,11 +200,11 @@ My Issue: `;
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#ffffff" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <CustomScreenHeader title="My Account" navigation={navigation} redirectToHome={true} />
-      <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+      <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]} contentContainerStyle={styles.contentContainer}>
       {/* User Header Profile */}
-      <View style={styles.profileHeader}>
+      <View style={[styles.profileHeader, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
         {userProfile?.profilePhoto ? (
           <Avatar.Image
             size={74}
@@ -218,21 +220,21 @@ My Issue: `;
         )}
         <View style={styles.profileInfo}>
           <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap" }}>
-            <Text style={userProfile?.name ? styles.profileName : [styles.profileName, { color: "#999", fontStyle: "italic", fontSize: 15 }]}>
+            <Text style={userProfile?.name ? [styles.profileName, { color: theme.colors.text }] : [styles.profileName, { color: theme.colors.subtext, fontStyle: "italic", fontSize: 15 }]}>
               {userProfile?.name || "Enter your full name"}
             </Text>
             {userProfile?.isGoldMember && userProfile?.goldExpiry && new Date(userProfile.goldExpiry) > new Date() && (
               <MaterialCommunityIcons name="crown" size={18} color="#D4AF37" style={{ marginLeft: 6 }} />
             )}
           </View>
-          <Text style={styles.profileEmail}>{userProfile?.email || ""}</Text>
-          <Text style={styles.profilePhone}>
+          <Text style={[styles.profileEmail, { color: theme.colors.subtext }]}>{userProfile?.email || ""}</Text>
+          <Text style={[styles.profilePhone, { color: theme.colors.subtext }]}>
             {userProfile?.phone ? `+91 ${userProfile.phone}` : "Add Mobile Number"}
           </Text>
         </View>
         <IconButton
           icon="pencil-outline"
-          iconColor="#ff6b00"
+          iconColor={theme.colors.primary}
           size={20}
           onPress={handleOpenEdit}
           style={styles.editIconBtn}
@@ -240,43 +242,58 @@ My Issue: `;
       </View>
 
       {/* Navigation Shortcut Menu Links */}
-      <Card style={styles.menuCard}>
+      <Card style={[styles.menuCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
         <TouchableOpacity
           style={styles.menuItem}
           onPress={() => navigation.navigate("Orders")}
         >
           <View style={styles.menuItemLeft}>
-            <MaterialCommunityIcons name="receipt" size={22} color="#ff6b00" />
-            <Text style={styles.menuItemText}>My Orders</Text>
+            <MaterialCommunityIcons name="receipt" size={22} color={theme.colors.primary} />
+            <Text style={[styles.menuItemText, { color: theme.colors.text }]}>My Orders</Text>
           </View>
-          <MaterialCommunityIcons name="chevron-right" size={20} color="#bbb" />
+          <MaterialCommunityIcons name="chevron-right" size={20} color={theme.colors.subtext} />
         </TouchableOpacity>
 
-        <Divider style={styles.menuDivider} />
+        <Divider style={[styles.menuDivider, { backgroundColor: theme.colors.divider }]} />
 
         <TouchableOpacity
           style={styles.menuItem}
           onPress={() => navigation.navigate("Wishlist")}
         >
           <View style={styles.menuItemLeft}>
-            <MaterialCommunityIcons name="heart-outline" size={22} color="#ff6b00" />
-            <Text style={styles.menuItemText}>Saved Dishes ({wishlistFoods?.length || 0})</Text>
+            <MaterialCommunityIcons name="heart-outline" size={22} color={theme.colors.primary} />
+            <Text style={[styles.menuItemText, { color: theme.colors.text }]}>Saved Dishes ({wishlistFoods?.length || 0})</Text>
           </View>
-          <MaterialCommunityIcons name="chevron-right" size={20} color="#bbb" />
+          <MaterialCommunityIcons name="chevron-right" size={20} color={theme.colors.subtext} />
         </TouchableOpacity>
 
-        <Divider style={styles.menuDivider} />
+        <Divider style={[styles.menuDivider, { backgroundColor: theme.colors.divider }]} />
 
         <TouchableOpacity
           style={styles.menuItem}
           onPress={() => navigation.navigate("Coupons")}
         >
           <View style={styles.menuItemLeft}>
-            <MaterialCommunityIcons name="gift-outline" size={22} color="#ff6b00" />
-            <Text style={styles.menuItemText}>Cashback & Rewards</Text>
+            <MaterialCommunityIcons name="gift-outline" size={22} color={theme.colors.primary} />
+            <Text style={[styles.menuItemText, { color: theme.colors.text }]}>Cashback & Rewards</Text>
           </View>
-          <MaterialCommunityIcons name="chevron-right" size={20} color="#bbb" />
+          <MaterialCommunityIcons name="chevron-right" size={20} color={theme.colors.subtext} />
         </TouchableOpacity>
+
+        <Divider style={[styles.menuDivider, { backgroundColor: theme.colors.divider }]} />
+
+        {/* 🌙 Dark Mode Switch */}
+        <View style={styles.menuItem}>
+          <View style={styles.menuItemLeft}>
+            <MaterialCommunityIcons name="weather-night" size={22} color={theme.colors.primary} />
+            <Text style={[styles.menuItemText, { color: theme.colors.text }]}>Dark Mode</Text>
+          </View>
+          <Switch
+            value={isDark}
+            onValueChange={toggleTheme}
+            color={theme.colors.primary}
+          />
+        </View>
       </Card>
 
       {/* Saved Addresses Section */}

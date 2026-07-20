@@ -19,6 +19,7 @@ import { Text, ActivityIndicator, IconButton, Card, Button } from "react-native-
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useDispatch, useSelector } from "react-redux";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useThemeContext } from "../../constants/ThemeContext";
 
 // Redux Actions & Utilities
 import { fetchFoods } from "../../redux/slices/foodsSlice";
@@ -83,6 +84,7 @@ const getCategoryImage = (item) => {
 
 const HomeScreen = ({ navigation }) => {
   const dispatch = useDispatch();
+  const { isDark, theme } = useThemeContext();
 
   // Redux Selectors
   const { categories: rawCategories, restaurants, foods, loading, error } = useSelector((state) => state.foods);
@@ -405,8 +407,8 @@ const HomeScreen = ({ navigation }) => {
   }
 
   return (
-    <View style={styles.container}>
-      <SafeAreaView edges={["top"]} style={styles.safeArea}>
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <SafeAreaView edges={["top"]} style={[styles.safeArea, { backgroundColor: theme.colors.surface }]}>
         {/* Sticky Header */}
         <Header
           activeAddress={activeAddress}

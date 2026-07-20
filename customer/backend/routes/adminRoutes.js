@@ -34,6 +34,7 @@ const {
   updateReviewStatus,
   deleteReview,
   getDeliveryBoys,
+  getDeliveryBoyHistory,
   createDeliveryBoy,
   updateDeliveryBoy,
   deleteDeliveryBoy,
@@ -132,6 +133,7 @@ router.delete("/reviews/:id", deleteReview);
 
 // Delivery Boy Management Integrations
 router.get("/delivery-boys", getDeliveryBoys);
+router.get("/delivery-boys/:id/history", getDeliveryBoyHistory);
 router.post("/delivery-boys", createDeliveryBoy);
 router.put("/delivery-boys/:id", updateDeliveryBoy);
 router.delete("/delivery-boys/:id", deleteDeliveryBoy);

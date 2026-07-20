@@ -1,9 +1,12 @@
 import React from "react";
-import { View, StyleSheet, TouchableOpacity, Platform, SafeAreaView } from "react-native";
+import { View, StyleSheet, TouchableOpacity, SafeAreaView } from "react-native";
 import { Text } from "react-native-paper";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useThemeContext } from "../constants/ThemeContext";
 
 const CustomScreenHeader = ({ title, navigation, showBack = true, rightAction, redirectToHome = false }) => {
+  const { theme } = useThemeContext();
+
   const handleBack = () => {
     if (redirectToHome && navigation) {
       navigation.navigate("Main", { screen: "Home" });
@@ -15,7 +18,7 @@ const CustomScreenHeader = ({ title, navigation, showBack = true, rightAction, r
   const shouldShowBack = showBack && navigation && (navigation.canGoBack() || redirectToHome);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.headerBg, borderBottomColor: theme.colors.border }]}>
       <View style={styles.headerContainer}>
         {shouldShowBack ? (
           <TouchableOpacity
@@ -25,14 +28,14 @@ const CustomScreenHeader = ({ title, navigation, showBack = true, rightAction, r
             accessibilityRole="button"
             accessibilityLabel="Go back"
           >
-            <MaterialCommunityIcons name="arrow-left" size={24} color="#ff6b00" />
+            <MaterialCommunityIcons name="arrow-left" size={24} color={theme.colors.primary} />
           </TouchableOpacity>
         ) : (
           <View style={styles.backPlaceholder} />
         )}
 
         <View style={styles.titleContainer}>
-          <Text numberOfLines={1} style={styles.titleText}>
+          <Text numberOfLines={1} style={[styles.titleText, { color: theme.colors.text }]}>
             {title}
           </Text>
         </View>
@@ -49,9 +52,7 @@ const CustomScreenHeader = ({ title, navigation, showBack = true, rightAction, r
 
 const styles = StyleSheet.create({
   safeArea: {
-    backgroundColor: "#ffffff",
     borderBottomWidth: 1,
-    borderBottomColor: "#e4e7ec",
   },
   headerContainer: {
     height: 56,
@@ -79,7 +80,6 @@ const styles = StyleSheet.create({
   titleText: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "#1d2939",
     textAlign: "center",
   },
   rightActionContainer: {

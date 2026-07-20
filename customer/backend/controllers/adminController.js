@@ -64,22 +64,32 @@ exports.getAdminProfile = async (req, res) => {
 };
 
 exports.getDashboardStats = async (req, res) => {
-  
-
   try {
     const totalUsers = await User.countDocuments();
     const totalRestaurants = await Restaurant.countDocuments();
     const totalOrders = await Order.countDocuments();
     const activeCoupons = await Coupon.countDocuments({ active: true });
     
-    const deliveredOrders = await Order.find({ status: "Delivered" });
-    const revenue = deliveredOrders.reduce((sum, o) => sum + o.totalAmount, 0);
+    const validOrders = await Order.find({ status: { $ne: "Cancelled" } });
+    const revenue = validOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+
+    const deliveredOrders = validOrders.filter((o) =>
+      ["Delivered", "Completed"].includes(o.status) || 
+      ["Delivered", "Completed"].includes(o.deliveryStatus) ||
+      ["Delivered", "Completed"].includes(o.riderStatus) ||
+      ["Delivered", "Completed"].includes(o.orderStatus)
+    );
+    const deliveredRevenue = deliveredOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+    const driverCut = deliveredOrders.reduce((sum, o) => sum + (o.deliveryCharge || 40), 0);
 
     res.json({
       totalUsers,
       totalRestaurants,
       totalOrders,
       revenue,
+      deliveredRevenue,
+      driverCut,
+      netRevenue: revenue - driverCut,
       activeCoupons,
       avgOrderValue: totalOrders > 0 ? parseFloat((revenue / totalOrders).toFixed(2)) : 0
     });
@@ -89,7 +99,6 @@ exports.getDashboardStats = async (req, res) => {
 };
 
 exports.getUsersList = async (req, res) => {
-  
   try {
     const users = await User.find().select("-password");
     res.json(users);
@@ -99,7 +108,6 @@ exports.getUsersList = async (req, res) => {
 };
 
 exports.getRestaurantsList = async (req, res) => {
-  
   try {
     const restaurants = await Restaurant.find();
     res.json(restaurants);
@@ -109,9 +117,12 @@ exports.getRestaurantsList = async (req, res) => {
 };
 
 exports.getOrdersList = async (req, res) => {
-  
   try {
-    const orders = await Order.find().populate("user").populate("restaurant").sort({ createdAt: -1 });
+    const orders = await Order.find()
+      .populate("user", "name phone email")
+      .populate("restaurant", "name address")
+      .populate("deliveryBoy", "name phone email vehicleType vehicleNumber")
+      .sort({ createdAt: -1 });
     res.json(orders);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -119,14 +130,23 @@ exports.getOrdersList = async (req, res) => {
 };
 
 exports.getRevenueAnalytics = async (req, res) => {
-  
   try {
     const monthlyRevenue = await Order.aggregate([
-      { $match: { status: "Delivered" } },
+      { 
+        $match: { 
+          $or: [
+            { status: { $in: ["Delivered", "Completed"] } },
+            { deliveryStatus: { $in: ["Delivered", "Completed"] } },
+            { riderStatus: { $in: ["Delivered", "Completed"] } },
+            { orderStatus: { $in: ["Delivered", "Completed"] } }
+          ]
+        } 
+      },
       {
         $group: {
           _id: { $month: "$createdAt" },
-          revenue: { $sum: "$totalAmount" }
+          revenue: { $sum: "$totalAmount" },
+          driverCut: { $sum: { $ifNull: ["$deliveryCharge", 40] } }
         }
       },
       { $sort: { "_id": 1 } }
@@ -618,10 +638,144 @@ exports.deleteReview = async (req, res) => {
 // ── Delivery Boy Management ───────────────────────────────────────────────────
 
 exports.getDeliveryBoys = async (req, res) => {
-  
   try {
-    const riders = await User.find({ role: "delivery" }).select("-password");
-    res.json(riders);
+    const mongoose = require("mongoose");
+    const riders = await User.find({ role: "delivery" }).select("-password").lean();
+    const riderIds = riders.map((r) => r._id);
+
+    const objectRiderIds = riderIds.map((id) => (mongoose.Types.ObjectId.isValid(id) ? new mongoose.Types.ObjectId(id) : id));
+    const stringRiderIds = riderIds.map((id) => id.toString());
+    
+    const orders = await Order.find({
+      $or: [
+        { deliveryBoy: { $in: objectRiderIds } },
+        { deliveryBoy: { $in: stringRiderIds } }
+      ]
+    }).select("deliveryBoy totalAmount deliveryCharge paymentMethod status deliveryStatus riderStatus orderStatus createdAt");
+
+    const statsMap = {};
+    riderIds.forEach((id) => {
+      statsMap[id.toString()] = {
+        completedCount: 0,
+        totalEarnings: 0,
+        cashCollected: 0,
+        onlineEarnings: 0,
+        activeCount: 0,
+      };
+    });
+
+    orders.forEach((o) => {
+      if (!o.deliveryBoy) return;
+      const rId = o.deliveryBoy.toString();
+      if (!statsMap[rId]) return;
+
+      const isCompleted = ["Delivered", "Completed"].includes(o.status) || 
+                          ["Delivered", "Completed"].includes(o.deliveryStatus) ||
+                          ["Delivered", "Completed"].includes(o.riderStatus) ||
+                          ["Delivered", "Completed"].includes(o.orderStatus);
+
+      const isActive = ["Assigned", "Accepted", "Arrived At Restaurant", "Picked Up"].includes(o.deliveryStatus) ||
+                       ["Assigned", "Accepted", "Arrived At Restaurant", "Picked Up"].includes(o.status);
+      
+      if (isCompleted) {
+        statsMap[rId].completedCount += 1;
+        statsMap[rId].totalEarnings += o.deliveryCharge || 40;
+        
+        const isCOD = !o.paymentMethod || o.paymentMethod.toLowerCase().includes("cash") || o.paymentMethod.toUpperCase() === "COD";
+        if (isCOD) {
+          statsMap[rId].cashCollected += o.totalAmount || 0;
+        } else {
+          statsMap[rId].onlineEarnings += o.totalAmount || 0;
+        }
+      } else if (isActive) {
+        statsMap[rId].activeCount += 1;
+      }
+    });
+
+    const enrichedRiders = riders.map((r) => {
+      const s = statsMap[r._id.toString()] || {
+        completedCount: 0,
+        totalEarnings: 0,
+        cashCollected: 0,
+        onlineEarnings: 0,
+        activeCount: 0,
+      };
+      return {
+        ...r,
+        completedCount: s.completedCount,
+        totalEarnings: s.totalEarnings,
+        cashCollected: s.cashCollected,
+        onlineEarnings: s.onlineEarnings,
+        activeCount: s.activeCount,
+      };
+    });
+
+    res.json(enrichedRiders);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.getDeliveryBoyHistory = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const mongoose = require("mongoose");
+    const rider = await User.findOne({ _id: id, role: "delivery" }).select("-password");
+    if (!rider) {
+      return res.status(404).json({ message: "Delivery rider not found" });
+    }
+
+    const objectId = mongoose.Types.ObjectId.isValid(id) ? new mongoose.Types.ObjectId(id) : id;
+
+    const orders = await Order.find({
+      $or: [
+        { deliveryBoy: id },
+        { deliveryBoy: objectId }
+      ]
+    })
+      .populate("user", "name phone email")
+      .populate("restaurant", "name address")
+      .populate("items.food", "name image price")
+      .sort({ createdAt: -1 });
+
+    let completedCount = 0;
+    let cancelledCount = 0;
+    let totalEarnings = 0;
+    let cashCollected = 0;
+    let onlineEarnings = 0;
+
+    orders.forEach((o) => {
+      const isCompleted = ["Delivered", "Completed"].includes(o.status) || 
+                          ["Delivered", "Completed"].includes(o.deliveryStatus) ||
+                          ["Delivered", "Completed"].includes(o.riderStatus) ||
+                          ["Delivered", "Completed"].includes(o.orderStatus);
+
+      if (isCompleted) {
+        completedCount += 1;
+        totalEarnings += o.deliveryCharge || 40;
+        const isCOD = !o.paymentMethod || o.paymentMethod.toLowerCase().includes("cash") || o.paymentMethod.toUpperCase() === "COD";
+        if (isCOD) {
+          cashCollected += o.totalAmount || 0;
+        } else {
+          onlineEarnings += o.totalAmount || 0;
+        }
+      } else if (o.status === "Cancelled" || o.deliveryStatus === "Cancelled") {
+        cancelledCount += 1;
+      }
+    });
+
+    res.json({
+      rider,
+      summary: {
+        totalOrders: orders.length,
+        completedCount,
+        cancelledCount,
+        totalEarnings,
+        cashCollected,
+        onlineEarnings,
+      },
+      orders,
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

@@ -7,8 +7,11 @@ import { addToCart, removeFromCart, increaseQuantity, decreaseQuantity } from ".
 import { addFoodToWishlist, removeFoodFromWishlist } from "../redux/slices/wishlistSlice";
 import CustomizationBottomSheet from "./CustomizationBottomSheet";
 
+import { useThemeContext } from "../constants/ThemeContext";
+
 const FoodCard = ({ food, navigation }) => {
   const dispatch = useDispatch();
+  const { isDark, theme } = useThemeContext();
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const [customizeVisible, setCustomizeVisible] = useState(false);
   const isAvailable = food.isAvailable !== false;
@@ -117,7 +120,7 @@ const FoodCard = ({ food, navigation }) => {
   };
 
   return (
-    <Animated.View style={[styles.card, { transform: [{ scale: scaleAnim }] }, !isAvailable && { opacity: 0.6 }]}>
+    <Animated.View style={[styles.card, { backgroundColor: theme.colors.card, borderColor: theme.colors.cardBorder, transform: [{ scale: scaleAnim }] }, !isAvailable && { opacity: 0.6 }]}>
       <TouchableOpacity
         activeOpacity={0.9}
         onPress={() => navigation && navigation.navigate("FoodDetails", { foodId: food.id || food._id, discountPercentage: food.discountPercentage })}
@@ -138,14 +141,14 @@ const FoodCard = ({ food, navigation }) => {
 
             {/* Wishlist Heart */}
             <TouchableOpacity
-              style={styles.heartButton}
+              style={[styles.heartButton, { backgroundColor: isDark ? "#2a2a2a" : "#FFFFFF" }]}
               onPress={handleWishlistPress}
               activeOpacity={0.7}
             >
               <MaterialCommunityIcons
                 name={isWishlisted ? "heart" : "heart-outline"}
                 size={20}
-                color={isWishlisted ? "#FF6F61" : "#475467"}
+                color={isWishlisted ? "#FF6F61" : (isDark ? "#bbbbbb" : "#475467")}
               />
             </TouchableOpacity>
           </View>
@@ -174,12 +177,12 @@ const FoodCard = ({ food, navigation }) => {
         {/* Info Section */}
         <View style={styles.infoWrapper}>
           {/* Category / Cuisine Label */}
-          <Text style={styles.restaurantName} numberOfLines={1}>
+          <Text style={[styles.restaurantName, { color: theme.colors.subtext }]} numberOfLines={1}>
             {food.category?.name || food.cuisine || "Specialty"}
           </Text>
 
           {/* Food Name */}
-          <Text style={styles.foodName} numberOfLines={1}>
+          <Text style={[styles.foodName, { color: theme.colors.text }]} numberOfLines={1}>
             {food.name}
           </Text>
 
@@ -187,12 +190,12 @@ const FoodCard = ({ food, navigation }) => {
           <View style={styles.metaRow}>
             <View style={styles.metaItem}>
               <MaterialCommunityIcons name="star" size={14} color="#FF9F43" />
-              <Text style={styles.metaText}>{food.rating ? food.rating.toFixed(1) : "0.0"}</Text>
+              <Text style={[styles.metaText, { color: theme.colors.subtext }]}>{food.rating ? food.rating.toFixed(1) : "0.0"}</Text>
             </View>
             <View style={styles.metaDot} />
             <View style={styles.metaItem}>
-              <MaterialCommunityIcons name="clock-outline" size={12} color="#667085" />
-              <Text style={styles.metaText}>{food.preparationTime || 20} min</Text>
+              <MaterialCommunityIcons name="clock-outline" size={12} color={theme.colors.subtext} />
+              <Text style={[styles.metaText, { color: theme.colors.subtext }]}>{food.preparationTime || 20} min</Text>
             </View>
           </View>
         </View>
@@ -202,7 +205,7 @@ const FoodCard = ({ food, navigation }) => {
       <View style={[styles.infoWrapper, { paddingTop: 0 }]}>
         <View style={styles.footerRow}>
           <View style={styles.priceContainer}>
-            <Text style={styles.price}>₹{food.price}</Text>
+            <Text style={[styles.price, { color: theme.colors.text }]}>₹{food.price}</Text>
             {food.discountPercentage > 0 && (
               <Text style={styles.originalPrice}>₹{food.originalPrice}</Text>
             )}

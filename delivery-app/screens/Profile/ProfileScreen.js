@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useContext } from "react";
 import { View, StyleSheet, TouchableOpacity, ScrollView, Alert, Image } from "react-native";
-import { Text, Card, TextInput, Button, ActivityIndicator } from "react-native-paper";
+import { Text, Card, TextInput, Button, ActivityIndicator, Switch } from "react-native-paper";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import api from "../../utils/api";
 import { AuthContext } from "../../App";
+import { useThemeContext } from "../../utils/ThemeContext";
 
 const ProfileScreen = ({ navigation }) => {
   const { signOut } = useContext(AuthContext);
+  const { isDark, theme, toggleTheme } = useThemeContext();
   const [rider, setRider] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -65,7 +67,6 @@ const ProfileScreen = ({ navigation }) => {
 
     setUpdatingPassword(true);
     try {
-      // Endpoint is handled inside standard auth change password
       await api.post("/auth/reset-password", {
         email: rider.email,
         password: password.trim()
@@ -82,8 +83,8 @@ const ProfileScreen = ({ navigation }) => {
 
   if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator color="#ff6b00" size="large" />
+      <View style={[styles.center, { backgroundColor: theme.colors.background }]}>
+        <ActivityIndicator color={theme.colors.primary} size="large" />
       </View>
     );
   }
@@ -91,61 +92,79 @@ const ProfileScreen = ({ navigation }) => {
   if (!rider) return null;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: theme.colors.headerBg, borderColor: theme.colors.border }]}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <MaterialCommunityIcons name="arrow-left" size={24} color="#FFFFFF" />
+          <MaterialCommunityIcons name="arrow-left" size={24} color={theme.colors.text} />
         </TouchableOpacity>
-        <Text style={styles.title}>Rider Profile</Text>
+        <Text style={[styles.title, { color: theme.colors.text }]}>Rider Profile</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Profile Card */}
-        <Card style={styles.profileCard}>
+        <Card style={[styles.profileCard, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
           <Card.Content style={styles.avatarCol}>
             <Image 
               source={{ uri: rider.profilePhoto || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80" }} 
-              style={styles.avatar} 
+              style={[styles.avatar, { borderColor: theme.colors.primary }]} 
             />
-            <Text style={styles.name}>{rider.name}</Text>
-            <Text style={styles.roleLabel}>FoodExpress Delivery Executive</Text>
+            <Text style={[styles.name, { color: theme.colors.text }]}>{rider.name}</Text>
+            <Text style={[styles.roleLabel, { color: theme.colors.subtext }]}>FoodExpress Delivery Executive</Text>
           </Card.Content>
         </Card>
 
         {/* Vehicle particulars */}
-        <Card style={styles.sectionCard}>
+        <Card style={[styles.sectionCard, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
           <Card.Content>
-            <Text style={styles.sectionTitle}>Vehicle & License Details</Text>
+            <Text style={[styles.sectionTitle, { color: theme.colors.subtext }]}>Vehicle & License Details</Text>
             
             <View style={styles.row}>
               <View style={styles.metaCol}>
-                <Text style={styles.metaLabel}>Vehicle Type</Text>
-                <Text style={styles.metaVal}>{rider.vehicleType || "Bike"}</Text>
+                <Text style={[styles.metaLabel, { color: theme.colors.subtext }]}>Vehicle Type</Text>
+                <Text style={[styles.metaVal, { color: theme.colors.text }]}>{rider.vehicleType || "Bike"}</Text>
               </View>
               <View style={styles.metaCol}>
-                <Text style={styles.metaLabel}>License Number</Text>
-                <Text style={styles.metaVal}>{rider.licenseNumber || "N/A"}</Text>
+                <Text style={[styles.metaLabel, { color: theme.colors.subtext }]}>License Number</Text>
+                <Text style={[styles.metaVal, { color: theme.colors.text }]}>{rider.licenseNumber || "N/A"}</Text>
               </View>
             </View>
 
             <View style={[styles.row, { marginTop: 14 }]}>
               <View style={styles.metaCol}>
-                <Text style={styles.metaLabel}>License Plate Code</Text>
-                <Text style={styles.metaVal}>{rider.vehicleNumber || "N/A"}</Text>
+                <Text style={[styles.metaLabel, { color: theme.colors.subtext }]}>License Plate Code</Text>
+                <Text style={[styles.metaVal, { color: theme.colors.text }]}>{rider.vehicleNumber || "N/A"}</Text>
               </View>
               <View style={styles.metaCol}>
-                <Text style={styles.metaLabel}>Contact Phone</Text>
-                <Text style={styles.metaVal}>{rider.phone || "N/A"}</Text>
+                <Text style={[styles.metaLabel, { color: theme.colors.subtext }]}>Contact Phone</Text>
+                <Text style={[styles.metaVal, { color: theme.colors.text }]}>{rider.phone || "N/A"}</Text>
               </View>
             </View>
           </Card.Content>
         </Card>
 
-        {/* Change password */}
-        <Card style={styles.sectionCard}>
+        {/* App Preferences / Dark Mode */}
+        <Card style={[styles.sectionCard, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
           <Card.Content>
-            <Text style={styles.sectionTitle}>Change Password</Text>
+            <Text style={[styles.sectionTitle, { color: theme.colors.subtext }]}>App Preferences</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 4 }}>
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <MaterialCommunityIcons name="weather-night" size={22} color={theme.colors.primary} style={{ marginRight: 10 }} />
+                <Text style={{ fontSize: 14, fontWeight: "bold", color: theme.colors.text }}>Dark Mode</Text>
+              </View>
+              <Switch
+                value={isDark}
+                onValueChange={toggleTheme}
+                color={theme.colors.primary}
+              />
+            </View>
+          </Card.Content>
+        </Card>
+
+        {/* Change password */}
+        <Card style={[styles.sectionCard, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+          <Card.Content>
+            <Text style={[styles.sectionTitle, { color: theme.colors.subtext }]}>Change Password</Text>
             
             <TextInput
               label="New Password"
@@ -153,10 +172,10 @@ const ProfileScreen = ({ navigation }) => {
               value={password}
               onChangeText={setPassword}
               secureTextEntry
-              textColor="#FFFFFF"
-              outlineColor="#2a3347"
-              activeOutlineColor="#ff6b00"
-              style={styles.input}
+              textColor={theme.colors.text}
+              outlineColor={theme.colors.border}
+              activeOutlineColor={theme.colors.primary}
+              style={[styles.input, { backgroundColor: isDark ? theme.colors.inputBg : "#ffffff" }]}
               disabled={updatingPassword}
             />
 
@@ -166,16 +185,16 @@ const ProfileScreen = ({ navigation }) => {
               value={confirmPassword}
               onChangeText={setConfirmPassword}
               secureTextEntry
-              textColor="#FFFFFF"
-              outlineColor="#2a3347"
-              activeOutlineColor="#ff6b00"
-              style={styles.input}
+              textColor={theme.colors.text}
+              outlineColor={theme.colors.border}
+              activeOutlineColor={theme.colors.primary}
+              style={[styles.input, { backgroundColor: isDark ? theme.colors.inputBg : "#ffffff" }]}
               disabled={updatingPassword}
             />
 
             <Button
               mode="contained"
-              buttonColor="#ff6b00"
+              buttonColor={theme.colors.primary}
               textColor="#ffffff"
               style={styles.saveBtn}
               onPress={handleChangePassword}
@@ -205,17 +224,14 @@ const ProfileScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0b0f19",
   },
   header: {
-    backgroundColor: "#161b26",
     paddingTop: 54,
     paddingHorizontal: 20,
     paddingBottom: 16,
     flexDirection: "row",
     alignItems: "center",
     borderBottomWidth: 1,
-    borderColor: "#222a3a",
   },
   backBtn: {
     marginRight: 16,
@@ -223,22 +239,18 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "#FFFFFF",
   },
   center: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#0b0f19",
   },
   scrollContent: {
     padding: 16,
     paddingBottom: 40,
   },
   profileCard: {
-    backgroundColor: "#161b26",
     borderWidth: 1,
-    borderColor: "#222a3a",
     borderRadius: 24,
     marginBottom: 16,
   },
@@ -251,32 +263,25 @@ const styles = StyleSheet.create({
     height: 72,
     borderRadius: 36,
     borderWidth: 2,
-    borderColor: "#ff6b00",
-    backgroundColor: "#222a3a",
   },
   name: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "#FFFFFF",
     marginTop: 12,
   },
   roleLabel: {
     fontSize: 10,
-    color: "#667085",
     fontWeight: "600",
     marginTop: 2,
   },
   sectionCard: {
-    backgroundColor: "#161b26",
     borderWidth: 1,
-    borderColor: "#222a3a",
     borderRadius: 24,
     marginBottom: 16,
   },
   sectionTitle: {
     fontSize: 11,
     fontWeight: "bold",
-    color: "#667085",
     textTransform: "uppercase",
     letterSpacing: 0.5,
     marginBottom: 14,
@@ -290,18 +295,15 @@ const styles = StyleSheet.create({
   },
   metaLabel: {
     fontSize: 9,
-    color: "#475467",
     fontWeight: "bold",
     textTransform: "uppercase",
   },
   metaVal: {
     fontSize: 12,
-    color: "#FFFFFF",
     fontWeight: "bold",
     marginTop: 2,
   },
   input: {
-    backgroundColor: "transparent",
     marginBottom: 12,
   },
   saveBtn: {

@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { View, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert } from "react-native";
-import { Text, IconButton } from "react-native-paper";
+import { Text } from "react-native-paper";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useThemeContext } from "../constants/ThemeContext";
 
 const SearchBar = ({
   searchQuery,
@@ -11,6 +12,7 @@ const SearchBar = ({
   onSubmit,
 }) => {
   const [isFocused, setIsFocused] = useState(false);
+  const { isDark, theme } = useThemeContext();
 
   const recentSearches = ["Pizza", "Chicken Biryani", "Burger", "Misal Pav"];
   const trendingSearches = [
@@ -38,29 +40,32 @@ const SearchBar = ({
 
   return (
     <View style={styles.outerContainer}>
-      <View style={[styles.container, isFocused && styles.containerFocused]}>
-        <MaterialCommunityIcons name="magnify" size={22} color={isFocused ? "#FF6F61" : "#667085"} style={styles.searchIcon} />
+      <View style={[
+        styles.container, 
+        { backgroundColor: isFocused ? theme.colors.surface : theme.colors.inputBg, borderColor: isFocused ? theme.colors.primary : theme.colors.border }
+      ]}>
+        <MaterialCommunityIcons name="magnify" size={22} color={isFocused ? theme.colors.primary : theme.colors.placeholder} style={styles.searchIcon} />
         <TextInput
           value={searchQuery}
           onChangeText={setSearchQuery}
           placeholder="Search foods, restaurants, cuisines..."
-          placeholderTextColor="#98A2B3"
-          style={styles.input}
+          placeholderTextColor={theme.colors.placeholder}
+          style={[styles.input, { color: theme.colors.text }]}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setTimeout(() => setIsFocused(false), 200)}
           onSubmitEditing={onSubmit}
         />
         {searchQuery ? (
           <TouchableOpacity onPress={() => setSearchQuery("")}>
-            <MaterialCommunityIcons name="close-circle" size={20} color="#667085" style={styles.rightIcon} />
+            <MaterialCommunityIcons name="close-circle" size={20} color={theme.colors.placeholder} style={styles.rightIcon} />
           </TouchableOpacity>
         ) : (
           <View style={styles.rightIconsWrapper}>
             <TouchableOpacity onPress={handleVoicePress}>
-              <MaterialCommunityIcons name="microphone" size={20} color="#FF6F61" style={styles.rightIcon} />
+              <MaterialCommunityIcons name="microphone" size={20} color={theme.colors.primary} style={styles.rightIcon} />
             </TouchableOpacity>
             <TouchableOpacity onPress={handleScanPress}>
-              <MaterialCommunityIcons name="qrcode-scan" size={18} color="#667085" style={styles.rightIcon} />
+              <MaterialCommunityIcons name="qrcode-scan" size={18} color={theme.colors.placeholder} style={styles.rightIcon} />
             </TouchableOpacity>
           </View>
         )}
@@ -68,28 +73,28 @@ const SearchBar = ({
 
       {/* Floating Suggestions list when focused */}
       {isFocused && (
-        <View style={styles.suggestionsContainer}>
+        <View style={[styles.suggestionsContainer, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
           <ScrollView keyboardShouldPersistTaps="handled">
             {/* Recent Searches */}
-            <Text style={styles.sectionTitle}>Recent Searches</Text>
+            <Text style={[styles.sectionTitle, { color: theme.colors.subtext }]}>Recent Searches</Text>
             <View style={styles.chipRow}>
               {recentSearches.map((item, index) => (
                 <TouchableOpacity
                   key={index}
-                  style={styles.chip}
+                  style={[styles.chip, { backgroundColor: theme.colors.chipBg }]}
                   onPress={() => {
                     setSearchQuery(item);
                     if (onSubmit) onSubmit();
                   }}
                 >
-                  <MaterialCommunityIcons name="history" size={14} color="#667085" style={{ marginRight: 4 }} />
-                  <Text style={styles.chipText}>{item}</Text>
+                  <MaterialCommunityIcons name="history" size={14} color={theme.colors.subtext} style={{ marginRight: 4 }} />
+                  <Text style={[styles.chipText, { color: theme.colors.text }]}>{item}</Text>
                 </TouchableOpacity>
               ))}
             </View>
 
             {/* Trending Searches */}
-            <Text style={[styles.sectionTitle, { marginTop: 16 }]}>Trending Near You</Text>
+            <Text style={[styles.sectionTitle, { marginTop: 16, color: theme.colors.subtext }]}>Trending Near You</Text>
             <View style={styles.trendingRow}>
               {trendingSearches.map((item, index) => (
                 <TouchableOpacity
@@ -101,7 +106,7 @@ const SearchBar = ({
                   }}
                 >
                   <Text style={styles.trendingEmoji}>{item.icon}</Text>
-                  <Text style={styles.trendingText}>{item.name}</Text>
+                  <Text style={[styles.trendingText, { color: theme.colors.text }]}>{item.name}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -120,10 +125,8 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F8F9FA",
     borderRadius: 28,
     borderWidth: 1,
-    borderColor: "#F2F4F7",
     paddingHorizontal: 16,
     height: 52,
     marginHorizontal: 16,
@@ -134,19 +137,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.04,
     shadowRadius: 6,
   },
-  containerFocused: {
-    borderColor: "#FF6F61",
-    backgroundColor: "#FFFFFF",
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-  },
   searchIcon: {
     marginRight: 8,
   },
   input: {
     flex: 1,
     fontSize: 14,
-    color: "#1D2939",
     paddingVertical: 0,
   },
   rightIconsWrapper: {
@@ -161,7 +157,6 @@ const styles = StyleSheet.create({
     top: 60,
     left: 16,
     right: 16,
-    backgroundColor: "#FFFFFF",
     borderRadius: 16,
     padding: 16,
     elevation: 6,
@@ -170,11 +165,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 16,
     maxHeight: 250,
+    borderWidth: 1,
   },
   sectionTitle: {
     fontSize: 12,
     fontWeight: "bold",
-    color: "#98A2B3",
     textTransform: "uppercase",
     marginBottom: 10,
   },
@@ -185,7 +180,6 @@ const styles = StyleSheet.create({
   chip: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F2F4F7",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
@@ -194,7 +188,6 @@ const styles = StyleSheet.create({
   },
   chipText: {
     fontSize: 12,
-    color: "#344054",
   },
   trendingRow: {
     flexDirection: "row",
@@ -212,7 +205,6 @@ const styles = StyleSheet.create({
   },
   trendingText: {
     fontSize: 13,
-    color: "#344054",
   },
 });
 

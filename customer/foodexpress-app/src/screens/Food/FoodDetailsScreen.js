@@ -33,6 +33,7 @@ import ErrorState from "../../components/ErrorState";
 
 // Services
 import foodService from "../../services/foodService";
+import { useThemeContext } from "../../constants/ThemeContext";
 
 const { width, height } = Dimensions.get("window");
 
@@ -44,6 +45,7 @@ const FoodDetailsScreen = ({ route, navigation }) => {
   const [customiseVisible, setCustomiseVisible] = useState(false);
   const [redirectOnCustomise, setRedirectOnCustomise] = useState(false);
   const dispatch = useDispatch();
+  const { isDark, theme } = useThemeContext();
 
   // Shimmer animation for skeleton
   const shimmerValue = useRef(new Animated.Value(0.3)).current;
@@ -237,10 +239,10 @@ const FoodDetailsScreen = ({ route, navigation }) => {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#ffffff" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <CustomScreenHeader title={food?.name || "Food Details"} navigation={navigation} />
       <ScrollView 
-        style={styles.container}
+        style={[styles.container, { backgroundColor: theme.colors.background }]}
         contentContainerStyle={styles.scrollContent} 
         showsVerticalScrollIndicator={false}
       >

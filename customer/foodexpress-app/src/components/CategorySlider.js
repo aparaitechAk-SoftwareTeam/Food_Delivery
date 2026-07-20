@@ -1,6 +1,7 @@
 import React from "react";
 import { View, StyleSheet, FlatList, TouchableOpacity, Image } from "react-native";
 import { Text } from "react-native-paper";
+import { useThemeContext } from "../constants/ThemeContext";
 
 const categoryImageMap = {
   "pizza": "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=200&q=80",
@@ -30,6 +31,8 @@ const CategorySlider = ({
   selectedCategory,
   onSelectCategory,
 }) => {
+  const { isDark, theme } = useThemeContext();
+
   const renderItem = ({ item }) => {
     const isSelected = selectedCategory === item.name || selectedCategory === item.id;
     
@@ -39,14 +42,18 @@ const CategorySlider = ({
         onPress={() => onSelectCategory && onSelectCategory(item)}
         activeOpacity={0.8}
       >
-        <View style={[styles.iconWrapper, isSelected && styles.selectedIconWrapper]}>
+        <View style={[
+          styles.iconWrapper, 
+          { backgroundColor: isDark ? "#252525" : "#F8F9FA", borderColor: theme.colors.border },
+          isSelected && [styles.selectedIconWrapper, { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary }]
+        ]}>
           <Image 
             source={getCategoryImage(item)} 
             style={styles.categoryImage} 
             resizeMode="cover"
           />
         </View>
-        <Text style={[styles.label, isSelected && styles.selectedLabel]} numberOfLines={1}>
+        <Text style={[styles.label, { color: theme.colors.subtext }, isSelected && { color: theme.colors.primary, fontWeight: "700" }]} numberOfLines={1}>
           {item.name}
         </Text>
       </TouchableOpacity>
@@ -55,7 +62,7 @@ const CategorySlider = ({
 
   return (
     <View style={styles.container}>
-      <Text style={styles.sectionHeader}>What are you craving today?</Text>
+      <Text style={[styles.sectionHeader, { color: theme.colors.text }]}>What are you craving today?</Text>
       <FlatList
         data={categories}
         renderItem={renderItem}
@@ -75,7 +82,6 @@ const styles = StyleSheet.create({
   sectionHeader: {
     fontSize: 15,
     fontWeight: "bold",
-    color: "#1D2939",
     marginLeft: 16,
     marginBottom: 12,
   },
@@ -94,9 +100,7 @@ const styles = StyleSheet.create({
     width: 58,
     height: 58,
     borderRadius: 29,
-    backgroundColor: "#F8F9FA",
     borderWidth: 1,
-    borderColor: "#F2F4F7",
     alignItems: "center",
     justifyContent: "center",
     elevation: 1,
@@ -107,10 +111,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   selectedIconWrapper: {
-    backgroundColor: "#FF6F61",
-    borderColor: "#FF6F61",
     elevation: 3,
-    shadowColor: "#FF6F61",
     shadowOpacity: 0.3,
     shadowRadius: 5,
   },
@@ -119,19 +120,11 @@ const styles = StyleSheet.create({
     height: "100%",
     borderRadius: 29,
   },
-  emojiText: {
-    fontSize: 26,
-  },
   label: {
     fontSize: 11,
-    color: "#475467",
     marginTop: 6,
     textAlign: "center",
     fontWeight: "500",
-  },
-  selectedLabel: {
-    color: "#FF6F61",
-    fontWeight: "700",
   },
 });
 

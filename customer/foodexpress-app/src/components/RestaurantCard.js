@@ -4,9 +4,11 @@ import { Text } from "react-native-paper";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useDispatch, useSelector } from "react-redux";
 import { toggleFavoriteRestaurant } from "../redux/slices/wishlistSlice";
+import { useThemeContext } from "../constants/ThemeContext";
 
 const RestaurantCard = ({ restaurant, navigation }) => {
   const dispatch = useDispatch();
+  const { isDark, theme } = useThemeContext();
 
   // Redux Selectors
   const token = useSelector((state) => state.auth.token);
@@ -39,9 +41,8 @@ const RestaurantCard = ({ restaurant, navigation }) => {
 
   return (
     <TouchableOpacity
-      style={styles.card}
+      style={[styles.card, { backgroundColor: theme.colors.card, borderColor: theme.colors.cardBorder }]}
       onPress={() => navigation.navigate("RestaurantDetail", { restaurant })}
-
       activeOpacity={0.9}
     >
       {/* Landscape Image Header */}
@@ -56,14 +57,14 @@ const RestaurantCard = ({ restaurant, navigation }) => {
             </View>
           )}
           <TouchableOpacity
-            style={styles.favoriteBtn}
+            style={[styles.favoriteBtn, { backgroundColor: isDark ? "#2a2a2a" : "#FFFFFF" }]}
             onPress={handleFavoritePress}
             activeOpacity={0.7}
           >
             <MaterialCommunityIcons
               name={isFavorite ? "star" : "star-outline"}
               size={20}
-              color={isFavorite ? "#FFC72C" : "#475467"}
+              color={isFavorite ? "#FFC72C" : (isDark ? "#bbbbbb" : "#475467")}
             />
           </TouchableOpacity>
         </View>
@@ -80,7 +81,7 @@ const RestaurantCard = ({ restaurant, navigation }) => {
       {/* Info Section */}
       <View style={styles.infoContainer}>
         <View style={styles.nameRow}>
-          <Text style={styles.name} numberOfLines={1}>
+          <Text style={[styles.name, { color: theme.colors.text }]} numberOfLines={1}>
             {restaurant.name}
           </Text>
           <View style={[styles.ratingBadge, { backgroundColor: getRatingColor(restaurant.rating) }]}>
@@ -90,7 +91,7 @@ const RestaurantCard = ({ restaurant, navigation }) => {
         </View>
 
         {/* Cuisine List */}
-        <Text style={styles.cuisines} numberOfLines={1}>
+        <Text style={[styles.cuisines, { color: theme.colors.subtext }]} numberOfLines={1}>
           {Array.isArray(restaurant.cuisine)
             ? restaurant.cuisine.join(", ")
             : typeof restaurant.cuisine === "string"
@@ -99,20 +100,20 @@ const RestaurantCard = ({ restaurant, navigation }) => {
         </Text>
 
         {/* Distance, Delivery Time, Address */}
-        <View style={styles.metaRow}>
+        <View style={[styles.metaRow, { borderTopColor: theme.colors.divider }]}>
           <View style={styles.metaItem}>
-            <MaterialCommunityIcons name="map-marker-distance" size={14} color="#667085" />
-            <Text style={styles.metaText}>{restaurant.distance || "2.4"} km</Text>
+            <MaterialCommunityIcons name="map-marker-distance" size={14} color={theme.colors.subtext} />
+            <Text style={[styles.metaText, { color: theme.colors.subtext }]}>{restaurant.distance || "2.4"} km</Text>
           </View>
           <View style={styles.metaDot} />
           <View style={styles.metaItem}>
-            <MaterialCommunityIcons name="clock-outline" size={14} color="#667085" />
-            <Text style={styles.metaText}>{restaurant.deliveryTime || "25-35 mins"}</Text>
+            <MaterialCommunityIcons name="clock-outline" size={14} color={theme.colors.subtext} />
+            <Text style={[styles.metaText, { color: theme.colors.subtext }]}>{restaurant.deliveryTime || "25-35 mins"}</Text>
           </View>
           <View style={styles.metaDot} />
           <View style={styles.metaItem}>
-            <MaterialCommunityIcons name="silverware-fork-knife" size={13} color="#667085" />
-            <Text style={styles.metaText}>{restaurant.restaurantType || "Multi Cuisine"}</Text>
+            <MaterialCommunityIcons name="silverware-fork-knife" size={13} color={theme.colors.subtext} />
+            <Text style={[styles.metaText, { color: theme.colors.subtext }]}>{restaurant.restaurantType || "Multi Cuisine"}</Text>
           </View>
         </View>
       </View>
@@ -122,10 +123,8 @@ const RestaurantCard = ({ restaurant, navigation }) => {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "#FFFFFF",
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: "#F2F4F7",
     overflow: "hidden",
     marginBottom: 16,
     marginHorizontal: 16,
@@ -169,7 +168,6 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
     marginLeft: "auto",
@@ -207,7 +205,6 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "#1D2939",
     flex: 1,
     marginRight: 10,
   },
@@ -225,7 +222,6 @@ const styles = StyleSheet.create({
   },
   cuisines: {
     fontSize: 13,
-    color: "#475467",
     marginTop: 4,
   },
   metaRow: {
@@ -234,7 +230,6 @@ const styles = StyleSheet.create({
     marginTop: 10,
     paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: "#F2F4F7",
   },
   metaItem: {
     flexDirection: "row",
@@ -242,7 +237,6 @@ const styles = StyleSheet.create({
   },
   metaText: {
     fontSize: 12,
-    color: "#475467",
     marginLeft: 4,
     fontWeight: "500",
   },

@@ -5,8 +5,10 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import api from "../../utils/api";
 import { getSocket } from "../../utils/socket";
+import { useThemeContext } from "../../utils/ThemeContext";
 
 const DashboardScreen = ({ navigation }) => {
+  const { isDark, theme } = useThemeContext();
   const [isOnline, setIsOnline] = useState(false);
   const [stats, setStats] = useState({ todayEarnings: 0, completedCount: 0, avgRating: 4.8 });
   const [orders, setOrders] = useState([]);
@@ -212,17 +214,17 @@ const DashboardScreen = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* Header Panel */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: theme.colors.headerBg, borderColor: theme.colors.border }]}>
         <View style={styles.riderRow}>
           <TouchableOpacity onPress={() => navigation.navigate("Profile")} activeOpacity={0.8}>
-            <View style={styles.avatarPlaceholder}>
-              <MaterialCommunityIcons name="account" size={24} color="#ff6b00" />
+            <View style={[styles.avatarPlaceholder, { backgroundColor: isDark ? "#222a3a" : "#ffe0cc" }]}>
+              <MaterialCommunityIcons name="account" size={24} color={theme.colors.primary} />
             </View>
           </TouchableOpacity>
           <View style={styles.onlineContainer}>
-            <Text style={[styles.onlineLabel, { color: isOnline ? "#10b981" : "#667085" }]}>
+            <Text style={[styles.onlineLabel, { color: isOnline ? "#10b981" : theme.colors.subtext }]}>
               {isOnline ? "Online" : "Offline"}
             </Text>
             <Switch
@@ -237,27 +239,27 @@ const DashboardScreen = ({ navigation }) => {
       <ScrollView contentContainerStyle={styles.contentScroll} keyboardShouldPersistTaps="handled">
         {/* Earnings Stats Cards */}
         <View style={styles.statsGrid}>
-          <Card style={styles.statsCard}>
+          <Card style={[styles.statsCard, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
             <Card.Content style={styles.center}>
               <MaterialCommunityIcons name="currency-inr" size={24} color="#10b981" />
-              <Text style={styles.statsTitle}>Today's Earnings</Text>
-              <Text style={styles.statsValue}>₹{stats.todayEarnings || 0}</Text>
+              <Text style={[styles.statsTitle, { color: theme.colors.subtext }]}>Today's Earnings</Text>
+              <Text style={[styles.statsValue, { color: theme.colors.text }]}>₹{stats.todayEarnings || 0}</Text>
             </Card.Content>
           </Card>
 
-          <Card style={styles.statsCard}>
+          <Card style={[styles.statsCard, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
             <Card.Content style={styles.center}>
-              <MaterialCommunityIcons name="check-circle-outline" size={24} color="#ff6b00" />
-              <Text style={styles.statsTitle}>Completed</Text>
-              <Text style={styles.statsValue}>{stats.completedCount || 0}</Text>
+              <MaterialCommunityIcons name="check-circle-outline" size={24} color={theme.colors.primary} />
+              <Text style={[styles.statsTitle, { color: theme.colors.subtext }]}>Completed</Text>
+              <Text style={[styles.statsValue, { color: theme.colors.text }]}>{stats.completedCount || 0}</Text>
             </Card.Content>
           </Card>
 
-          <Card style={styles.statsCard}>
+          <Card style={[styles.statsCard, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
             <Card.Content style={styles.center}>
               <MaterialCommunityIcons name="star-outline" size={24} color="#ffb300" />
-              <Text style={styles.statsTitle}>Rating</Text>
-              <Text style={styles.statsValue}>{stats.avgRating || "4.8"}</Text>
+              <Text style={[styles.statsTitle, { color: theme.colors.subtext }]}>Rating</Text>
+              <Text style={[styles.statsValue, { color: theme.colors.text }]}>{stats.avgRating || "4.8"}</Text>
             </Card.Content>
           </Card>
         </View>
@@ -265,56 +267,56 @@ const DashboardScreen = ({ navigation }) => {
         {/* Assigned Orders List */}
         <View style={styles.listSection}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Assigned Active Tasks ({orders.length})</Text>
+            <Text style={[styles.sectionTitle, { color: theme.colors.subtext }]}>Assigned Active Tasks ({orders.length})</Text>
             <TouchableOpacity onPress={handleRefresh}>
-              <MaterialCommunityIcons name="refresh" size={18} color="#ff6b00" />
+              <MaterialCommunityIcons name="refresh" size={18} color={theme.colors.primary} />
             </TouchableOpacity>
           </View>
 
           {loading ? (
-            <ActivityIndicator color="#ff6b00" size="small" style={{ marginTop: 24 }} />
+            <ActivityIndicator color={theme.colors.primary} size="small" style={{ marginTop: 24 }} />
           ) : orders.length === 0 ? (
             <View style={styles.emptyState}>
-              <MaterialCommunityIcons name="clipboard-text-off-outline" size={48} color="#334155" />
-              <Text style={styles.emptyText}>No active deliveries assigned yet.</Text>
-              <Text style={styles.emptySubtext}>Admins will dispatch orders here once you are Online.</Text>
+              <MaterialCommunityIcons name="clipboard-text-off-outline" size={48} color={theme.colors.placeholder} />
+              <Text style={[styles.emptyText, { color: theme.colors.text }]}>No active deliveries assigned yet.</Text>
+              <Text style={[styles.emptySubtext, { color: theme.colors.subtext }]}>Admins will dispatch orders here once you are Online.</Text>
             </View>
           ) : (
             orders.map((item) => (
               <Card 
                 key={item._id} 
-                style={styles.orderCard}
+                style={[styles.orderCard, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}
                 onPress={() => navigation.navigate("OrderDetails", { orderId: item._id })}
               >
                 <Card.Content>
                   <View style={styles.orderHeader}>
-                    <Text style={styles.orderNumber}>#{item.orderNumber || item._id.slice(-6).toUpperCase()}</Text>
+                    <Text style={[styles.orderNumber, { color: theme.colors.text }]}>#{item.orderNumber || item._id.slice(-6).toUpperCase()}</Text>
                     <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.deliveryStatus) }]}>
                       <Text style={styles.statusBadgeText}>{item.deliveryStatus}</Text>
                     </View>
                   </View>
 
-                  <View style={styles.divider} />
+                  <View style={[styles.divider, { backgroundColor: theme.colors.divider }]} />
 
                   <View style={styles.locationRow}>
-                    <MaterialCommunityIcons name="store" size={16} color="#ff6b00" style={styles.iconOffset} />
+                    <MaterialCommunityIcons name="store" size={16} color={theme.colors.primary} style={styles.iconOffset} />
                     <View style={styles.locationTextCol}>
-                      <Text style={styles.locName}>{item.restaurant?.name || "Kitchen"}</Text>
-                      <Text style={styles.locAddr} numberOfLines={1}>{item.restaurant?.address}</Text>
+                      <Text style={[styles.locName, { color: theme.colors.text }]}>{item.restaurant?.name || "Kitchen"}</Text>
+                      <Text style={[styles.locAddr, { color: theme.colors.subtext }]} numberOfLines={1}>{item.restaurant?.address}</Text>
                     </View>
                   </View>
 
                   <View style={[styles.locationRow, { marginTop: 12 }]}>
                     <MaterialCommunityIcons name="home-map-marker" size={18} color="#10b981" style={styles.iconOffset} />
                     <View style={styles.locationTextCol}>
-                      <Text style={styles.locName}>{item.user?.name || "Customer"}</Text>
-                      <Text style={styles.locAddr} numberOfLines={1}>{item.address?.line1}, {item.address?.city}</Text>
+                      <Text style={[styles.locName, { color: theme.colors.text }]}>{item.user?.name || "Customer"}</Text>
+                      <Text style={[styles.locAddr, { color: theme.colors.subtext }]} numberOfLines={1}>{item.address?.line1}, {item.address?.city}</Text>
                     </View>
                   </View>
 
                   <Button
                     mode="contained"
-                    buttonColor="#1e293b"
+                    buttonColor={isDark ? "#1e293b" : theme.colors.primary}
                     textColor="#ffffff"
                     style={styles.detailBtn}
                     onPress={() => navigation.navigate("OrderDetails", { orderId: item._id })}

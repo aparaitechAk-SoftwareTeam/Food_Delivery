@@ -1,7 +1,5 @@
 import "./patchStyles";
-import React, { useEffect } from "react";
-import { Animated, Platform } from "react-native";
-
+import React from "react";
 import { LogBox } from "react-native";
 LogBox.ignoreLogs([
   "props.pointerEvents is deprecated",
@@ -13,10 +11,8 @@ import { Provider as PaperProvider } from "react-native-paper";
 import { store } from "./redux/store";
 import AppNavigator from "./navigation/AppNavigator";
 import SplashNavigator from "./navigation/SplashNavigator";
-import { lightTheme, darkTheme } from "./constants/theme";
-import { useColorScheme } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import { loadUserFromStorage } from "./redux/slices/authSlice";
+import { CustomThemeProvider, useThemeContext } from "./constants/ThemeContext";
 
 // Location Gate
 import { useLocationGate } from "./hooks/useLocationGate";
@@ -25,13 +21,6 @@ import PermissionDeniedScreen from "./screens/Location/PermissionDeniedScreen";
 import ChooseLocationScreen from "./screens/Location/ChooseLocationScreen";
 import ServiceNotAvailableScreen from "./screens/Location/ServiceNotAvailableScreen";
 
-/**
- * LocationGate
- *
- * Sits ABOVE the NavigationContainer.
- * Renders the appropriate screen based on location check status.
- * AppNavigator is ONLY rendered when status === 'inside'.
- */
 const LocationGate = ({ children }) => {
   const {
     status,
@@ -74,24 +63,30 @@ const LocationGate = ({ children }) => {
     );
   }
 
-  // status === 'inside' — unlock the full app
   return children;
 };
 
-const App = () => {
-  const scheme = useColorScheme();
-  const theme = scheme === "dark" ? darkTheme : lightTheme;
+const MainAppContent = () => {
+  const { isDark, theme } = useThemeContext();
 
   return (
+    <PaperProvider theme={theme}>
+      <StatusBar style={isDark ? "light" : "dark"} backgroundColor={theme.colors.surface} />
+      <SplashNavigator>
+        <LocationGate>
+          <AppNavigator />
+        </LocationGate>
+      </SplashNavigator>
+    </PaperProvider>
+  );
+};
+
+const App = () => {
+  return (
     <Provider store={store}>
-      <PaperProvider theme={theme}>
-        <StatusBar style={scheme === "dark" ? "light" : "dark"} />
-        <SplashNavigator>
-          <LocationGate>
-            <AppNavigator />
-          </LocationGate>
-        </SplashNavigator>
-      </PaperProvider>
+      <CustomThemeProvider>
+        <MainAppContent />
+      </CustomThemeProvider>
     </Provider>
   );
 };

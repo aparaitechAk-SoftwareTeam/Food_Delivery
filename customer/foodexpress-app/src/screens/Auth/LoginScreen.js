@@ -11,12 +11,14 @@ import * as WebBrowser from "expo-web-browser";
 import * as Google from "expo-auth-session/providers/google";
 import { GoogleAuthProvider, signInWithCredential } from "firebase/auth";
 import { auth as firebaseAuth } from "../../utils/firebase";
+import { useThemeContext } from "../../constants/ThemeContext";
 
 WebBrowser.maybeCompleteAuthSession();
 
 const LoginScreen = ({ navigation, route }) => {
   const dispatch = useDispatch();
   const auth = useSelector((state) => state.auth);
+  const { isDark, theme } = useThemeContext();
 
   const handleBackPress = () => {
     if (navigation.canGoBack()) {
@@ -290,19 +292,19 @@ const LoginScreen = ({ navigation, route }) => {
   return (
     <Portal.Host>
       <TouchableOpacity style={styles.backButton} onPress={handleBackPress} activeOpacity={0.8}>
-        <MaterialCommunityIcons name="arrow-left" size={24} color="#ff6b00" />
+        <MaterialCommunityIcons name="arrow-left" size={24} color={theme.colors.primary} />
       </TouchableOpacity>
-      <ScrollView contentContainerStyle={styles.container}>
+      <ScrollView contentContainerStyle={[styles.container, { backgroundColor: theme.colors.background }]}>
         <View style={styles.headerContainer}>
-          <Text style={styles.brandText}>FoodExpress</Text>
-          <Text style={styles.taglineText}>Fast. Fresh. Delivered.</Text>
+          <Text style={[styles.brandText, { color: theme.colors.primary }]}>FoodExpress</Text>
+          <Text style={[styles.taglineText, { color: theme.colors.subtext }]}>Fast. Fresh. Delivered.</Text>
         </View>
 
-        <View style={styles.card}>
-          <Text variant="headlineSmall" style={styles.title}>
+        <View style={[styles.card, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+          <Text variant="headlineSmall" style={[styles.title, { color: theme.colors.text }]}>
             Welcome Back
           </Text>
-          <Text variant="bodyMedium" style={styles.subtitle}>
+          <Text variant="bodyMedium" style={[styles.subtitle, { color: theme.colors.subtext }]}>
             Login to order delicious meals from your favorite restaurants
           </Text>
 
@@ -316,7 +318,7 @@ const LoginScreen = ({ navigation, route }) => {
             keyboardType="email-address"
             autoCapitalize="none"
             error={!!emailError}
-            left={<TextInput.Icon icon="account" />}
+            left={<TextInput.Icon icon="account" color={theme.colors.placeholder} />}
           />
           {!!emailError && <Text style={styles.errorText}>{emailError}</Text>}
 
@@ -329,10 +331,11 @@ const LoginScreen = ({ navigation, route }) => {
             }}
             secureTextEntry={!showPassword}
             error={!!passwordError}
-            left={<TextInput.Icon icon="lock" />}
+            left={<TextInput.Icon icon="lock" color={theme.colors.placeholder} />}
             right={
               <TextInput.Icon
                 icon={showPassword ? "eye-off" : "eye"}
+                color={theme.colors.placeholder}
                 onPress={() => setShowPassword(!showPassword)}
               />
             }
@@ -346,10 +349,10 @@ const LoginScreen = ({ navigation, route }) => {
             >
               <Checkbox
                 status={rememberMe ? "checked" : "unchecked"}
-                color="#ff6b00"
+                color={theme.colors.primary}
                 onPress={() => setRememberMe(!rememberMe)}
               />
-              <Text style={styles.rememberMeText}>Remember Me</Text>
+              <Text style={[styles.rememberMeText, { color: theme.colors.subtext }]}>Remember Me</Text>
             </TouchableOpacity>
 
             <TouchableOpacity onPress={() => {
@@ -357,7 +360,7 @@ const LoginScreen = ({ navigation, route }) => {
               setForgotMessage("");
               setForgotVisible(true);
             }}>
-              <Text style={styles.forgotText}>Forgot Password?</Text>
+              <Text style={[styles.forgotText, { color: theme.colors.primary }]}>Forgot Password?</Text>
             </TouchableOpacity>
           </View>
 
@@ -366,29 +369,29 @@ const LoginScreen = ({ navigation, route }) => {
             onPress={handleLogin}
             style={styles.loginBtn}
             contentStyle={{ paddingVertical: 6 }}
-            buttonColor="#ff6b00"
+            buttonColor={theme.colors.primary}
             textColor="#fff"
           >
             Login
           </AppButton>
 
           <View style={styles.registerRow}>
-            <Text style={styles.noAccountText}>Don't have an account?</Text>
+            <Text style={[styles.noAccountText, { color: theme.colors.subtext }]}>Don't have an account?</Text>
             <TouchableOpacity onPress={() => navigation.navigate("Register")}>
-              <Text style={styles.registerLink}>Register</Text>
+              <Text style={[styles.registerLink, { color: theme.colors.primary }]}>Register</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         <View style={styles.dividerContainer}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>OR SIGN IN WITH</Text>
-          <View style={styles.dividerLine} />
+          <View style={[styles.dividerLine, { backgroundColor: theme.colors.border }]} />
+          <Text style={[styles.dividerText, { color: theme.colors.subtext }]}>OR SIGN IN WITH</Text>
+          <View style={[styles.dividerLine, { backgroundColor: theme.colors.border }]} />
         </View>
 
         <View style={styles.socialRow}>
           <TouchableOpacity
-            style={[styles.socialButton, styles.googleButton]}
+            style={[styles.socialButton, styles.googleButton, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
             onPress={() => {
               if (request) {
                 promptAsync().catch((err) => {
@@ -402,7 +405,7 @@ const LoginScreen = ({ navigation, route }) => {
             disabled={googleLoading}
           >
             <MaterialCommunityIcons name="google" size={24} color="#db4437" />
-            <Text style={styles.socialButtonText}>
+            <Text style={[styles.socialButtonText, { color: theme.colors.text }]}>
               {googleLoading ? "Connecting..." : "Google"}
             </Text>
           </TouchableOpacity>
