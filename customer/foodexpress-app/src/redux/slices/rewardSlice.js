@@ -47,10 +47,17 @@ const rewardSlice = createSlice({
       })
       .addCase(fetchRewardStatus.fulfilled, (state, action) => {
         state.loading = false;
-        state.reward = action.payload.reward;
-        state.progress = action.payload.progress;
-        state.remainingTime = action.payload.remainingTime;
-        state.status = action.payload.status;
+        if (action.payload) {
+          state.reward = action.payload.reward;
+          state.progress = action.payload.progress;
+          state.remainingTime = action.payload.remainingTime;
+          state.status = action.payload.status;
+        } else {
+          state.reward = null;
+          state.progress = 0;
+          state.remainingTime = 0;
+          state.status = "Pending";
+        }
       })
       .addCase(fetchRewardStatus.rejected, (state, action) => {
         state.loading = false;
