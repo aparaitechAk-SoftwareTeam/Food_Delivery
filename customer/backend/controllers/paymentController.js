@@ -48,7 +48,6 @@ exports.createOrder = async (req, res) => {
   }
 };
 
-// 2. Generate Razorpay UPI QR Code URL / Payment Link
 exports.generateQR = async (req, res) => {
   try {
     const { amount, orderId = `TXN-${Date.now()}` } = req.body;
