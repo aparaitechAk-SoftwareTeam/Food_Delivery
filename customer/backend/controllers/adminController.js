@@ -118,11 +118,99 @@ exports.getRestaurantsList = async (req, res) => {
 
 exports.getOrdersList = async (req, res) => {
   try {
-    const orders = await Order.find()
+    const { range, status, search, includeStats } = req.query;
+
+    const query = {};
+
+    // Calculate Date Range Boundaries
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
+    const yesterdayStart = new Date(todayStart);
+    yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+    const yesterdayEnd = new Date(todayStart);
+    yesterdayEnd.setMilliseconds(-1);
+
+    const sevenDaysStart = new Date(todayStart);
+    sevenDaysStart.setDate(sevenDaysStart.getDate() - 6);
+
+    const thirtyDaysStart = new Date(todayStart);
+    thirtyDaysStart.setDate(thirtyDaysStart.getDate() - 29);
+
+    if (range === "today") {
+      query.$or = [
+        { createdAt: { $gte: todayStart, $lte: todayEnd } },
+        { status: { $in: ["Pending", "Confirmed", "Preparing", "Out For Delivery"] } }
+      ];
+    } else if (range === "yesterday") {
+      query.createdAt = { $gte: yesterdayStart, $lte: yesterdayEnd };
+    } else if (range === "7days") {
+      query.createdAt = { $gte: sevenDaysStart };
+    } else if (range === "30days") {
+      query.createdAt = { $gte: thirtyDaysStart };
+    }
+
+    if (status && status !== "All") {
+      query.status = status;
+    }
+
+    if (search && search.trim()) {
+      const searchRegex = new RegExp(search.trim(), "i");
+      const searchConditions = [
+        { orderNumber: searchRegex },
+        { customerName: searchRegex },
+        { customerPhone: searchRegex },
+        { razorpayPaymentId: searchRegex },
+        { razorpayOrderId: searchRegex }
+      ];
+
+      const mongoose = require("mongoose");
+      if (mongoose.Types.ObjectId.isValid(search.trim())) {
+        searchConditions.push({ _id: search.trim() });
+      }
+
+      if (query.$or) {
+        query.$and = [
+          { $or: query.$or },
+          { $or: searchConditions }
+        ];
+        delete query.$or;
+      } else {
+        query.$or = searchConditions;
+      }
+    }
+
+    const orders = await Order.find(query)
       .populate("user", "name phone email")
       .populate("restaurant", "name address")
       .populate("deliveryBoy", "name phone email vehicleType vehicleNumber")
+      .populate("items.food", "name price category image")
       .sort({ createdAt: -1 });
+
+    let stats = null;
+    if (includeStats === "true" || range) {
+      const [todayCount, yesterdayCount, sevenDaysCount, thirtyDaysCount, totalCount] = await Promise.all([
+        Order.countDocuments({ createdAt: { $gte: todayStart, $lte: todayEnd } }),
+        Order.countDocuments({ createdAt: { $gte: yesterdayStart, $lte: yesterdayEnd } }),
+        Order.countDocuments({ createdAt: { $gte: sevenDaysStart } }),
+        Order.countDocuments({ createdAt: { $gte: thirtyDaysStart } }),
+        Order.countDocuments({}),
+      ]);
+
+      stats = {
+        todayCount,
+        yesterdayCount,
+        sevenDaysCount,
+        thirtyDaysCount,
+        totalCount,
+      };
+    }
+
+    if (includeStats === "true") {
+      return res.json({ orders, stats });
+    }
+
     res.json(orders);
   } catch (error) {
     res.status(500).json({ message: error.message });

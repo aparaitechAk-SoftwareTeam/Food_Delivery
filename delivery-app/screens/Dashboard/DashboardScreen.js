@@ -382,7 +382,8 @@ const styles = StyleSheet.create({
   },
   contentScroll: {
     padding: 16,
-    paddingBottom: 40,
+    paddingBottom: 120,
+    flexGrow: 1,
   },
   statsGrid: {
     flexDirection: "row",

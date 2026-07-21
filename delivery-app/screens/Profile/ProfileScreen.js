@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from "react";
-import { View, StyleSheet, TouchableOpacity, ScrollView, Alert, Image } from "react-native";
-import { Text, Card, TextInput, Button, ActivityIndicator, Switch } from "react-native-paper";
+import { View, StyleSheet, TouchableOpacity, ScrollView, Alert, Image, FlatList } from "react-native";
+import { Text, Card, TextInput, Button, ActivityIndicator, Switch, Chip } from "react-native-paper";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import api from "../../utils/api";
@@ -13,24 +13,59 @@ const ProfileScreen = ({ navigation }) => {
   const [rider, setRider] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Delivery History State
+  const [historyOrders, setHistoryOrders] = useState([]);
+  const [historySummary, setHistorySummary] = useState({
+    completedCount: 0,
+    totalEarnings: 0,
+    cashCollected: 0,
+  });
+  const [loadingHistory, setLoadingHistory] = useState(true);
+
+  // Password change state
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [updatingPassword, setUpdatingPassword] = useState(false);
 
   useEffect(() => {
-    const loadProfile = async () => {
+    const loadProfileData = async () => {
       try {
         const stored = await AsyncStorage.getItem("rider_user");
         if (stored) {
           setRider(JSON.parse(stored));
         }
+
+        // Fetch Delivery History for Profile Screen
+        const res = await api.get("/delivery/history");
+        const ordersList = Array.isArray(res.data) ? res.data : (res.data?.orders || []);
+        setHistoryOrders(ordersList);
+
+        let completed = 0;
+        let earnings = 0;
+        let cash = 0;
+
+        ordersList.forEach((o) => {
+          if (["Delivered", "Completed"].includes(o.status)) {
+            completed += 1;
+            earnings += o.deliveryCharge || 40;
+            const isCOD = !o.paymentMethod || o.paymentMethod.toLowerCase().includes("cash") || o.paymentMethod.toUpperCase() === "COD";
+            if (isCOD) cash += o.totalAmount || 0;
+          }
+        });
+
+        setHistorySummary({
+          completedCount: completed,
+          totalEarnings: earnings,
+          cashCollected: cash,
+        });
       } catch (e) {
-        console.log(e);
+        console.log("Error loading profile or history:", e);
       } finally {
         setLoading(false);
+        setLoadingHistory(false);
       }
     };
-    loadProfile();
+    loadProfileData();
   }, []);
 
   const handleLogout = async () => {
@@ -98,11 +133,11 @@ const ProfileScreen = ({ navigation }) => {
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <MaterialCommunityIcons name="arrow-left" size={24} color={theme.colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.title, { color: theme.colors.text }]}>Rider Profile</Text>
+        <Text style={[styles.title, { color: theme.colors.text }]}>Rider Profile & History</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Profile Card */}
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* Profile Header Card */}
         <Card style={[styles.profileCard, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
           <Card.Content style={styles.avatarCol}>
             <Image 
@@ -114,7 +149,104 @@ const ProfileScreen = ({ navigation }) => {
           </Card.Content>
         </Card>
 
-        {/* Vehicle particulars */}
+        {/* Delivery Performance KPI Summary */}
+        <Card style={[styles.sectionCard, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+          <Card.Content>
+            <Text style={[styles.sectionTitle, { color: theme.colors.subtext }]}>Delivery Performance</Text>
+            <View style={styles.kpiRow}>
+              <View style={[styles.kpiBox, { backgroundColor: isDark ? "#1e293b" : "#f1f5f9" }]}>
+                <MaterialCommunityIcons name="check-decagram" size={22} color="#10b981" />
+                <Text style={[styles.kpiValue, { color: theme.colors.text }]}>{historySummary.completedCount}</Text>
+                <Text style={[styles.kpiLabel, { color: theme.colors.subtext }]}>Deliveries</Text>
+              </View>
+
+              <View style={[styles.kpiBox, { backgroundColor: isDark ? "#1e293b" : "#f1f5f9" }]}>
+                <MaterialCommunityIcons name="cash-multiple" size={22} color="#ff6b00" />
+                <Text style={[styles.kpiValue, { color: theme.colors.text }]}>₹{historySummary.totalEarnings}</Text>
+                <Text style={[styles.kpiLabel, { color: theme.colors.subtext }]}>Earnings</Text>
+              </View>
+
+              <View style={[styles.kpiBox, { backgroundColor: isDark ? "#1e293b" : "#f1f5f9" }]}>
+                <MaterialCommunityIcons name="wallet-outline" size={22} color="#3b82f6" />
+                <Text style={[styles.kpiValue, { color: theme.colors.text }]}>₹{historySummary.cashCollected}</Text>
+                <Text style={[styles.kpiLabel, { color: theme.colors.subtext }]}>COD Cash</Text>
+              </View>
+            </View>
+          </Card.Content>
+        </Card>
+
+        {/* Delivery History Section inside Profile */}
+        <Card style={[styles.sectionCard, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+          <Card.Content>
+            <View style={styles.historyHeaderRow}>
+              <Text style={[styles.sectionTitle, { color: theme.colors.subtext, marginBottom: 0 }]}>Delivery History</Text>
+              <TouchableOpacity 
+                style={styles.viewAllBtn}
+                onPress={() => navigation.navigate("DeliveryHistory")}
+              >
+                <Text style={{ fontSize: 12, fontWeight: "bold", color: theme.colors.primary }}>View All</Text>
+                <MaterialCommunityIcons name="chevron-right" size={18} color={theme.colors.primary} />
+              </TouchableOpacity>
+            </View>
+
+            {loadingHistory ? (
+              <ActivityIndicator color={theme.colors.primary} style={{ marginVertical: 16 }} />
+            ) : historyOrders.length === 0 ? (
+              <View style={{ alignItems: "center", paddingVertical: 20 }}>
+                <MaterialCommunityIcons name="history" size={36} color={theme.colors.subtext} />
+                <Text style={{ fontSize: 13, fontWeight: "600", color: theme.colors.subtext, marginTop: 6 }}>
+                  No delivery history records found.
+                </Text>
+              </View>
+            ) : (
+              <View style={{ marginTop: 12 }}>
+                {historyOrders.slice(0, 5).map((order) => {
+                  const isCOD = !order.paymentMethod || order.paymentMethod.toLowerCase().includes("cash") || order.paymentMethod.toUpperCase() === "COD";
+                  return (
+                    <TouchableOpacity
+                      key={order._id}
+                      style={[styles.historyItemCard, { backgroundColor: isDark ? "#0f172a" : "#f8fafc", borderColor: theme.colors.border }]}
+                      onPress={() => navigation.navigate("OrderDetails", { orderId: order._id })}
+                    >
+                      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                        <Text style={{ fontSize: 13, fontWeight: "bold", color: theme.colors.text }}>
+                          #{order.orderNumber || order._id?.slice(-6).toUpperCase()}
+                        </Text>
+                        <Chip 
+                          compact 
+                          textStyle={{ fontSize: 10, fontWeight: "bold" }}
+                          style={{ backgroundColor: order.status === "Delivered" || order.status === "Completed" ? "#d1fae5" : "#fee2e2" }}
+                        >
+                          {order.status}
+                        </Chip>
+                      </View>
+
+                      <View style={{ marginTop: 8 }}>
+                        <Text style={{ fontSize: 12, fontWeight: "600", color: theme.colors.text }}>
+                          Customer: {order.user?.name || order.customerName || "Customer"}
+                        </Text>
+                        <Text style={{ fontSize: 11, color: theme.colors.subtext, marginTop: 2 }} numberOfLines={1}>
+                          📍 {order.address?.line1 || "Customer Address"}
+                        </Text>
+                      </View>
+
+                      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 10, paddingTop: 8, borderTopWidth: 1, borderTopColor: isDark ? "#1e293b" : "#e2e8f0" }}>
+                        <Text style={{ fontSize: 12, fontWeight: "extrabold", color: theme.colors.primary }}>
+                          ₹{order.totalAmount || 0} ({isCOD ? "COD" : "Online"})
+                        </Text>
+                        <Text style={{ fontSize: 10, color: theme.colors.subtext }}>
+                          {new Date(order.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
+          </Card.Content>
+        </Card>
+
+        {/* Vehicle & License particulars */}
         <Card style={[styles.sectionCard, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
           <Card.Content>
             <Text style={[styles.sectionTitle, { color: theme.colors.subtext }]}>Vehicle & License Details</Text>
@@ -247,7 +379,8 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 40,
+    paddingBottom: 120,
+    flexGrow: 1,
   },
   profileCard: {
     borderWidth: 1,
@@ -285,6 +418,42 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 0.5,
     marginBottom: 14,
+  },
+  kpiRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  kpiBox: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 16,
+    alignItems: "center",
+  },
+  kpiValue: {
+    fontSize: 15,
+    fontWeight: "extrabold",
+    marginTop: 4,
+  },
+  kpiLabel: {
+    fontSize: 10,
+    fontWeight: "600",
+    marginTop: 2,
+  },
+  historyHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  viewAllBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  historyItemCard: {
+    padding: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    marginBottom: 10,
   },
   row: {
     flexDirection: "row",

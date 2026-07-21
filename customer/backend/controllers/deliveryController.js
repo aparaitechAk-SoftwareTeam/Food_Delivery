@@ -147,6 +147,16 @@ exports.updateDeliveryStatus = async (req, res) => {
       }
     }
 
+    // Sync payment details if provided during delivery completion
+    if (req.body.paymentMethod) {
+      order.paymentMethod = req.body.paymentMethod;
+    }
+    if (req.body.paymentStatus === "Paid" || status === "Cash Collected") {
+      order.paymentStatus = "Paid";
+      order.paidAt = order.paidAt || new Date();
+      order.paymentReceivedAt = order.paymentReceivedAt || new Date();
+    }
+
     // Sync redundant tracking status fields for Feature 9 compatibility
     order.riderStatus = order.deliveryStatus;
     order.orderStatus = order.status;

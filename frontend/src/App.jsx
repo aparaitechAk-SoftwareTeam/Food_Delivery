@@ -17,6 +17,7 @@ import Settings from './pages/admin/food/Settings';
 import Login from './pages/admin/Login';
 import ProtectedRoute from './pages/admin/ProtectedRoute';
 import Orders from './pages/admin/food/Orders';
+import TodaysOrders from './pages/admin/food/TodaysOrders';
 import Customers from './pages/admin/food/Customers';
 import DeliveryBoys from './pages/admin/food/DeliveryBoys';
 import Payments from './pages/admin/food/Payments';
@@ -54,6 +55,7 @@ function App() {
         
         {/* New Pages */}
         <Route path="/admin/food-management/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
+        <Route path="/admin/food-management/todays-orders" element={<ProtectedRoute><TodaysOrders /></ProtectedRoute>} />
         <Route path="/admin/food-management/customers" element={<ProtectedRoute><Customers /></ProtectedRoute>} />
         <Route path="/admin/food-management/delivery-boys" element={<ProtectedRoute><DeliveryBoys /></ProtectedRoute>} />
         <Route path="/admin/food-management/payments" element={<ProtectedRoute><Payments /></ProtectedRoute>} />
