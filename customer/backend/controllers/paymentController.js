@@ -5,7 +5,7 @@ const Food = require("../models/Food");
 const Payment = require("../models/Payment");
 const User = require("../models/User");
 
-// 1. Create a Razorpay Order
+
 exports.createOrder = async (req, res) => {
   try {
     const { amount, receipt = `rcpt_${Date.now()}`, notes = {} } = req.body;
