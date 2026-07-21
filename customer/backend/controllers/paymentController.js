@@ -178,8 +178,15 @@ exports.verifyPayment = async (req, res) => {
     let actualPaymentId = checkPaymentId || `pay_mock_${Date.now()}`;
     let actualSignature = checkSignature || "verified_sig";
 
-    const keySecret = process.env.RAZORPAY_KEY_SECRET || "";
+    const keySecret = (process.env.RAZORPAY_KEY_SECRET || "").trim();
     const isMock = !keySecret || checkOrderId?.startsWith("mock_");
+
+    console.log("[paymentController] verifyPayment parameters:");
+    console.log("  - checkPaymentId:", checkPaymentId);
+    console.log("  - checkSignature:", checkSignature);
+    console.log("  - checkOrderId:", checkOrderId);
+    console.log("  - keySecret configured:", !!keySecret, `(length: ${keySecret.length})`);
+    console.log("  - isMock:", isMock);
 
     // Cryptographic HMAC SHA256 verification (Service Hub signature check)
     if (checkPaymentId && checkSignature && checkOrderId && keySecret) {
@@ -187,6 +194,9 @@ exports.verifyPayment = async (req, res) => {
         .createHmac("sha256", keySecret)
         .update(checkOrderId + "|" + checkPaymentId)
         .digest("hex");
+
+      console.log("  - generatedSignature:", generatedSignature);
+      console.log("  - signatures match:", generatedSignature === checkSignature);
 
       if (generatedSignature === checkSignature) {
         isVerified = true;
@@ -196,6 +206,7 @@ exports.verifyPayment = async (req, res) => {
     }
 
     if (!isVerified && isMock) {
+      console.log("[paymentController] Verification bypassed due to mock mode.");
       isVerified = true;
     } else if (!isVerified && razorpay && checkOrderId && razorpay.qrcodes) {
       try {

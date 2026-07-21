@@ -2,7 +2,7 @@ import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 
-const DEFAULT_REMOTE_API = "https://food-delivery-4589.onrender.com/api";
+const DEFAULT_REMOTE_API = "https://food-delivery-fqqo.onrender.com/api";
 
 const normalizeApiUrl = (url) => {
   if (!url) return null;
