@@ -529,3 +529,40 @@ exports.checkLinkStatus = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// 8. Process Refund (Standard API trigger)
+exports.processRefund = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const Order = require("../models/Order");
+    const order = await Order.findById(orderId);
+    
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    order.paymentStatus = "Refunded";
+    await order.save();
+
+    await Payment.findOneAndUpdate(
+      { orderId: order._id },
+      { paymentStatus: "Refunded" }
+    );
+
+    res.status(200).json({ success: true, message: "Refund processed successfully", order });
+  } catch (error) {
+    console.error("[paymentController] processRefund error:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// 9. Get all transactions (Standard API trigger)
+exports.getTransactions = async (req, res) => {
+  try {
+    const payments = await Payment.find().populate("orderId userId").sort({ createdAt: -1 });
+    res.status(200).json(payments);
+  } catch (error) {
+    console.error("[paymentController] getTransactions error:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
