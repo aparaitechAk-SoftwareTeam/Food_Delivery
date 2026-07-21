@@ -397,39 +397,74 @@ const OrderDetailsScreen = ({ route, navigation }) => {
         
         {/* Cancel Reason Dialog */}
         <Portal>
-          <Dialog visible={cancelVisible} onDismiss={() => setCancelVisible(false)}>
-            <Dialog.Title>Cancel Order</Dialog.Title>
-            <Dialog.Content>
-              <Text style={styles.dialogDescription}>
+          <Dialog 
+            visible={cancelVisible} 
+            onDismiss={() => setCancelVisible(false)}
+            style={{ 
+              backgroundColor: "#0f172a", 
+              borderRadius: 20, 
+              borderWidth: 1, 
+              borderColor: "#334155", 
+              paddingHorizontal: 4,
+              elevation: 24,
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 10 },
+              shadowOpacity: 0.5,
+              shadowRadius: 15,
+            }}
+          >
+            <Dialog.Title style={{ color: "#ffffff", fontSize: 18, fontWeight: "900", borderBottomWidth: 1, borderBottomColor: "#1e293b", paddingBottom: 10, marginBottom: 8 }}>
+              Cancel Order
+            </Dialog.Title>
+            <Dialog.Content style={{ paddingTop: 4 }}>
+              <Text style={{ color: "#94a3b8", fontSize: 13, fontWeight: "600", marginBottom: 14 }}>
                 Why do you want to cancel this order?
               </Text>
               <RadioButton.Group onValueChange={value => setCancelReason(value)} value={cancelReason}>
-                <View style={styles.radioRow}>
-                  <RadioButton value="Ordered by mistake" color="#ff6b00" />
-                  <Text style={styles.radioLabel}>Ordered by mistake</Text>
-                </View>
-                <View style={styles.radioRow}>
-                  <RadioButton value="Delivery taking too long" color="#ff6b00" />
-                  <Text style={styles.radioLabel}>Delivery taking too long</Text>
-                </View>
-                <View style={styles.radioRow}>
-                  <RadioButton value="Change of plans" color="#ff6b00" />
-                  <Text style={styles.radioLabel}>Change of plans</Text>
-                </View>
-                <View style={styles.radioRow}>
-                  <RadioButton value="Found better option" color="#ff6b00" />
-                  <Text style={styles.radioLabel}>Found better option</Text>
-                </View>
+                {[
+                  "Ordered by mistake",
+                  "Delivery taking too long",
+                  "Change of plans",
+                  "Found better option"
+                ].map((reasonText) => {
+                  const isSelected = cancelReason === reasonText;
+                  return (
+                    <TouchableOpacity
+                      key={reasonText}
+                      activeOpacity={0.7}
+                      onPress={() => setCancelReason(reasonText)}
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        backgroundColor: isSelected ? "#1e293b" : "#020617",
+                        borderColor: isSelected ? "#ef4444" : "#334155",
+                        borderWidth: 1.5,
+                        borderRadius: 12,
+                        paddingVertical: 10,
+                        paddingHorizontal: 12,
+                        marginVertical: 4,
+                      }}
+                    >
+                      <RadioButton value={reasonText} color="#ef4444" uncheckedColor="#64748b" />
+                      <Text style={{ fontSize: 13, fontWeight: isSelected ? "700" : "500", color: isSelected ? "#ffffff" : "#cbd5e1", marginLeft: 8 }}>
+                        {reasonText}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </RadioButton.Group>
             </Dialog.Content>
-            <Dialog.Actions>
-              <AppButton mode="text" onPress={() => setCancelVisible(false)} textColor="#666">
+            <Dialog.Actions style={{ paddingHorizontal: 16, paddingBottom: 16, paddingTop: 4 }}>
+              <AppButton mode="text" onPress={() => setCancelVisible(false)} textColor="#94a3b8" labelStyle={{ fontSize: 13, fontWeight: "700" }}>
                 Back
               </AppButton>
               <AppButton
                 loading={cancelLoading}
                 onPress={handleCancelOrder}
-                textColor="#d32f2f"
+                buttonColor="#ef4444"
+                textColor="#ffffff"
+                style={{ borderRadius: 10, paddingHorizontal: 12 }}
+                labelStyle={{ fontSize: 13, fontWeight: "bold" }}
               >
                 Confirm Cancel
               </AppButton>

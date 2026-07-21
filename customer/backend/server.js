@@ -56,14 +56,15 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// Stricter limiter for payment endpoints
-// 30 requests per 15 minutes per IP
+// Stricter limiter for payment endpoints (allow polling for check-link-status)
+// 200 requests per 15 minutes per IP
 const paymentLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 30,
+  max: 200,
   message: { message: "Too many payment requests. Please try again shortly." },
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => req.path && req.path.includes("/check-link-status"),
 });
 
 const app = express();
@@ -119,6 +120,7 @@ app.use("/api/favorites",   favoriteRoutes);
 app.use("/api/banners",     bannerRoutes);
 app.use("/api/search",      searchRoutes);
 app.use("/api/payment",     paymentLimiter, paymentRoutes);
+app.use("/api/payments",    paymentLimiter, paymentRoutes);   // alias for plural requests
 app.use("/api/admin",       adminRoutes);
 app.use("/api/delivery",    deliveryRoutes);
 app.use("/api/notifications", notificationRoutes);

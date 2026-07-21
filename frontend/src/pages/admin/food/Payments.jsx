@@ -43,25 +43,27 @@ const Payments = () => {
   };
 
   const handleProcessRefund = async (orderId) => {
-    if (!window.confirm('Process refund for this transaction?')) return;
+    if (!window.confirm('Process Razorpay refund for this transaction?')) return;
     try {
       const token = localStorage.getItem('admin_token');
-      const response = await fetch(`${API_BASE_URL}/admin/orders/${orderId}/status`, {
-        method: 'PUT',
+      const response = await fetch(`${API_BASE_URL}/payment/refund/${orderId}`, {
+        method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ paymentStatus: 'Refunded' }),
+        body: JSON.stringify({ reason: 'Admin requested refund' }),
       });
+      const data = await response.json();
       if (response.ok) {
         setOrders(prev => prev.map(o => o._id === orderId ? { ...o, paymentStatus: 'Refunded' } : o));
-        alert('Refund processed successfully!');
+        alert('Razorpay refund processed successfully!');
       } else {
-        alert('Failed to process refund.');
+        alert(data.message || 'Failed to process refund.');
       }
     } catch (err) {
       console.error(err);
+      alert('Error processing refund.');
     }
   };
 

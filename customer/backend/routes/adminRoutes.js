@@ -57,6 +57,7 @@ const {
   getTags,
   createTag,
   deleteTag,
+  migrateOrderNumbers,
 } = require("../controllers/adminController");
 const protect = require("../middleware/authMiddleware");
 const router = express.Router();
@@ -71,7 +72,7 @@ const adminOnly = (req, res, next) => {
   }
 };
 
-// Unprotected routes
+// Public routes
 router.post("/login", adminLogin);
 
 // Protected routes

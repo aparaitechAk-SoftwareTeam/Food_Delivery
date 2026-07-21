@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { ClipboardList, Search, Eye, Check, X, CheckCircle2, AlertTriangle, RefreshCw, Printer, Filter, Star, Download, Calendar, TrendingUp, Clock, ShoppingBag } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ClipboardList, Search, Eye, Check, X, CheckCircle2, AlertTriangle, RefreshCw, Printer, Filter, Star, Download, Calendar, TrendingUp, Clock, ShoppingBag, Radio } from 'lucide-react';
 import Sidebar from '../../../components/admin/Sidebar';
 import TopHeader from '../../../components/admin/TopHeader';
 import { API_BASE_URL } from '../../../config';
 import { getSocket } from '../../../utils/socket';
 
 const Orders = () => {
+  const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [riders, setRiders] = useState([]);
   const [selectedRiderId, setSelectedRiderId] = useState('');
@@ -211,8 +213,9 @@ const Orders = () => {
       });
       if (response.ok) {
         const assignedRider = riders.find(r => r._id === selectedRiderId);
-        setOrders(prev => prev.map(o => o._id === selectedOrder._id ? { ...o, deliveryBoy: assignedRider, deliveryStatus: 'Assigned' } : o));
-        setSelectedOrder(prev => ({ ...prev, deliveryBoy: assignedRider, deliveryStatus: 'Assigned' }));
+        const newStatus = ['Pending', 'Confirmed', 'Preparing'].includes(selectedOrder.status) ? 'Out For Delivery' : selectedOrder.status;
+        setOrders(prev => prev.map(o => o._id === selectedOrder._id ? { ...o, status: newStatus, deliveryBoy: assignedRider, deliveryStatus: 'Assigned' } : o));
+        setSelectedOrder(prev => ({ ...prev, status: newStatus, deliveryBoy: assignedRider, deliveryStatus: 'Assigned' }));
         setSelectedRiderId('');
       } else {
         alert('Failed to assign rider');
@@ -429,8 +432,54 @@ const Orders = () => {
     }
   };
 
+  // Helper values for selected order breakdown
+  const getBillingBreakdown = (order) => {
+    if (!order) return { itemsSubtotal: 0, deliveryFee: 0, packagingFee: 0, tax: 0, discount: 0, grandTotal: 0 };
+    const itemsSubtotal = order.items?.reduce((acc, item) => acc + ((item.price || 0) * (item.quantity || 1)), 0) || order.itemsPrice || (order.totalAmount - (order.deliveryCharge || 40));
+    const deliveryFee = order.deliveryCharge !== undefined ? order.deliveryCharge : 40;
+    const packagingFee = order.packagingFee || 0;
+    const tax = order.tax || Math.round(itemsSubtotal * 0.05);
+    const discount = order.discount || 0;
+    const grandTotal = order.totalAmount || (itemsSubtotal + deliveryFee + packagingFee + tax - discount);
+    return { itemsSubtotal, deliveryFee, packagingFee, tax, discount, grandTotal };
+  };
+
+  const orderBill = selectedOrder ? getBillingBreakdown(selectedOrder) : null;
+
   return (
     <div className="min-h-screen bg-slate-50 flex">
+      {/* Embedded Print CSS to force thermal receipt format only */}
+      <style>{`
+        @media print {
+          body * {
+            visibility: hidden !important;
+          }
+          #printable-receipt, #printable-receipt * {
+            visibility: visible !important;
+          }
+          #printable-receipt {
+            position: absolute !important;
+            left: 50% !important;
+            top: 20px !important;
+            transform: translateX(-50%) !important;
+            display: block !important;
+            width: 100% !important;
+            max-width: 360px !important;
+            margin: 0 auto !important;
+            padding: 16px !important;
+            background: white !important;
+            color: black !important;
+            box-shadow: none !important;
+            border: 1px dashed black !important;
+            border-radius: 8px !important;
+          }
+          @page {
+            margin: 5mm;
+            size: auto;
+          }
+        }
+      `}</style>
+
       <Sidebar />
       <div className="flex-1 pl-[240px] flex flex-col min-w-0">
         <TopHeader />
@@ -548,6 +597,16 @@ const Orders = () => {
                 </div>
 
                 <div className="flex items-center gap-2">
+                  {/* Today's Live Kanban Redirect Button */}
+                  <button
+                    onClick={() => navigate('/admin/food-management/todays-orders')}
+                    title="Open Today's Live Order Kanban Tracker"
+                    className="flex items-center gap-1.5 px-3 py-1.5 border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
+                  >
+                    <Radio className="w-3.5 h-3.5 text-indigo-600 animate-pulse" />
+                    <span>Today's Live Kanban</span>
+                  </button>
+
                   {/* Export Button */}
                   <button
                     onClick={handleExportCSV}
@@ -758,7 +817,7 @@ const Orders = () => {
             </div>
 
             {/* Details & Invoice Sidebar */}
-            {selectedOrder && (
+            {selectedOrder && orderBill && (
               <div className="w-[380px] bg-white rounded-2xl border border-gray-200 shadow-sm p-6 flex flex-col shrink-0 self-start max-h-[85vh] overflow-y-auto">
                 <div className="flex justify-between items-center border-b border-gray-100 pb-3 mb-4">
                   <h3 className="text-sm font-bold text-gray-900">Order Info</h3>
@@ -787,30 +846,29 @@ const Orders = () => {
                   </div>
                 </div>
 
-                {/* Printable Invoice Header */}
-                <div className="print-only mb-6 text-center border-b pb-4 hidden">
-                  <h1 className="text-xl font-bold text-indigo-600">FoodExpress Invoice</h1>
-                  <p className="text-xs text-gray-500">Order #{selectedOrder.orderNumber || selectedOrder._id.slice(-6).toUpperCase()}</p>
-                </div>
-
                 <div className="space-y-4">
                   {/* Status Banner */}
                   <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex items-center justify-between">
                     <span className="text-xs font-semibold text-slate-500">Order Status</span>
-                    <select
-                      value={selectedOrder.status}
-                      disabled={updatingId === selectedOrder._id}
-                      onChange={(e) => handleUpdateStatus(selectedOrder._id, e.target.value)}
-                      className={`text-xs font-bold px-2 py-1 rounded-lg border outline-none cursor-pointer ${getStatusColor(selectedOrder.status)}`}
-                    >
-                      <option value="Pending">Pending</option>
-                      <option value="Confirmed">Confirmed</option>
-                      <option value="Preparing">Preparing</option>
-                      <option value="Out For Delivery">Out For Delivery</option>
-                      <option value="Delivered">Delivered</option>
-                      <option value="Completed">Completed</option>
-                      <option value="Cancelled">Cancelled</option>
-                    </select>
+                    {["Delivered", "Completed"].includes(selectedOrder.status) ? (
+                      <span className="text-xs font-bold px-2.5 py-1 rounded-lg border bg-emerald-50 border-emerald-100 text-emerald-600 flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                        {selectedOrder.status} (Updated by Rider)
+                      </span>
+                    ) : (
+                      <select
+                        value={selectedOrder.status}
+                        disabled={updatingId === selectedOrder._id}
+                        onChange={(e) => handleUpdateStatus(selectedOrder._id, e.target.value)}
+                        className={`text-xs font-bold px-2 py-1 rounded-lg border outline-none cursor-pointer ${getStatusColor(selectedOrder.status)}`}
+                      >
+                        <option value="Pending">Pending</option>
+                        <option value="Confirmed">Confirmed (Accept)</option>
+                        <option value="Preparing">Preparing (Kitchen)</option>
+                        <option value="Out For Delivery">Out For Delivery (Dispatch)</option>
+                        <option value="Cancelled">Cancelled</option>
+                      </select>
+                    )}
                   </div>
 
                   {/* Rider Assignment Banner */}
@@ -877,20 +935,47 @@ const Orders = () => {
                     </div>
                   </div>
 
-                  {/* Total Breakdown */}
-                  <div className="bg-gray-50 p-3 rounded-xl space-y-1">
-                    <div className="flex justify-between text-xs text-gray-500">
-                      <span>Items Subtotal</span>
-                      <span>₹{selectedOrder.itemsPrice || selectedOrder.totalAmount - (selectedOrder.deliveryCharge || 40)}</span>
+                  {/* Detailed Billing Details Breakdown */}
+                  <div className="bg-gray-50/80 p-4 rounded-2xl space-y-2 border border-gray-200/70">
+                    <h4 className="text-xs font-bold text-gray-900 border-b border-gray-200/60 pb-1.5">Billing details</h4>
+                    
+                    <div className="flex justify-between text-xs text-slate-600">
+                      <span>Subtotal</span>
+                      <span className="font-semibold text-slate-800">₹{orderBill.itemsSubtotal.toFixed(2)}</span>
                     </div>
-                    <div className="flex justify-between text-xs text-gray-500">
-                      <span>Delivery Fee</span>
-                      <span>₹{selectedOrder.deliveryCharge || 40}</span>
+
+                    <div className="flex justify-between text-xs text-slate-600">
+                      <span>Delivery</span>
+                      <span className="font-bold text-emerald-600">{orderBill.deliveryFee === 0 ? 'FREE' : `₹${orderBill.deliveryFee.toFixed(2)}`}</span>
                     </div>
-                    <div className="flex justify-between text-xs font-bold text-gray-900 pt-1 border-t border-gray-200">
-                      <span>Total Paid ({selectedOrder.paymentMethod})</span>
-                      <span className="text-indigo-600">₹{selectedOrder.totalAmount}</span>
+
+                    <div className="flex justify-between text-xs text-slate-600">
+                      <span>Packaging Fee</span>
+                      <span className="font-bold text-emerald-600">{orderBill.packagingFee > 0 ? `₹${orderBill.packagingFee.toFixed(2)}` : 'FREE'}</span>
                     </div>
+
+                    <div className="flex justify-between text-xs text-slate-600">
+                      <span>Taxes & Charges (GST)</span>
+                      <span className="font-semibold text-slate-800">₹{orderBill.tax.toFixed(2)}</span>
+                    </div>
+
+                    {orderBill.discount > 0 && (
+                      <div className="flex justify-between text-xs text-emerald-600 font-bold">
+                        <span>Discount Savings</span>
+                        <span>- ₹{orderBill.discount.toFixed(2)}</span>
+                      </div>
+                    )}
+
+                    <div className="flex justify-between text-xs font-black text-slate-900 pt-2 border-t border-slate-200">
+                      <span>Total ({selectedOrder.paymentMethod || 'COD'})</span>
+                      <span className="text-emerald-600 text-sm font-black">₹{orderBill.grandTotal.toFixed(2)}</span>
+                    </div>
+
+                    {orderBill.discount > 0 && (
+                      <div className="mt-2.5 p-2 bg-emerald-50 border border-emerald-200 rounded-xl text-center text-xs font-bold text-emerald-700">
+                        Total saved on this order ₹{orderBill.discount.toFixed(2)}
+                      </div>
+                    )}
                   </div>
 
                   {/* Customer Rating & Reviews */}
@@ -917,6 +1002,99 @@ const Orders = () => {
           </div>
         </main>
       </div>
+
+      {/* Printable Thermal Receipt Card (Only visible when printing) */}
+      {selectedOrder && orderBill && (
+        <div id="printable-receipt" className="hidden print:block font-mono text-black p-4 max-w-[340px] mx-auto border border-black bg-white rounded-lg">
+          {/* Header */}
+          <div className="text-center border-b border-dashed border-black pb-3 mb-3">
+            <h2 className="text-base font-black uppercase tracking-wider">FoodExpress</h2>
+            <p className="text-[10px] uppercase font-bold text-gray-700">Official Order Receipt</p>
+            <p className="text-[10px] text-gray-700 mt-1">
+              Date: {new Date(selectedOrder.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })} {' '}
+              {new Date(selectedOrder.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </p>
+            <p className="text-[12px] font-black mt-1">ORDER #{selectedOrder.orderNumber || selectedOrder._id.slice(-6).toUpperCase()}</p>
+          </div>
+
+          {/* Customer Details */}
+          <div className="border-b border-dashed border-black pb-3 mb-3 text-[11px] space-y-0.5">
+            <p className="font-bold uppercase text-[9px] text-gray-600">Customer Details:</p>
+            <p className="font-black text-[12px]">{selectedOrder.customerName || selectedOrder.user?.name || 'Guest User'}</p>
+            <p>Phone: {selectedOrder.customerPhone || selectedOrder.user?.phone || 'N/A'}</p>
+            <p>Address: {selectedOrder.address?.line1 ? `${selectedOrder.address.line1}, ${selectedOrder.address.city || ''}` : 'Store Pickup'}</p>
+          </div>
+
+          {/* Restaurant Info */}
+          <div className="border-b border-dashed border-black pb-3 mb-3 text-[11px] space-y-0.5">
+            <p className="font-bold uppercase text-[9px] text-gray-600">Restaurant:</p>
+            <p className="font-bold">{selectedOrder.restaurant?.name || 'FoodExpress Premium Kitchen'}</p>
+            <p className="text-[10px]">{selectedOrder.restaurant?.address || 'Baramati'}</p>
+          </div>
+
+          {/* Order Items */}
+          <div className="border-b border-dashed border-black pb-3 mb-3 text-[11px]">
+            <p className="font-bold uppercase text-[9px] text-gray-600 mb-1">Order Items:</p>
+            <div className="space-y-1">
+              {selectedOrder.items?.map((item, idx) => (
+                <div key={idx} className="flex justify-between items-start">
+                  <span className="font-bold">{item.quantity}x {item.name || item.foodItem?.name || 'Item'}</span>
+                  <span className="font-black">₹{(item.price * item.quantity).toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Detailed Billing Details Breakdown for Print */}
+          <div className="text-[11px] space-y-1 border-b border-dashed border-black pb-3 mb-3">
+            <p className="font-bold uppercase text-[9px] text-gray-600 mb-1">Billing details</p>
+            
+            <div className="flex justify-between">
+              <span>Subtotal:</span>
+              <span>₹{orderBill.itemsSubtotal.toFixed(2)}</span>
+            </div>
+
+            <div className="flex justify-between">
+              <span>Delivery:</span>
+              <span>{orderBill.deliveryFee === 0 ? 'FREE' : `₹${orderBill.deliveryFee.toFixed(2)}`}</span>
+            </div>
+
+            <div className="flex justify-between">
+              <span>Packaging Fee:</span>
+              <span>{orderBill.packagingFee > 0 ? `₹${orderBill.packagingFee.toFixed(2)}` : 'FREE'}</span>
+            </div>
+
+            <div className="flex justify-between">
+              <span>Taxes & Charges (GST):</span>
+              <span>₹{orderBill.tax.toFixed(2)}</span>
+            </div>
+
+            {orderBill.discount > 0 && (
+              <div className="flex justify-between font-semibold text-emerald-700">
+                <span>Discount Savings:</span>
+                <span>- ₹{orderBill.discount.toFixed(2)}</span>
+              </div>
+            )}
+
+            <div className="flex justify-between text-xs font-black pt-1.5 border-t border-black mt-1">
+              <span>TOTAL ({selectedOrder.paymentMethod || 'COD'}):</span>
+              <span>₹{orderBill.grandTotal.toFixed(2)}</span>
+            </div>
+
+            {orderBill.discount > 0 && (
+              <div className="mt-2 p-1.5 border border-dashed border-black bg-gray-50 text-center text-[10px] font-bold">
+                Total saved on this order ₹{orderBill.discount.toFixed(2)}
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="text-center text-[10px] space-y-0.5 pt-1">
+            <p className="font-bold">Thank you for ordering with FoodExpress!</p>
+            <p>Enjoy your meal 🍔</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

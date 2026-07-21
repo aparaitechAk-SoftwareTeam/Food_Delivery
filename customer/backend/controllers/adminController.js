@@ -139,7 +139,10 @@ exports.getOrdersList = async (req, res) => {
     thirtyDaysStart.setDate(thirtyDaysStart.getDate() - 29);
 
     if (range === "today") {
-      query.createdAt = { $gte: todayStart, $lte: todayEnd };
+      query.$or = [
+        { createdAt: { $gte: todayStart, $lte: todayEnd } },
+        { status: { $in: ["Pending", "Confirmed", "Preparing", "Out For Delivery"] } }
+      ];
     } else if (range === "yesterday") {
       query.createdAt = { $gte: yesterdayStart, $lte: yesterdayEnd };
     } else if (range === "7days") {
@@ -152,10 +155,37 @@ exports.getOrdersList = async (req, res) => {
       query.status = status;
     }
 
+    if (search && search.trim()) {
+      const searchRegex = new RegExp(search.trim(), "i");
+      const searchConditions = [
+        { orderNumber: searchRegex },
+        { customerName: searchRegex },
+        { customerPhone: searchRegex },
+        { razorpayPaymentId: searchRegex },
+        { razorpayOrderId: searchRegex }
+      ];
+
+      const mongoose = require("mongoose");
+      if (mongoose.Types.ObjectId.isValid(search.trim())) {
+        searchConditions.push({ _id: search.trim() });
+      }
+
+      if (query.$or) {
+        query.$and = [
+          { $or: query.$or },
+          { $or: searchConditions }
+        ];
+        delete query.$or;
+      } else {
+        query.$or = searchConditions;
+      }
+    }
+
     const orders = await Order.find(query)
       .populate("user", "name phone email")
       .populate("restaurant", "name address")
       .populate("deliveryBoy", "name phone email vehicleType vehicleNumber")
+      .populate("items.food", "name price category image")
       .sort({ createdAt: -1 });
 
     let stats = null;
