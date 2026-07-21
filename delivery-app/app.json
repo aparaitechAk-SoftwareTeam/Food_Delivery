@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "FoodExpress Rider",
-    "slug": "foodexpress-rider",
+    "slug": "delivery-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
@@ -18,7 +18,7 @@
     "web": {},
     "extra": {
       "eas": {
-        "projectId": "65e4fb0c-a013-40bb-b514-8bfe24147998"
+        "projectId": "bf9b68f2-b92e-4699-afe5-0ebdf4799ed6"
       }
     }
   }
