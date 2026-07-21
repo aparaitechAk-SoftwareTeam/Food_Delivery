@@ -1,27 +1,11 @@
 const express = require("express");
-const { 
-  generateQR, 
-  createOrder, 
-  verifyPayment, 
-  handleWebhook, 
-  processRefund, 
-  getTransactions,
-  checkLinkStatus
-} = require("../controllers/paymentController");
+const { createOrder, verifyPayment, getPaymentStatus } = require("../controllers/paymentController");
 const protect = require("../middleware/authMiddleware");
 const router = express.Router();
 
-// Public Webhook Route (Verified via x-razorpay-signature header)
-router.post("/webhook", handleWebhook);
-
-// Protected User Routes
-router.post("/create-order", protect, createOrder);
-router.post("/generate-qr", protect, generateQR);
-router.post("/verify", protect, verifyPayment);
-router.get("/check-link-status/:id", protect, checkLinkStatus);
-
-// Admin Routes
-router.post("/refund/:orderId", protect, processRefund);
-router.get("/transactions", protect, getTransactions);
+router.use(protect);
+router.post("/create-order", createOrder);
+router.post("/verify", verifyPayment);
+router.get("/status/:paymentId", getPaymentStatus);
 
 module.exports = router;
