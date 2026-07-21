@@ -189,15 +189,21 @@ exports.getRiderEarnings = async (req, res) => {
     const objectId = mongoose.Types.ObjectId.isValid(rId) ? new mongoose.Types.ObjectId(rId) : rId;
 
     const orders = await Order.find({ 
-      $or: [
-        { deliveryBoy: rId },
-        { deliveryBoy: objectId }
-      ],
-      $or: [
-        { status: { $in: ["Delivered", "Completed"] } },
-        { deliveryStatus: { $in: ["Delivered", "Completed"] } },
-        { riderStatus: { $in: ["Delivered", "Completed"] } },
-        { orderStatus: { $in: ["Delivered", "Completed"] } }
+      $and: [
+        {
+          $or: [
+            { deliveryBoy: rId },
+            { deliveryBoy: objectId }
+          ]
+        },
+        {
+          $or: [
+            { status: { $in: ["Delivered", "Completed"] } },
+            { deliveryStatus: { $in: ["Delivered", "Completed"] } },
+            { riderStatus: { $in: ["Delivered", "Completed"] } },
+            { orderStatus: { $in: ["Delivered", "Completed"] } }
+          ]
+        }
       ]
     });
 
