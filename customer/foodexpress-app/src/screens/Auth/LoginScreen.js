@@ -44,15 +44,21 @@ const LoginScreen = ({ navigation, route }) => {
   }, []);
 
   const CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || "215877724329-m5621nnr5s5vv8ickmla0kl4mloapbup.apps.googleusercontent.com";
+  const ANDROID_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || "215877724329-gnhr3a98ejcqq98sv5sphc8m6i62r3b.apps.googleusercontent.com";
+  const IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || "215877724329-m5621nnr5s5vv8ickmla0kl4mloapbup.apps.googleusercontent.com";
 
-  // HTTPS Auth Proxy URI matching current app.json owner (kshitij28s-team) & slug (kshitij-kamble)
+  // Auto-resolve redirectUri dynamically so standalone builds deep link directly back to the app scheme.
+  // In development/Expo Go, it falls back to auth proxy.
   const redirectUri = makeRedirectUri({
-    native: "https://auth.expo.io/@kshitij28s-team/kshitij-kamble",
+    scheme: "com.foodexpress.customer",
+    preferLocalhost: false,
   });
 
   const [request, response, promptAsync] = Google.useAuthRequest({
-    clientId: CLIENT_ID,
+    androidClientId: ANDROID_CLIENT_ID,
+    iosClientId: IOS_CLIENT_ID,
     webClientId: CLIENT_ID,
+    clientId: CLIENT_ID,
     redirectUri,
     scopes: ["profile", "email"],
   });
@@ -60,107 +66,128 @@ const LoginScreen = ({ navigation, route }) => {
   const [googleLoading, setGoogleLoading] = useState(false);
 
   useEffect(() => {
-    if (response?.type === "success") {
-      const { idToken, id_token, accessToken } = response.authentication || {};
-      const tokenToUse = idToken || id_token;
-      
-      setGoogleLoading(true);
+    console.log("[Google Sign-In] Auth response received:", JSON.stringify(response));
 
-      if (tokenToUse) {
-        // Method A: Authenticate with Firebase using ID Token
-        const credential = GoogleAuthProvider.credential(tokenToUse);
-        signInWithCredential(firebaseAuth, credential)
-          .then((userCredential) => {
-            const user = userCredential.user;
-            dispatch(loginGoogle({
-              email: user.email,
-              name: user.displayName,
-              photoUrl: user.photoURL,
-              uid: user.uid,
-            }))
-              .unwrap()
-              .then(() => {
-                navigation.replace("Main");
-              })
-              .catch((err) => {
-                const errText = typeof err === "string" ? err : (err?.message || "Google Sign-In backend sync failed");
-                setSnackbarMsg(errText);
-                setSnackbarVisible(true);
-              })
-              .finally(() => {
-                setGoogleLoading(false);
-              });
-          })
-          .catch((error) => {
-            console.log("Firebase google signin error with ID Token:", error);
-            setSnackbarMsg("Firebase Authentication failed");
-            setSnackbarVisible(true);
-            setGoogleLoading(false);
-          });
-      } else if (accessToken) {
-        // Method B: Authenticate with Firebase using Access Token
-        const credential = GoogleAuthProvider.credential(null, accessToken);
-        signInWithCredential(firebaseAuth, credential)
-          .then((userCredential) => {
-            const user = userCredential.user;
-            dispatch(loginGoogle({
-              email: user.email,
-              name: user.displayName,
-              photoUrl: user.photoURL,
-              uid: user.uid,
-            }))
-              .unwrap()
-              .then(() => {
-                navigation.replace("Main");
-              })
-              .catch((err) => {
-                const errText = typeof err === "string" ? err : (err?.message || "Google Sign-In backend sync failed");
-                setSnackbarMsg(errText);
-                setSnackbarVisible(true);
-              })
-              .finally(() => {
-                setGoogleLoading(false);
-              });
-          })
-          .catch((error) => {
-            console.log("Firebase google signin error with Access Token, trying direct fetch:", error);
-            // Method C: Directly fetch user profile from Google UserInfo API as a reliable fallback
-            fetch(`https://www.googleapis.com/oauth2/v3/userinfo?access_token=${accessToken}`)
-              .then((res) => res.json())
-              .then((googleUser) => {
-                if (googleUser && googleUser.email) {
-                  dispatch(loginGoogle({
-                    email: googleUser.email,
-                    name: googleUser.name,
-                    photoUrl: googleUser.picture,
-                    uid: googleUser.sub,
-                  }))
-                    .unwrap()
-                    .then(() => {
-                      navigation.replace("Main");
-                    })
-                    .catch((err) => {
-                      setSnackbarMsg(err || "Google Sign-In backend sync failed");
-                      setSnackbarVisible(true);
-                    });
-                } else {
-                  setSnackbarMsg("Failed to retrieve Google profile.");
+    if (response) {
+      if (response.type === "success") {
+        const { idToken, id_token, accessToken } = response.authentication || {};
+        const tokenToUse = idToken || id_token;
+        
+        console.log("[Google Sign-In] Success! idToken present:", !!tokenToUse, "accessToken present:", !!accessToken);
+        setGoogleLoading(true);
+
+        if (tokenToUse) {
+          console.log("[Google Sign-In] Authenticating with Firebase using ID Token...");
+          const credential = GoogleAuthProvider.credential(tokenToUse);
+          signInWithCredential(firebaseAuth, credential)
+            .then((userCredential) => {
+              const user = userCredential.user;
+              console.log("[Google Sign-In] Firebase Authentication succeeded for:", user.email);
+              dispatch(loginGoogle({
+                email: user.email,
+                name: user.displayName,
+                photoUrl: user.photoURL,
+                uid: user.uid,
+              }))
+                .unwrap()
+                .then(() => {
+                  console.log("[Google Sign-In] Backend sync succeeded.");
+                  navigation.replace("Main");
+                })
+                .catch((err) => {
+                  console.error("[Google Sign-In] Backend sync failed:", err);
+                  const errText = typeof err === "string" ? err : (err?.message || "Google Sign-In backend sync failed");
+                  setSnackbarMsg(errText);
                   setSnackbarVisible(true);
-                }
-              })
-              .catch((fetchErr) => {
-                console.log("Fetch userinfo error:", fetchErr);
-                setSnackbarMsg("Google Sign-In: Failed to retrieve user info.");
-                setSnackbarVisible(true);
-              })
-              .finally(() => {
-                setGoogleLoading(false);
-              });
-          });
-      } else {
-        setSnackbarMsg("Google Sign-In: No authentication tokens found.");
+                })
+                .finally(() => {
+                  setGoogleLoading(false);
+                });
+            })
+            .catch((error) => {
+              console.error("[Google Sign-In] Firebase auth with ID Token failed:", error);
+              setSnackbarMsg("Firebase Authentication failed");
+              setSnackbarVisible(true);
+              setGoogleLoading(false);
+            });
+        } else if (accessToken) {
+          console.log("[Google Sign-In] Authenticating with Firebase using Access Token...");
+          const credential = GoogleAuthProvider.credential(null, accessToken);
+          signInWithCredential(firebaseAuth, credential)
+            .then((userCredential) => {
+              const user = userCredential.user;
+              console.log("[Google Sign-In] Firebase Authentication succeeded for:", user.email);
+              dispatch(loginGoogle({
+                email: user.email,
+                name: user.displayName,
+                photoUrl: user.photoURL,
+                uid: user.uid,
+              }))
+                .unwrap()
+                .then(() => {
+                  console.log("[Google Sign-In] Backend sync succeeded.");
+                  navigation.replace("Main");
+                })
+                .catch((err) => {
+                  console.error("[Google Sign-In] Backend sync failed:", err);
+                  const errText = typeof err === "string" ? err : (err?.message || "Google Sign-In backend sync failed");
+                  setSnackbarMsg(errText);
+                  setSnackbarVisible(true);
+                })
+                .finally(() => {
+                  setGoogleLoading(false);
+                });
+            })
+            .catch((error) => {
+              console.error("[Google Sign-In] Firebase auth with Access Token failed, trying direct profile fetch...", error);
+              fetch(`https://www.googleapis.com/oauth2/v3/userinfo?access_token=${accessToken}`)
+                .then((res) => res.json())
+                .then((googleUser) => {
+                  if (googleUser && googleUser.email) {
+                    console.log("[Google Sign-In] Directly retrieved Google user info:", googleUser.email);
+                    dispatch(loginGoogle({
+                      email: googleUser.email,
+                      name: googleUser.name,
+                      photoUrl: googleUser.picture,
+                      uid: googleUser.sub,
+                    }))
+                      .unwrap()
+                      .then(() => {
+                        console.log("[Google Sign-In] Backend sync succeeded.");
+                        navigation.replace("Main");
+                      })
+                      .catch((err) => {
+                        console.error("[Google Sign-In] Backend sync failed:", err);
+                        setSnackbarMsg(err || "Google Sign-In backend sync failed");
+                        setSnackbarVisible(true);
+                      });
+                  } else {
+                    console.error("[Google Sign-In] Failed to retrieve Google profile via UserInfo API.");
+                    setSnackbarMsg("Failed to retrieve Google profile.");
+                    setSnackbarVisible(true);
+                  }
+                })
+                .catch((fetchErr) => {
+                  console.error("[Google Sign-In] Fetch Google user info error:", fetchErr);
+                  setSnackbarMsg("Google Sign-In: Failed to retrieve user info.");
+                  setSnackbarVisible(true);
+                })
+                .finally(() => {
+                  setGoogleLoading(false);
+                });
+            });
+        } else {
+          console.error("[Google Sign-In] No authentication tokens found in response.");
+          setSnackbarMsg("Google Sign-In: No authentication tokens found.");
+          setSnackbarVisible(true);
+          setGoogleLoading(false);
+        }
+      } else if (response.type === "error") {
+        console.error("[Google Sign-In] Authentication error response:", response.error);
+        setSnackbarMsg(`Google Sign-In: ${response.error?.message || "Authentication error"}`);
         setSnackbarVisible(true);
-        setGoogleLoading(false);
+      } else if (response.type === "cancel") {
+        console.log("[Google Sign-In] User cancelled authentication request.");
       }
     }
   }, [response]);

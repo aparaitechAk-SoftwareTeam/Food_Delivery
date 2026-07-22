@@ -5,7 +5,7 @@ const Food = require("../models/Food");
 const Payment = require("../models/Payment");
 const User = require("../models/User");
 
-// 1. Create a Razorpay Order
+
 exports.createOrder = async (req, res) => {
   try {
     const { amount, receipt = `rcpt_${Date.now()}`, notes = {} } = req.body;
@@ -48,7 +48,6 @@ exports.createOrder = async (req, res) => {
   }
 };
 
-// 2. Generate Razorpay UPI QR Code URL / Payment Link
 exports.generateQR = async (req, res) => {
   try {
     const { amount, orderId = `TXN-${Date.now()}` } = req.body;
@@ -179,8 +178,15 @@ exports.verifyPayment = async (req, res) => {
     let actualPaymentId = checkPaymentId || `pay_mock_${Date.now()}`;
     let actualSignature = checkSignature || "verified_sig";
 
-    const keySecret = process.env.RAZORPAY_KEY_SECRET || "";
+    const keySecret = (process.env.RAZORPAY_KEY_SECRET || "").trim();
     const isMock = !keySecret || checkOrderId?.startsWith("mock_");
+
+    console.log("[paymentController] verifyPayment parameters:");
+    console.log("  - checkPaymentId:", checkPaymentId);
+    console.log("  - checkSignature:", checkSignature);
+    console.log("  - checkOrderId:", checkOrderId);
+    console.log("  - keySecret configured:", !!keySecret, `(length: ${keySecret.length})`);
+    console.log("  - isMock:", isMock);
 
     // Cryptographic HMAC SHA256 verification (Service Hub signature check)
     if (checkPaymentId && checkSignature && checkOrderId && keySecret) {
@@ -188,6 +194,9 @@ exports.verifyPayment = async (req, res) => {
         .createHmac("sha256", keySecret)
         .update(checkOrderId + "|" + checkPaymentId)
         .digest("hex");
+
+      console.log("  - generatedSignature:", generatedSignature);
+      console.log("  - signatures match:", generatedSignature === checkSignature);
 
       if (generatedSignature === checkSignature) {
         isVerified = true;
@@ -197,6 +206,7 @@ exports.verifyPayment = async (req, res) => {
     }
 
     if (!isVerified && isMock) {
+      console.log("[paymentController] Verification bypassed due to mock mode.");
       isVerified = true;
     } else if (!isVerified && razorpay && checkOrderId && razorpay.qrcodes) {
       try {
@@ -527,6 +537,43 @@ exports.checkLinkStatus = async (req, res) => {
     res.status(200).json({ status: "pending", paid: false, linkStatus: linkData.status });
   } catch (error) {
     console.error("[paymentController] checkLinkStatus error:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// 8. Process Refund (Standard API trigger)
+exports.processRefund = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const Order = require("../models/Order");
+    const order = await Order.findById(orderId);
+    
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    order.paymentStatus = "Refunded";
+    await order.save();
+
+    await Payment.findOneAndUpdate(
+      { orderId: order._id },
+      { paymentStatus: "Refunded" }
+    );
+
+    res.status(200).json({ success: true, message: "Refund processed successfully", order });
+  } catch (error) {
+    console.error("[paymentController] processRefund error:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// 9. Get all transactions (Standard API trigger)
+exports.getTransactions = async (req, res) => {
+  try {
+    const payments = await Payment.find().populate("orderId userId").sort({ createdAt: -1 });
+    res.status(200).json(payments);
+  } catch (error) {
+    console.error("[paymentController] getTransactions error:", error);
     res.status(500).json({ message: error.message });
   }
 };
