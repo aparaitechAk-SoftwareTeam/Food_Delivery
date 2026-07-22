@@ -67,6 +67,39 @@ api.interceptors.request.use(async (config) => {
   return config;
 });
 
+const isTokenExpired = (token) => {
+  if (!token) return true;
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return true;
+    const payload = parts[1];
+    
+    // Base64 decode using pure JS to support all React Native environments safely
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+    let str = String(payload).replace(/[-_]/g, (char) => char === '-' ? '+' : '/');
+    while (str.length % 4) {
+      str += '=';
+    }
+    let output = '';
+    for (let bc = 0, bs = 0, idx = 0; idx < str.length; ) {
+      const char = str.charAt(idx++);
+      const r2 = chars.indexOf(char);
+      if (r2 === -1) continue;
+      bs = bc % 4 ? bs * 64 + r2 : r2;
+      if (bc++ % 4) {
+        output += String.fromCharCode(255 & (bs >> ((-2 * bc) & 6)));
+      }
+    }
+    const { exp } = JSON.parse(output);
+    if (exp) {
+      return Date.now() >= exp * 1000;
+    }
+    return false;
+  } catch (e) {
+    return true;
+  }
+};
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -85,28 +118,59 @@ api.interceptors.response.use(
 
     const status = error.response?.status;
     const url = error.config?.url || "";
-
-    // Only force-logout when the session token itself is invalid,
-    // i.e. a 401 response from an AUTH endpoint (/auth/me, /auth/verify, etc.).
-    // Do NOT logout on 401 from payment, order, or other data endpoints —
-    // that was the root cause of the checkout → logout → location loop.
-    const isAuthEndpoint = url.includes("/auth/");
     const message = error.response?.data?.message || "";
-    const isBlocked = message.toLowerCase().includes("blocked");
-    const isTokenInvalid = message === "Token is not valid" || message === "Not authorized" || message === "jwt expired";
 
-    if (status === 401 && (isAuthEndpoint || isBlocked || isTokenInvalid)) {
-      await AsyncStorage.removeItem("foodexpress_token");
-      await AsyncStorage.removeItem("foodexpress_user");
-      await AsyncStorage.removeItem("foodexpress_active_address");
-      try {
-        const { store } = require("../redux/store");
-        const { logout } = require("../redux/slices/authSlice");
-        store.dispatch(logout());
-      } catch (e) {
-        console.log("Error dispatching logout on 401:", e);
+    // ─── 401 Unauthorized Response Handling ───
+    if (status === 401) {
+      const token = await AsyncStorage.getItem("foodexpress_token");
+      const expired = isTokenExpired(token);
+
+      if (expired) {
+        console.warn(`[Auth Interceptor] JWT Token has expired. Performing force-logout. Token present: ${!!token}`);
+        await AsyncStorage.removeItem("foodexpress_token");
+        await AsyncStorage.removeItem("foodexpress_user");
+        await AsyncStorage.removeItem("foodexpress_active_address");
+        try {
+          const { store } = require("../redux/store");
+          const { logout } = require("../redux/slices/authSlice");
+          store.dispatch(logout());
+        } catch (e) {
+          console.warn("Error dispatching logout on expired token:", e);
+        }
+      } else {
+        // Token is NOT expired. Try retrying the request once.
+        if (!originalConfig._retry) {
+          originalConfig._retry = true;
+          console.log(`[Auth Interceptor] 401 received but token is still active. Retrying request: ${url}`);
+          if (token) {
+            originalConfig.headers.Authorization = `Bearer ${token}`;
+          }
+          return api(originalConfig);
+        }
+
+        // Retry also failed, or the backend explicitly validated and rejected the active token
+        const isAuthEndpoint = url.includes("/auth/");
+        const isBlocked = message.toLowerCase().includes("blocked");
+        const isTokenInvalid = message === "Token is not valid" || message === "Not authorized" || message === "jwt expired";
+
+        if (isAuthEndpoint || isBlocked || isTokenInvalid) {
+          console.warn(`[Auth Interceptor] Session invalidation confirmed by backend on endpoint: ${url}. Logging out.`);
+          await AsyncStorage.removeItem("foodexpress_token");
+          await AsyncStorage.removeItem("foodexpress_user");
+          await AsyncStorage.removeItem("foodexpress_active_address");
+          try {
+            const { store } = require("../redux/store");
+            const { logout } = require("../redux/slices/authSlice");
+            store.dispatch(logout());
+          } catch (e) {
+            console.warn("Error dispatching logout on confirmed invalid session:", e);
+          }
+        } else {
+          console.log(`[Auth Interceptor] 401 returned from non-critical data endpoint: ${url}. Suppressing automatic logout.`);
+        }
       }
     }
+
     console.warn("=== API REQUEST FAILURE ===");
     console.warn("API URL:", error.config?.url || "");
     console.warn("Method:", error.config?.method?.toUpperCase() || "");

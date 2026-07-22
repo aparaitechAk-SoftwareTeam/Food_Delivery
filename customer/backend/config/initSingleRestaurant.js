@@ -39,6 +39,17 @@ const initSingleRestaurant = async () => {
       );
       console.log("All foods linked successfully.");
     }
+
+    // 4. Migrate legacy isNew field to isNewRestaurant in database documents
+    const legacyCount = await Restaurant.countDocuments({ isNew: { $exists: true } });
+    if (legacyCount > 0) {
+      console.log(`[Migration] Renaming legacy 'isNew' field to 'isNewRestaurant' in ${legacyCount} restaurant document(s)...`);
+      await Restaurant.collection.updateMany(
+        { isNew: { $exists: true } },
+        { $rename: { isNew: "isNewRestaurant" } }
+      );
+      console.log("[Migration] Legacy field migration completed successfully.");
+    }
   } catch (error) {
     console.error("Error in initSingleRestaurant:", error.message);
   }

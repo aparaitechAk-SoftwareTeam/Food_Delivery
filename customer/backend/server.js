@@ -79,7 +79,8 @@ const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:8081",
   "http://localhost:8082",
-  "https://cloudkitchen.aparaitech.org/"
+  "https://cloudkitchen.aparaitech.org",
+  "https://food-delivery-pi-drab.vercel.app"
 ].filter(Boolean);
 
 app.use(
