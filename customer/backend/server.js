@@ -6,7 +6,6 @@ const express = require("express");
 const cors = require("cors");
 const morgan = require("morgan");
 const helmet = require("helmet");
-const rateLimit = require("express-rate-limit");
 
 // ── Route imports ──────────────────────────────────────────────────────────────
 const connectDB         = require("./config/db");
@@ -35,40 +34,10 @@ const referralRoutes     = require("./routes/referralRoutes");
 const campaignRoutes     = require("./routes/campaignRoutes");
 const errorHandler      = require("./middleware/errorHandler");
 
-// Rate limiter: maximum 300 requests per 15 minutes per IP (global fallback)
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 300,
-  message: { message: "Too many requests from this IP, please try again after 15 minutes." },
-  standardHeaders: true,
-  legacyHeaders: false,
-  // Skip rate limiting for health checks
-  skip: (req) => req.path === "/api/health",
-});
-
-// Stricter limiter for authentication endpoints (prevents brute-force)
-// 20 requests per 15 minutes per IP
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 20,
-  message: { message: "Too many authentication attempts. Please try again in 15 minutes." },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-// Stricter limiter for payment endpoints
-// 30 requests per 15 minutes per IP
-const paymentLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 30,
-  message: { message: "Too many payment requests. Please try again shortly." },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
+const { limiter, paymentLimiter } = require("./middleware/rateLimiter");
 
 const app = express();
-app.use(helmet());
-app.use(limiter);
+app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
 
 const allowedOrigins = [
   process.env.FRONTEND_URL,
@@ -81,36 +50,107 @@ const allowedOrigins = [
   "https://cloudkitchen.aparaitech.org/"
 ].filter(Boolean);
 
+const isAllowedOrigin = (origin) => {
+  if (!origin) return true;
+  const cleanOrigin = origin.toLowerCase().trim();
+  if (
+    cleanOrigin.includes("localhost") ||
+    cleanOrigin.includes("127.0.0.1") ||
+    cleanOrigin.includes("192.168.") ||
+    cleanOrigin.endsWith(".vercel.app") ||
+    cleanOrigin.endsWith(".onrender.com") ||
+    cleanOrigin.includes("vercel.app") ||
+    allowedOrigins.some(o => o.toLowerCase() === cleanOrigin)
+  ) {
+    return true;
+  }
+  return false;
+};
+
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (!origin || isAllowedOrigin(origin)) {
+    if (origin) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
+    } else {
+      res.setHeader("Access-Control-Allow-Origin", "*");
+    }
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
+  }
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+  next();
+});
+
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps, curl, postman)
-      if (!origin) return callback(null, true);
-      
-      // Allow local development origins dynamically
-      const isLocal = /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+)(:\d+)?$/.test(origin);
-      if (
-        isLocal ||
-        allowedOrigins.includes(origin) ||
-        origin.endsWith(".vercel.app") ||
-        origin.endsWith(".onrender.com")
-      ) {
+      if (isAllowedOrigin(origin)) {
         return callback(null, true);
       }
-      
-      console.warn(`[CORS Guard] Rejected origin: ${origin}`);
       return callback(null, false);
     },
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"]
+    credentials: true
   })
 );
-app.use(express.json());
+app.use(express.json({ limit: "10mb", type: ["application/json", "application/*+json", "text/plain"] }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+
+// Fallback JSON parser in case proxy/client sends body as raw string or Buffer
+app.use((req, res, next) => {
+  if (typeof req.body === "string" && req.body.trim()) {
+    try {
+      req.body = JSON.parse(req.body);
+    } catch (e) {}
+  }
+  if (Buffer.isBuffer(req.body)) {
+    try {
+      req.body = JSON.parse(req.body.toString("utf8"));
+    } catch (e) {}
+  }
+  next();
+});
+
+// Raw Body Stream Reader Fallback Middleware for Proxy Edge Cases (Render / Cloudflare)
+app.use((req, res, next) => {
+  if (["POST", "PUT", "PATCH"].includes(req.method) && (!req.body || Object.keys(req.body).length === 0)) {
+    const contentLength = req.headers["content-length"];
+    if (contentLength && parseInt(contentLength, 10) > 0) {
+      let data = "";
+      req.setEncoding("utf8");
+      req.on("data", (chunk) => {
+        data += chunk;
+      });
+      req.on("end", () => {
+        if (data && data.trim()) {
+          try {
+            req.body = JSON.parse(data);
+          } catch (err) {
+            try {
+              const querystring = require("querystring");
+              req.body = querystring.parse(data);
+            } catch (qsErr) {}
+          }
+        }
+        next();
+      });
+      return;
+    }
+  }
+  next();
+});
+
 app.use(morgan("dev"));
 
+// General API rate limiter (applied AFTER CORS so 429 responses include CORS headers)
+app.use(limiter);
+
 // ── Routes ─────────────────────────────────────────────────────────────────────
-app.use("/api/auth",        authLimiter, authRoutes);
+app.use(["/api/auth", "/auth"], authRoutes);
+
 app.use("/api/foods",       foodRoutes);
 app.use("/api/products",    foodRoutes);   // alias
 app.use("/api/orders",      orderRoutes);
@@ -136,21 +176,19 @@ app.use("/api/memberships",   membershipRoutes);
 app.use("/api/referrals",     referralRoutes);
 app.use("/api/campaigns",     campaignRoutes);
 
-// Health check endpoint
-app.get("/api/health", async (req, res) => {
+// Health check endpoints
+const healthHandler = async (req, res) => {
   const mongoose = require("mongoose");
   res.json({
     status: "UP",
     timestamp: new Date(),
     mongoDB: mongoose.connection.readyState === 1 ? "CONNECTED" : "DISCONNECTED"
   });
-});
+};
 
-// 404 Fallback Handler
-app.use((req, res, next) => {
-  if (res.headersSent) return next();
-  res.status(404).json({ message: `Route ${req.originalUrl} not found.` });
-});
+app.get("/api/health", healthHandler);
+app.get("/health", healthHandler);
+
 
 // ── Global error handler (must be last) ────────────────────────────────────────
 app.use(errorHandler);

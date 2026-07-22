@@ -14,16 +14,7 @@ const restaurantSchema = new mongoose.Schema({
   isOpen: { type: Boolean, default: true },
   isFeatured: { type: Boolean, default: false },
   isTrending: { type: Boolean, default: false },
-  isNewRestaurant: {
-    type: Boolean,
-    default: false,
-    get: function(v) {
-      if ((v === undefined || v === false) && this._doc && this._doc.isNew !== undefined) {
-        return this._doc.isNew;
-      }
-      return v;
-    }
-  },
+  isNew: { type: Boolean, default: false },
   isRecommended: { type: Boolean, default: false },
   priority: { type: Number, default: 0 },
   isActive: { type: Boolean, default: true },
@@ -65,9 +56,6 @@ const restaurantSchema = new mongoose.Schema({
   cashbackRequiredOrders: { type: Number, default: 4 },
   cashbackExpiryHours: { type: Number, default: 48 },
   createdAt: { type: Date, default: Date.now },
-}, {
-  toJSON: { getters: true },
-  toObject: { getters: true }
 });
 
 restaurantSchema.index({ name: 1 });

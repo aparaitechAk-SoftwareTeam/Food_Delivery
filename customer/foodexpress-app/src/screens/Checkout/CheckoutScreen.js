@@ -11,23 +11,7 @@ import paymentService from "../../services/paymentService";
 import api from "../../utils/api";
 import { MaterialCommunityIcons, FontAwesome6 } from "@expo/vector-icons";
 
-const loadRazorpayScript = () => {
-  return new Promise((resolve) => {
-    if (Platform.OS !== "web") {
-      resolve(false);
-      return;
-    }
-    if (window.Razorpay) {
-      resolve(true);
-      return;
-    }
-    const script = document.createElement("script");
-    script.src = "https://checkout.razorpay.com/v1/checkout.js";
-    script.onload = () => resolve(true);
-    script.onerror = () => resolve(false);
-    document.body.appendChild(script);
-  });
-};
+const { width } = Dimensions.get("window");
 
 const CheckoutScreen = ({ navigation }) => {
   const dispatch = useDispatch();
@@ -239,117 +223,22 @@ const CheckoutScreen = ({ navigation }) => {
       return;
     }
 
-    // ─── 4. Razorpay Online Payment Flow ──────────────────────────────────────
-    if (paymentMethod === "Razorpay") {
+    // ─── 4. Razorpay UPI QR Flow ──────────────────────────────────────────────
+    if (paymentMethod === "Razorpay QR") {
       setIsProcessing(true);
-      
-      const firstItem = items[0];
-      const restaurantId = firstItem.restaurantId || firstItem.restaurant?._id || firstItem.restaurant?.id || firstItem.restaurant || "r-1";
-      const backendItems = items.map((item) => ({
-        food: (item.id || item._id).toString().split("-")[0],
-        quantity: item.quantity,
-        price: item.price,
-      }));
-
-      const orderPayload = {
-        restaurant: restaurantId,
-        items: backendItems,
-        address: activeAddr,
-        discount: bill.discount,
-        deliveryCharge: bill.deliveryFee,
-        tax: bill.gst,
-        totalAmount: bill.grandTotal,
-        couponCode: bill.appliedCoupon?.code || undefined,
-      };
-
-      paymentService.createOrder(bill.grandTotal)
-        .then(async (data) => {
-          const orderId = data.order?.id;
-          const isMock = !orderId || orderId.startsWith("mock_");
-
-          // Formulate mock QR data locally if running in simulated mode
-          const mockData = { ...data };
-          if (isMock) {
-            const upiUri = `upi://pay?pa=CloudKitchen@okaxis&pn=Krushna's%20Restaurant&tr=${orderId}&am=${bill.grandTotal}&cu=INR&tn=Order%20${orderId}`;
-            mockData.qr_code_url = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(upiUri)}`;
-            mockData.razorpay_order_id = orderId;
-          }
-          setQrCodeData(mockData);
-          
-          if (Platform.OS === "web") {
-            const scriptLoaded = await loadRazorpayScript();
-            if (!isMock && scriptLoaded && window.Razorpay) {
-              const razorpayKey = data.key || process.env.EXPO_PUBLIC_RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID || "rzp_live_SuiX1JeqCYs1KX";
-              
-              const options = {
-                key: razorpayKey,
-                amount: data.order?.amount || Math.round(bill.grandTotal * 100),
-                currency: data.order?.currency || "INR",
-                name: items[0]?.restaurantName || "FoodExpress Premium Kitchen",
-                description: "Payment for Order",
-                order_id: orderId,
-                handler: function (response) {
-                  setIsProcessing(true);
-                  paymentService.verifyPayment({
-                    razorpay_payment_id: response.razorpay_payment_id || `pay_${Date.now()}`,
-                    razorpay_signature: response.razorpay_signature || `sig_${Date.now()}`,
-                    razorpay_order_id: response.razorpay_order_id || orderId,
-                    amount: bill.grandTotal,
-                    paymentMethod: "Razorpay Online Payment",
-                    orderData: orderPayload
-                  })
-                    .then((res) => {
-                      dispatch(clearCart());
-                      setIsProcessing(false);
-                      navigation.replace("OrderSuccess", {
-                        orderId: res._id || res.id,
-                        orderNumber: res.orderNumber,
-                        totalAmount: res.totalAmount,
-                        paymentMethod: res.paymentMethod || "Razorpay Online Payment",
-                        address: res.address || orderPayload.address,
-                      });
-                    })
-                    .catch((err) => {
-                      setIsProcessing(false);
-                      const errorMsg = err.response?.data?.message || err.message || "Payment verification failed.";
-                      alert(errorMsg);
-                    });
-                },
-                prefill: {
-                  name: "",
-                  email: "",
-                  contact: "",
-                },
-                theme: {
-                  color: "#ff6b00",
-                },
-                modal: {
-                  ondismiss: () => {
-                    setIsProcessing(false);
-                  }
-                }
-              };
-              
-              const rzp = new window.Razorpay(options);
-              rzp.on("payment.failed", function (response) {
-                setIsProcessing(false);
-                alert(response.error?.description || "Payment failed. Please try again.");
-              });
-              rzp.open();
-              return;
-            }
-          }
-          
-          // Fallback to QR modal on Mobile
+      console.log("[DEBUG] Requesting generateQR. baseURL:", api?.defaults?.baseURL || "undefined");
+      paymentService.generateQR(bill.grandTotal)
+        .then((data) => {
+          setQrCodeData(data);
           setShowQRModal(true);
           setIsProcessing(false);
         })
         .catch((err) => {
           setIsProcessing(false);
           if (Platform.OS === "web") {
-            alert(err.message || "Failed to load Razorpay Payment Gateway");
+            alert(err.message || "Failed to generate Razorpay QR Code");
           } else {
-            Alert.alert("Error", err.message || "Failed to load Razorpay Payment Gateway");
+            Alert.alert("Error", err.message || "Failed to generate Razorpay QR Code");
           }
         });
     }
@@ -381,9 +270,9 @@ const CheckoutScreen = ({ navigation }) => {
 
     // Perform secure backend signature verification and place order
     paymentService.verifyPayment({
-      razorpay_payment_id: `pay_upi_${Date.now()}`,
-      razorpay_signature: `sig_upi_${Date.now()}`,
-      razorpay_order_id: `mock_order_upi_${Date.now()}`,
+      paymentId: `pay_upi_${Date.now()}`,
+      signature: `sig_upi_${Date.now()}`,
+      razorpayOrderId: `rzp_order_upi_${Date.now()}`,
       amount: bill.grandTotal,
       paymentMethod: `UPI - ${selectedUPI}`,
       orderData: orderPayload
@@ -402,9 +291,9 @@ const CheckoutScreen = ({ navigation }) => {
       .catch((err) => {
         setIsProcessing(false);
         const errorMsg = logAndGetError("/payment/verify", {
-          razorpay_payment_id: `pay_upi_${Date.now()}`,
-          razorpay_signature: `sig_upi_${Date.now()}`,
-          razorpay_order_id: `mock_order_upi_${Date.now()}`,
+          paymentId: `pay_upi_${Date.now()}`,
+          signature: `sig_upi_${Date.now()}`,
+          razorpayOrderId: `rzp_order_upi_${Date.now()}`,
           amount: bill.grandTotal,
           paymentMethod: `UPI - ${selectedUPI}`,
           orderData: orderPayload
@@ -440,11 +329,11 @@ const CheckoutScreen = ({ navigation }) => {
     };
 
     paymentService.verifyPayment({
-      razorpay_payment_id: `pay_${Date.now()}`,
-      razorpay_signature: `sig_${Date.now()}`,
-      razorpay_order_id: qrCodeData?.razorpay_order_id,
+      paymentId: `pay_${Date.now()}`,
+      signature: `sig_${Date.now()}`,
+      razorpayOrderId: qrCodeData?.razorpay_order_id,
       amount: bill.grandTotal,
-      paymentMethod: "Razorpay Online Payment",
+      paymentMethod: "Razorpay UPI QR",
       orderData: orderPayload
     })
       .then((res) => {
@@ -455,7 +344,7 @@ const CheckoutScreen = ({ navigation }) => {
           orderId: res._id || res.id,
           orderNumber: res.orderNumber,
           totalAmount: res.totalAmount,
-          paymentMethod: res.paymentMethod || "Razorpay Online Payment",
+          paymentMethod: res.paymentMethod || "Razorpay UPI QR",
           address: res.address || orderPayload.address,
         });
       })
@@ -541,20 +430,20 @@ const CheckoutScreen = ({ navigation }) => {
               />
             </TouchableOpacity>
 
-            {/* 2. Razorpay Online Payment */}
+            {/* 2. Razorpay UPI QR (Online Payment) */}
             <TouchableOpacity 
-              style={[styles.paymentMethodRow, paymentMethod === "Razorpay" && styles.paymentMethodRowSelected]}
-              onPress={() => setPaymentMethod("Razorpay")}
+              style={[styles.paymentMethodRow, paymentMethod === "Razorpay QR" && styles.paymentMethodRowSelected]}
+              onPress={() => setPaymentMethod("Razorpay QR")}
               activeOpacity={0.7}
             >
               <View style={styles.paymentMethodLeft}>
-                <MaterialCommunityIcons name="credit-card-outline" size={24} color={paymentMethod === "Razorpay" ? "#ff6b00" : "#475467"} />
-                <Text style={styles.paymentMethodLabel}>Razorpay Online Payment</Text>
+                <MaterialCommunityIcons name="qrcode" size={24} color={paymentMethod === "Razorpay QR" ? "#ff6b00" : "#475467"} />
+                <Text style={styles.paymentMethodLabel}>Online Payment (Razorpay UPI QR Code)</Text>
               </View>
               <RadioButton
-                value="Razorpay"
-                status={paymentMethod === "Razorpay" ? "checked" : "unchecked"}
-                onPress={() => setPaymentMethod("Razorpay")}
+                value="Razorpay QR"
+                status={paymentMethod === "Razorpay QR" ? "checked" : "unchecked"}
+                onPress={() => setPaymentMethod("Razorpay QR")}
                 color="#ff6b00"
               />
             </TouchableOpacity>

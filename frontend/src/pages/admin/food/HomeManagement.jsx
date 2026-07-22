@@ -45,7 +45,7 @@ const HomeManagement = () => {
         fetch(`${API_BASE_URL}/admin/banners`, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()).catch(() => []),
       ]);
 
-      setHomeSections(Array.isArray(sectionsRes) ? [...sectionsRes].sort((a,b) => (a.displayOrder || 0) - (b.displayOrder || 0)) : []);
+      setHomeSections(Array.isArray(sectionsRes) ? sectionsRes.sort((a,b) => a.displayOrder - b.displayOrder) : []);
       setRestaurants(Array.isArray(restaurantsRes) ? restaurantsRes : []);
       setFoods(Array.isArray(foodsRes) ? foodsRes : []);
       setBanners(Array.isArray(bannersRes) ? bannersRes : []);
@@ -436,10 +436,10 @@ const HomeManagement = () => {
                           </td>
                           <td className="py-3 text-center">
                             <button
-                              onClick={() => handleToggleRestaurantField(rest._id, 'isNewRestaurant', rest.isNewRestaurant)}
-                              className={`px-2 py-0.5 rounded-full text-[9px] font-bold border transition-colors mx-auto ${rest.isNewRestaurant ? 'bg-teal-50 border-teal-100 text-teal-600' : 'bg-slate-50 border-slate-200 text-slate-400'}`}
+                              onClick={() => handleToggleRestaurantField(rest._id, 'isNew', rest.isNew)}
+                              className={`px-2 py-0.5 rounded-full text-[9px] font-bold border transition-colors mx-auto ${rest.isNew ? 'bg-teal-50 border-teal-100 text-teal-600' : 'bg-slate-50 border-slate-200 text-slate-400'}`}
                             >
-                              {rest.isNewRestaurant ? 'New' : 'No'}
+                              {rest.isNew ? 'New' : 'No'}
                             </button>
                           </td>
                           <td className="py-3 text-center">

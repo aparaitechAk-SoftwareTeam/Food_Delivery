@@ -6,7 +6,6 @@ exports.getFoods = async (req, res) => {
   const {
     q,
     category,
-    restaurant,
     price,
     rating,
     deliveryTime,
@@ -26,8 +25,11 @@ exports.getFoods = async (req, res) => {
     const skipNum = (pageNum - 1) * limitNum;
 
     let foodQueryObj = {};
-    if (restaurant) {
-      foodQueryObj.restaurant = restaurant;
+    if (req.query.ids) {
+      const idsArray = req.query.ids.split(",").filter(id => id.trim().length === 24);
+      if (idsArray.length > 0) {
+        foodQueryObj._id = { $in: idsArray };
+      }
     }
     let restaurantQueryObj = {};
 

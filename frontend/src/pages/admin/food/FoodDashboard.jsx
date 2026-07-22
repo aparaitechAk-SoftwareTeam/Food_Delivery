@@ -29,18 +29,14 @@ const FoodDashboard = () => {
         fetch(`${API_BASE_URL}/admin/combos`).then(res => res.json()).catch(() => [])
       ]);
 
-      const foodsList = Array.isArray(foodsRes) ? foodsRes : (foodsRes?.foods || foodsRes?.data || []);
-      const catsList = Array.isArray(catsRes) ? catsRes : (catsRes?.categories || catsRes?.data || []);
-      const combosList = Array.isArray(combosRes) ? combosRes : (combosRes?.combos || combosRes?.data || []);
-
-      const totalFoods = foodsList.length;
-      const totalCategories = catsList.length;
-      const featuredFoods = foodsList.filter(f => f && f.isFeatured).length;
-      const bestsellers = foodsList.filter(f => f && f.isBestSeller).length;
-      const freshArrivals = foodsList.filter(f => f && f.isFreshArrival).length;
-      const comboMeals = combosList.length;
-      const hiddenFoods = foodsList.filter(f => f && !f.isAvailable).length;
-      const outOfStock = foodsList.filter(f => f && f.stock <= 0).length;
+      const totalFoods = foodsRes.length;
+      const totalCategories = catsRes.length;
+      const featuredFoods = foodsRes.filter(f => f.isFeatured).length;
+      const bestsellers = foodsRes.filter(f => f.isBestSeller).length;
+      const freshArrivals = foodsRes.filter(f => f.isFreshArrival).length;
+      const comboMeals = combosRes.length;
+      const hiddenFoods = foodsRes.filter(f => !f.isAvailable).length;
+      const outOfStock = foodsRes.filter(f => f.stock <= 0).length;
 
       setStats({
         totalFoods,
@@ -54,7 +50,7 @@ const FoodDashboard = () => {
       });
 
       // Populate most ordered items
-      const ordered = [...foodsList]
+      const ordered = [...foodsRes]
         .sort((a, b) => (b.popularityScore || 0) - (a.popularityScore || 0))
         .slice(0, 5)
         .map(f => ({
@@ -67,9 +63,9 @@ const FoodDashboard = () => {
       setMostOrdered(ordered);
 
       // Category breakdown distribution
-      const distribution = catsList.slice(0, 4).map(c => {
-        const count = foodsList.filter(f => f && (f.category?._id === c._id || f.category === c.name)).length;
-        const total = foodsList.length || 1;
+      const distribution = catsRes.slice(0, 4).map(c => {
+        const count = foodsRes.filter(f => f.category?._id === c._id || f.category === c.name).length;
+        const total = foodsRes.length || 1;
         return {
           name: c.name,
           count,

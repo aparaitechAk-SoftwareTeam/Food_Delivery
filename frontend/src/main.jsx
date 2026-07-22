@@ -23,9 +23,9 @@ window.fetch = async function (url, options = {}) {
   // Ensure headers object exists
   const headers = { ...options.headers };
 
-  // Inject Authorization header if token is present (except for login requests)
+  // Inject Authorization header if token is present
   const token = localStorage.getItem('admin_token');
-  if (token && typeof newUrl === 'string' && newUrl.includes('/api/') && !newUrl.includes('/login')) {
+  if (token && typeof newUrl === 'string' && newUrl.includes('/api/')) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
