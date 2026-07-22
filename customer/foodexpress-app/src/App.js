@@ -1,5 +1,7 @@
 import "./patchStyles";
-import React from "react";
+import React, { useEffect } from "react";
+import { Platform } from "react-native";
+
 import { LogBox } from "react-native";
 LogBox.ignoreLogs([
   "props.pointerEvents is deprecated",

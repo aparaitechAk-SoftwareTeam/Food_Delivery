@@ -7,11 +7,7 @@ const getBaseURL = () => {
     const url = process.env.EXPO_PUBLIC_API_URL;
     return url.endsWith("/api") ? url : `${url}/api`;
   }
-  if (process.env.VITE_API_URL) {
-    const url = process.env.VITE_API_URL;
-    return url.endsWith("/api") ? url : `${url}/api`;
-  }
-  return "https://food-delivery-fqqo.onrender.com/api";
+  return "https://food-delivery-ywd0.onrender.com/api";
 };
 
 const api = axios.create({
